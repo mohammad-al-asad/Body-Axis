@@ -1,14 +1,39 @@
-/**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
- */
+import { useSelector } from "react-redux";
+import { RootState } from "@/redux/store";
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+export const Colors = {
+  light: {
+    primary: "#3B82F6",
+    secondary: "#5DE6FF",
+    text: "#000000",
+    background: "#ffffff",
+    backgroundElement: "#F0F0F3",
+    backgroundSelected: "#E0E1E6",
+    textSecondary: "#60646C",
+    cardBackground: "#F0F0F3",
+    cardBorder: "#E0E1E6",
+    inputBackground: "#E0E1E6",
+    inputBorder: "#D0D1D6",
+    error: "#FF6B6B",
+  },
+  dark: {
+    primary: "#3B82F6",
+    secondary: "#5DE6FF",
+    text: "#ffffff",
+    background: "#050B14",
+    backgroundElement: "#0E1420",
+    backgroundSelected: "#1C2B42",
+    textSecondary: "#5C6E84",
+    cardBackground: "#0E1420",
+    cardBorder: "#1C2B42",
+    inputBackground: "#0B101D",
+    inputBorder: "#1A2538",
+    error: "#FF6B6B",
+  },
+} as const;
 
 export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
+  const theme = useSelector((state: RootState) => state.settings.theme);
 
   return Colors[theme];
 }

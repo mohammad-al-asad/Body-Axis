@@ -16,7 +16,7 @@ class Settings:
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")
     )
     otp_expire_minutes: int = int(os.getenv("OTP_EXPIRE_MINUTES", "10"))
-    otp_length: int = int(os.getenv("OTP_LENGTH", "6"))
+    otp_length: int = 4
     return_dev_otp: bool = os.getenv("RETURN_DEV_OTP", "true").lower() == "true"
 
     google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID")
