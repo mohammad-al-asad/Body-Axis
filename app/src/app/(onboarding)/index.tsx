@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
+import { completeOnboarding } from '@/redux/slice/settings';
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
 
@@ -47,6 +49,7 @@ const SLIDES: SlideItem[] = [
 ];
 
 export default function OnboardingScreen() {
+  const dispatch = useDispatch();
   const theme = useTheme();
   const styles = createStyles(theme);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -75,6 +78,7 @@ export default function OnboardingScreen() {
       });
       setActiveIndex(nextIndex);
     } else {
+      dispatch(completeOnboarding());
       router.replace('/(auth)/sign-in');
     }
   };

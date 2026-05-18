@@ -7,8 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { HugeiconsIcon } from '@hugeicons/react-native';
-import { ArrowRight02Icon } from '@hugeicons/core-free-icons';
+import { AntDesign } from '@expo/vector-icons';
 
 import { useTheme } from '@/hooks/use-theme';
 
@@ -19,7 +18,8 @@ interface CustomButtonProps {
   disabled?: boolean;
   style?: ViewStyle | ViewStyle[];
   textStyle?: TextStyle;
-  icon?: any;
+  icon?: React.ReactNode;
+  iconSize?: number;
 }
 
 export function CustomButton({
@@ -30,6 +30,7 @@ export function CustomButton({
   style,
   textStyle,
   icon,
+  iconSize = 20,
 }: CustomButtonProps) {
   const isBtnDisabled = disabled || isLoading;
   const theme = useTheme();
@@ -51,12 +52,16 @@ export function CustomButton({
       ) : (
         <>
           <Text style={[styles.buttonText, textStyle]}>{title}</Text>
-          <HugeiconsIcon
-            icon={icon || ArrowRight02Icon}
-            size={18}
-            color="#FFFFFF"
-            style={styles.icon}
-          />
+          {icon ? (
+            icon
+          ) : (
+            <AntDesign
+              name="arrow-right"
+              size={iconSize}
+              color="#FFFFFF"
+              style={styles.icon}
+            />
+          )}
         </>
       )}
     </TouchableOpacity>
@@ -88,6 +93,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   icon: {
-    marginLeft: 4,
+    marginLeft: 6,
+    alignSelf: 'center',
   },
 });

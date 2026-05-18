@@ -163,7 +163,7 @@ export default function OTPVerifyScreen() {
       }).unwrap();
 
       Alert.alert('Success', response.message);
-      router.replace('/(tab)');
+      router.replace('/(intake)');
     } catch (error) {
       Alert.alert('Verification failed', getApiErrorMessage(error));
     }

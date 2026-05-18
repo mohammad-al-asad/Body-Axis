@@ -9,28 +9,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { CustomButton } from '@/components/ui/CustomButton';
+import { useTheme } from '@/hooks/use-theme';
+import { Header } from '@/components/Header';
 
 export default function HomeScreen() {
+  const theme = useTheme();
+  const styles = createStyles(theme);
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header Section */}
-        <View style={styles.headerRow}>
-          <View style={{ width: 68 }} /> {/* Spacing placeholder to keep title centered */}
-          <Text style={styles.headerTitle}>Body Axis™</Text>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Feather name="bell" size={18} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Image
-                source={{ uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' }}
-                style={styles.avatar}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <Header />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -49,23 +40,24 @@ export default function HomeScreen() {
           {/* Quick Action Card */}
           <View style={styles.quickActionCard}>
             <View style={styles.quickActionHeader}>
-              <Feather name="zap" size={14} color="#00F2FE" style={{ marginRight: 6 }} />
+              <Feather name="zap" size={14} color={theme.secondary} style={{ marginRight: 6 }} />
               <Text style={styles.quickActionLabel}>QUICK ACTION</Text>
             </View>
             <Text style={styles.quickActionTitle}>Start a Movement Plan</Text>
             <Text style={styles.quickActionSubtitle}>
               Pick an area, tell us how it feels, and we will build your plan.
             </Text>
-            <TouchableOpacity style={styles.quickActionButton} activeOpacity={0.85}>
-              <Text style={styles.quickActionButtonText}>Get Started  →</Text>
-            </TouchableOpacity>
+            <CustomButton
+              title="Get Started"
+              onPress={() => {}}
+            />
           </View>
 
           {/* Progress Tracker Card */}
           <View style={styles.progressCard}>
             <View style={styles.progressHeader}>
               <View style={styles.progressHeaderLeft}>
-                <Feather name="calendar" size={18} color="#00F2FE" style={{ marginRight: 8 }} />
+                <Feather name="calendar" size={18} color={theme.secondary} style={{ marginRight: 8 }} />
                 <Text style={styles.progressTitle}>Week 01</Text>
               </View>
               <View style={styles.progressHeaderRight}>
@@ -84,7 +76,7 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Suggested Movement Plans</Text>
             <TouchableOpacity>
-              <Feather name="more-horizontal" size={20} color="#8A99AD" />
+              <Feather name="more-horizontal" size={20} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -153,7 +145,7 @@ export default function HomeScreen() {
               {/* Bullet row A */}
               <View style={styles.methodologyRow}>
                 <View style={styles.methodologyIconWrapper}>
-                  <Feather name="target" size={18} color="#00F2FE" />
+                  <Feather name="target" size={18} color={theme.secondary} />
                 </View>
                 <View style={styles.methodologyTextWrapper}>
                   <Text style={styles.methodologyRowTitle}>Tailored To Your Axis</Text>
@@ -166,7 +158,7 @@ export default function HomeScreen() {
               {/* Bullet row B */}
               <View style={styles.methodologyRow}>
                 <View style={styles.methodologyIconWrapper}>
-                  <Feather name="activity" size={18} color="#00F2FE" />
+                  <Feather name="activity" size={18} color={theme.secondary} />
                 </View>
                 <View style={styles.methodologyTextWrapper}>
                   <Text style={styles.methodologyRowTitle}>Kinetic Flow Integration</Text>
@@ -184,52 +176,16 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#050B14',
+    backgroundColor: theme.background,
   },
   safeArea: {
     flex: 1,
   },
   scrollContent: {
     paddingBottom: 40,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#00F2FE',
-    letterSpacing: 0.2,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0C1524',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1E2E44',
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: '#00F2FE',
   },
   heroContainer: {
     paddingHorizontal: 24,
@@ -238,26 +194,26 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
     lineHeight: 36,
     letterSpacing: -0.5,
   },
   heroHighlight: {
-    color: '#00F2FE',
+    color: theme.secondary,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: '#8A99AD',
+    color: theme.textSecondary,
     lineHeight: 20,
     marginTop: 10,
   },
   quickActionCard: {
     marginHorizontal: 24,
-    backgroundColor: '#0C1524',
+    backgroundColor: theme.cardBackground,
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(32, 138, 239, 0.08)',
+    borderColor: theme.cardBorder,
     marginBottom: 24,
   },
   quickActionHeader: {
@@ -268,40 +224,28 @@ const styles = StyleSheet.create({
   quickActionLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#00F2FE',
+    color: theme.secondary,
     letterSpacing: 0.8,
   },
   quickActionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
     marginBottom: 8,
   },
   quickActionSubtitle: {
     fontSize: 13,
-    color: '#8A99AD',
+    color: theme.textSecondary,
     lineHeight: 18,
     marginBottom: 20,
   },
-  quickActionButton: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#2F80ED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickActionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
   progressCard: {
     marginHorizontal: 24,
-    backgroundColor: '#0C1524',
+    backgroundColor: theme.cardBackground,
     borderRadius: 20,
     padding: 24,
     borderWidth: 1,
-    borderColor: 'rgba(32, 138, 239, 0.08)',
+    borderColor: theme.cardBorder,
     marginBottom: 28,
   },
   progressHeader: {
@@ -317,7 +261,7 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
   },
   progressHeaderRight: {
     flexDirection: 'row',
@@ -325,7 +269,7 @@ const styles = StyleSheet.create({
   },
   progressStat: {
     fontSize: 12,
-    color: '#8A99AD',
+    color: theme.textSecondary,
     fontWeight: '500',
   },
   trackerBoxesRow: {
@@ -337,9 +281,9 @@ const styles = StyleSheet.create({
     flex: 1,
     aspectRatio: 1,
     borderRadius: 10,
-    backgroundColor: '#050B14',
+    backgroundColor: theme.inputBackground,
     borderWidth: 1,
-    borderColor: '#1E2E44',
+    borderColor: theme.inputBorder,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -351,7 +295,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
   },
   horizontalScrollContent: {
     paddingLeft: 24,
@@ -361,11 +305,11 @@ const styles = StyleSheet.create({
   planCard: {
     width: 200,
     marginRight: 16,
-    backgroundColor: '#0C1524',
+    backgroundColor: theme.cardBackground,
     borderRadius: 20,
     padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(32, 138, 239, 0.08)',
+    borderColor: theme.cardBorder,
   },
   planImageContainer: {
     width: '100%',
@@ -396,20 +340,20 @@ const styles = StyleSheet.create({
   planTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
     lineHeight: 20,
     marginBottom: 4,
   },
   planCategory: {
     fontSize: 12,
-    color: '#8A99AD',
+    color: theme.textSecondary,
   },
   methodologyCard: {
     marginHorizontal: 24,
-    backgroundColor: '#0C1524',
+    backgroundColor: theme.cardBackground,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(32, 138, 239, 0.08)',
+    borderColor: theme.cardBorder,
     overflow: 'hidden',
     marginBottom: 24,
   },
@@ -423,14 +367,14 @@ const styles = StyleSheet.create({
   methodologyLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#00F2FE',
+    color: theme.secondary,
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   methodologyTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
     lineHeight: 26,
     marginBottom: 24,
   },
@@ -442,9 +386,9 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#050B14',
+    backgroundColor: theme.inputBackground,
     borderWidth: 1,
-    borderColor: '#1E2E44',
+    borderColor: theme.inputBorder,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -455,12 +399,12 @@ const styles = StyleSheet.create({
   methodologyRowTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: theme.text,
     marginBottom: 6,
   },
   methodologyRowDesc: {
     fontSize: 13,
-    color: '#8A99AD',
+    color: theme.textSecondary,
     lineHeight: 18,
   },
 });

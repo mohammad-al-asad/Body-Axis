@@ -4,7 +4,7 @@ import { RootState } from "@/redux/store";
 export const Colors = {
   light: {
     primary: "#3B82F6",
-    secondary: "#5DE6FF",
+    secondary: "#44E2CD",
     text: "#000000",
     background: "#ffffff",
     backgroundElement: "#F0F0F3",
@@ -14,6 +14,7 @@ export const Colors = {
     cardBorder: "#E0E1E6",
     inputBackground: "#E0E1E6",
     inputBorder: "#D0D1D6",
+    grayBorder: "#1118271A", // Light equivalent
     error: "#FF6B6B",
   },
   dark: {
@@ -24,10 +25,11 @@ export const Colors = {
     backgroundElement: "#0E1420",
     backgroundSelected: "#1C2B42",
     textSecondary: "#5C6E84",
-    cardBackground: "#0E1420",
-    cardBorder: "#1C2B42",
-    inputBackground: "#0B101D",
+    cardBackground: "#111827B2",
+    cardBorder: "#22D3EE4D",
+    inputBackground: "#010F1F",
     inputBorder: "#1A2538",
+    grayBorder: "#111827B2",
     error: "#FF6B6B",
   },
 } as const;

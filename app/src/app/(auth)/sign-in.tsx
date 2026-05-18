@@ -83,7 +83,7 @@ export default function SignInScreen() {
         return;
       }
 
-      router.replace('/(tab)');
+      router.replace('/(auth)/premium');
     } catch (error) {
       Alert.alert('Sign in failed', getApiErrorMessage(error));
     }
