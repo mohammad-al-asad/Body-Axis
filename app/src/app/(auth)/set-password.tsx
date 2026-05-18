@@ -14,57 +14,65 @@ import {
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@/hooks/use-theme';
-import { CustomButton } from '@/components/ui/CustomButton';
 
-import { useRequestOtpMutation } from '@/redux/api/authApi';
+import { useVerifyOtpMutation } from '@/redux/api/authApi';
 import { getApiErrorMessage } from '@/utils/apiError';
-import {
-  forgotPasswordSchema,
-  type ForgotPasswordFormValues,
-} from '@/validation/auth';
+import { resetPasswordSchema, type ResetPasswordFormValues } from '@/validation/auth';
+import { CustomButton } from '@/components/ui/CustomButton';
+import { HugeiconsIcon } from '@hugeicons/react-native';
+import { ShieldBanIcon } from '@hugeicons/core-free-icons';
 
-export default function ForgotPasswordScreen() {
+function getParam(value: string | string[] | undefined): string {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+  return value ?? '';
+}
+
+export default function SetPasswordScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
-  const [requestOtp, { isLoading }] = useRequestOtpMutation();
+  const params = useLocalSearchParams<{ email?: string; purpose?: string; otpCode?: string }>();
+  const email = getParam(params.email);
+  const otpCode = getParam(params.otpCode);
+
+  const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<ForgotPasswordFormValues>({
-    resolver: zodResolver(forgotPasswordSchema),
+  } = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
     defaultValues: {
-      email: '',
+      email,
+      purpose: 'forgot_password',
+      otpCode,
+      newPassword: '',
+      confirmNewPassword: '',
     },
   });
 
-  const handleSendCode = async (values: ForgotPasswordFormValues) => {
+  const handleResetPassword = async (values: ResetPasswordFormValues) => {
     Keyboard.dismiss();
 
     try {
-      const response = await requestOtp({
+      const response = await verifyOtp({
         email: values.email.trim(),
         purpose: 'forgot_password',
+        otp_code: values.otpCode,
+        new_password: values.newPassword,
+        confirm_new_password: values.confirmNewPassword,
       }).unwrap();
 
-      if (response.dev_otp) {
-        Alert.alert('Development OTP', response.dev_otp);
-      }
-
-      router.push({
-        pathname: '/(auth)/otp-verify',
-        params: {
-          email: values.email.trim(),
-          purpose: 'forgot_password',
-        },
-      });
+      Alert.alert('Success', response.message || 'Password reset successfully');
+      router.replace('/(auth)/sign-in');
     } catch (error) {
-      Alert.alert('Request failed', getApiErrorMessage(error));
+      Alert.alert('Reset failed', getApiErrorMessage(error));
     }
   };
 
@@ -79,7 +87,7 @@ export default function ForgotPasswordScreen() {
               onPress={() => router.back()}
               style={styles.headerButton}
             >
-              <Feather name="arrow-left" size={22} color="#FFFFFF" />
+              <Feather name="arrow-left" size={22} color={theme.text} />
             </TouchableOpacity>
 
             <Image
@@ -106,44 +114,74 @@ export default function ForgotPasswordScreen() {
 
             {/* Main Center Card Container */}
             <View style={styles.card}>
-
-              <Text style={styles.cardTitle}>Forgot Password</Text>
+              <Text style={styles.cardTitle}>Set New Password</Text>
               <Text style={styles.cardSubtitle}>
-                We will send a code to your email
+                Choose a strong and secure password for your account
               </Text>
 
-              {/* Input Group */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>EMAIL ADDRESS</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="mail" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                  <Controller
-                    control={control}
-                    name="email"
-                    render={({ field: { onBlur, onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="name@example.com"
-                        placeholderTextColor={theme.textSecondary}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={value}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                      />
-                    )}
-                  />
+              <View style={styles.passwordFields}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>NEW PASSWORD</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="lock" size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                    <Controller
+                      control={control}
+                      name="newPassword"
+                      render={({ field: { onBlur, onChange, value } }) => (
+                        <TextInput
+                          style={styles.input}
+                          placeholder="••••••••"
+                          placeholderTextColor={theme.textSecondary}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          value={value}
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                        />
+                      )}
+                    />
+                  </View>
+                  {errors.newPassword?.message && (
+                    <Text style={styles.errorText}>{errors.newPassword.message}</Text>
+                  )}
                 </View>
-                {errors.email?.message && (
-                  <Text style={styles.errorText}>{errors.email.message}</Text>
-                )}
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>CONFIRM PASSWORD</Text>
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputIcon}>
+                      <HugeiconsIcon icon={ShieldBanIcon} size={18} color={theme.textSecondary} />
+                    </View>
+                    <Controller
+                      control={control}
+                      name="confirmNewPassword"
+                      render={({ field: { onBlur, onChange, value } }) => (
+                        <TextInput
+                          style={styles.input}
+                          placeholder="••••••••"
+                          placeholderTextColor={theme.textSecondary}
+                          secureTextEntry
+                          autoCapitalize="none"
+                          value={value}
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                        />
+                      )}
+                    />
+                  </View>
+                  {errors.confirmNewPassword?.message && (
+                    <Text style={styles.errorText}>
+                      {errors.confirmNewPassword.message}
+                    </Text>
+                  )}
+                </View>
               </View>
 
               {/* Submit Action Button */}
               <CustomButton
-                title="Send Code"
+                title="Reset Password"
                 isLoading={isLoading}
-                onPress={handleSubmit(handleSendCode)}
+                onPress={handleSubmit(handleResetPassword)}
               />
 
               {/* Back to Login Link */}
@@ -209,7 +247,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 24,
   },
   card: {
     backgroundColor: theme.cardBackground,
@@ -247,9 +285,13 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  passwordFields: {
+    width: '100%',
+    marginBottom: 8,
+  },
   inputGroup: {
     width: '100%',
-    marginBottom: 24,
+    marginBottom: 18,
   },
   label: {
     fontSize: 11,
@@ -311,7 +353,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 4,
-    marginTop: 15,
+    marginTop: 18,
   },
   backIcon: {
     marginRight: 6,

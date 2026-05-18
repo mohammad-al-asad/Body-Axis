@@ -132,7 +132,7 @@ export default function SignUpScreen() {
                 />
                 
                 <Text style={styles.title}>Create Your Account</Text>
-                <Text style={styles.subtitle}>Start moving pain-free with Body Axis™.</Text>
+                <Text style={styles.subtitle}>Start moving pain-free with Body Axis™</Text>
               </View>
 
               {/* Scrollable Form Card */}

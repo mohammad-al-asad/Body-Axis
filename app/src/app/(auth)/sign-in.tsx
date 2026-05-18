@@ -20,7 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useDispatch } from 'react-redux';
 import { useTheme } from '@/hooks/use-theme';
 
-import { useLoginMutation } from '@/redux/api/authApi';
+import { useLoginMutation, useRequestOtpMutation } from '@/redux/api/authApi';
 import { setCredentials } from '@/redux/slice/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { loginSchema, type LoginFormValues } from '@/validation/auth';
@@ -32,6 +32,7 @@ export default function SignInScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const [requestOtp, { isLoading: isRequestingOtp }] = useRequestOtpMutation();
 
   const {
     control,
@@ -61,6 +62,27 @@ export default function SignInScreen() {
           user: response.user,
         })
       );
+
+      if (!response.user.email_verified) {
+        const otpResponse = await requestOtp({
+          email: response.user.email,
+          purpose: 'email_verify',
+        }).unwrap();
+
+        if (otpResponse.dev_otp) {
+          Alert.alert('Development OTP', otpResponse.dev_otp);
+        }
+
+        router.replace({
+          pathname: '/(auth)/otp-verify',
+          params: {
+            email: response.user.email,
+            purpose: 'email_verify',
+          },
+        });
+        return;
+      }
+
       router.replace('/(tab)');
     } catch (error) {
       Alert.alert('Sign in failed', getApiErrorMessage(error));
@@ -84,7 +106,7 @@ export default function SignInScreen() {
               />
               
               <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Continue your mobility journey.</Text>
+              <Text style={styles.subtitle}>Continue your mobility journey</Text>
             </View>
 
             {/* Input Card Container */}
@@ -165,7 +187,7 @@ export default function SignInScreen() {
               {/* Action Submit Button */}
               <CustomButton
                 title="Sign In"
-                isLoading={isLoading}
+                isLoading={isLoading || isRequestingOtp}
                 onPress={handleSubmit(onSubmit)}
               />
 

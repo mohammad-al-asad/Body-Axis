@@ -15,7 +15,7 @@ import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -27,8 +27,6 @@ import {
 import { getApiErrorMessage } from '@/utils/apiError';
 import { otpVerifySchema, type OtpVerifyFormValues } from '@/validation/auth';
 import { CustomButton } from '@/components/ui/CustomButton';
-import { HugeiconsIcon } from '@hugeicons/react-native';
-import { ShieldBanIcon } from '@hugeicons/core-free-icons';
 
 const otpLength = 4;
 const otpIndexes = Array.from({ length: otpLength }, (_, index) => index);
@@ -57,7 +55,6 @@ export default function OTPVerifyScreen() {
   const inputRefs = useRef<(TextInput | null)[]>([]);
 
   const {
-    control,
     handleSubmit,
     setValue,
     formState: { errors },
@@ -142,23 +139,31 @@ export default function OTPVerifyScreen() {
   const handleVerify = async (values: OtpVerifyFormValues) => {
     Keyboard.dismiss();
 
+    if (values.purpose === 'forgot_password') {
+      if (values.otpCode.length < 4) {
+        Alert.alert('Validation Error', 'Enter the 4-digit code');
+        return;
+      }
+      router.push({
+        pathname: '/(auth)/set-password',
+        params: {
+          email: values.email,
+          purpose: values.purpose,
+          otpCode: values.otpCode,
+        },
+      });
+      return;
+    }
+
     try {
       const response = await verifyOtp({
         email: values.email.trim(),
         purpose: values.purpose,
         otp_code: values.otpCode,
-        new_password:
-          values.purpose === 'forgot_password' ? values.newPassword : undefined,
-        confirm_new_password:
-          values.purpose === 'forgot_password'
-            ? values.confirmNewPassword
-            : undefined,
       }).unwrap();
 
       Alert.alert('Success', response.message);
-      router.replace(
-        values.purpose === 'email_verify' ? '/(tab)' : '/(auth)/sign-in'
-      );
+      router.replace('/(tab)');
     } catch (error) {
       Alert.alert('Verification failed', getApiErrorMessage(error));
     }
@@ -199,20 +204,18 @@ export default function OTPVerifyScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
           >
+            {/* Logo/Icon above the card */}
+            <Image
+              source={require('@/assets/images/forgotIcon.png')}
+              style={styles.forgotIcon}
+              contentFit="contain"
+            />
+
             {/* Main Center Card Container */}
             <View style={styles.card}>
-              {/* Starry/illustration logo box in the center */}
-              <View style={styles.logoBox}>
-                <Image
-                  source={require('@/assets/images/app/illustrationWithText.png')}
-                  style={styles.logoImage}
-                  contentFit="contain"
-                />
-              </View>
-
               <Text style={styles.cardTitle}>Verification Code</Text>
               <Text style={styles.cardSubtitle}>
-                We have sent a 4-digit code to {email || 'your email'}.
+                We have sent a 4-digit code to {email || 'your email'}
               </Text>
 
               {/* 4-Digit OTP Grid */}
@@ -257,66 +260,6 @@ export default function OTPVerifyScreen() {
                 )}
               </View>
 
-              {purpose === 'forgot_password' && (
-                <View style={styles.passwordFields}>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>NEW PASSWORD</Text>
-                    <View style={styles.inputWrapper}>
-                      <Feather name="lock" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                      <Controller
-                        control={control}
-                        name="newPassword"
-                        render={({ field: { onBlur, onChange, value } }) => (
-                          <TextInput
-                            style={styles.input}
-                            placeholder="••••••••"
-                            placeholderTextColor={theme.textSecondary}
-                            secureTextEntry
-                            autoCapitalize="none"
-                            value={value}
-                            onBlur={onBlur}
-                            onChangeText={onChange}
-                          />
-                        )}
-                      />
-                    </View>
-                    {errors.newPassword?.message && (
-                      <Text style={styles.errorText}>{errors.newPassword.message}</Text>
-                    )}
-                  </View>
-
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.label}>CONFIRM PASSWORD</Text>
-                    <View style={styles.inputWrapper}>
-                      <View style={styles.inputIcon}>
-                        <HugeiconsIcon icon={ShieldBanIcon} size={18} color={theme.textSecondary} />
-                      </View>
-                      <Controller
-                        control={control}
-                        name="confirmNewPassword"
-                        render={({ field: { onBlur, onChange, value } }) => (
-                          <TextInput
-                            style={styles.input}
-                            placeholder="••••••••"
-                            placeholderTextColor={theme.textSecondary}
-                            secureTextEntry
-                            autoCapitalize="none"
-                            value={value}
-                            onBlur={onBlur}
-                            onChangeText={onChange}
-                          />
-                        )}
-                      />
-                    </View>
-                    {errors.confirmNewPassword?.message && (
-                      <Text style={styles.errorText}>
-                        {errors.confirmNewPassword.message}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              )}
-
               {/* Verify Action Button */}
               <CustomButton
                 title="Verify & Proceed"
@@ -330,7 +273,7 @@ export default function OTPVerifyScreen() {
                 onPress={() => router.replace('/(auth)/sign-in')}
                 style={styles.backToLoginContainer}
               >
-                <Feather name="arrow-left" size={16} color={theme.textSecondary} style={styles.backIcon} />
+                <Feather name="arrow-left" size={16} color={theme.secondary} style={styles.backIcon} />
                 <Text style={styles.backToLoginText}>Back to Login</Text>
               </TouchableOpacity>
             </View>
@@ -404,24 +347,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     shadowRadius: 20,
     elevation: 8,
   },
-  logoBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 16,
-    backgroundColor: theme.inputBackground,
-    borderWidth: 1,
-    borderColor: theme.cardBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  logoImage: {
-    width: 44,
-    height: 44,
+  forgotIcon: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+    alignSelf: 'center',
   },
   cardTitle: {
     fontSize: 24,
@@ -551,7 +481,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     marginRight: 6,
   },
   backToLoginText: {
-    color: theme.textSecondary,
+    color: theme.secondary,
     fontSize: 14,
     fontWeight: '600',
   },

@@ -64,37 +64,30 @@ export const forgotPasswordSchema = z.object({
   email: z.email('Enter a valid email'),
 });
 
-export const otpVerifySchema = z
-  .object({
-    email: z.email('Enter a valid email'),
-    purpose: otpPurposeSchema,
-    otpCode: z.string().regex(/^\d{4}$/, 'Enter the 4-digit code'),
-    newPassword: z.string().optional(),
-    confirmNewPassword: z.string().optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (value.purpose !== 'forgot_password') {
-      return;
-    }
-
-    if (!value.newPassword || value.newPassword.length < 8) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'New password must be at least 8 characters',
-        path: ['newPassword'],
-      });
-    }
-
-    if (value.newPassword !== value.confirmNewPassword) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Passwords do not match',
-        path: ['confirmNewPassword'],
-      });
-    }
-  });
+export const otpVerifySchema = z.object({
+  email: z.email('Enter a valid email'),
+  purpose: otpPurposeSchema,
+  otpCode: z.string().regex(/^\d{4}$/, 'Enter the 4-digit code'),
+  newPassword: z.string().optional(),
+  confirmNewPassword: z.string().optional(),
+});
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
 export type SignupFormValues = z.infer<typeof signupSchema>;
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 export type OtpVerifyFormValues = z.infer<typeof otpVerifySchema>;
+
+export const resetPasswordSchema = z
+  .object({
+    email: z.email('Enter a valid email'),
+    purpose: otpPurposeSchema,
+    otpCode: z.string().regex(/^\d{4}$/, 'Enter the 4-digit code'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+    confirmNewPassword: z.string().min(8, 'Confirm password must be at least 8 characters'),
+  })
+  .refine((value) => value.newPassword === value.confirmNewPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmNewPassword'],
+  });
+
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
