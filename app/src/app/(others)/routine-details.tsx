@@ -1,0 +1,538 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTheme } from '@/hooks/use-theme';
+import { ROUTINES } from '../(tab)/explore';
+import { Header } from '@/components/Header';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/redux/store';
+
+const EXERCISE_DETAILS: Record<string, {
+  benefits: string;
+  targetRegions: string[];
+  equipment: string[];
+  avoidIf: string;
+  sets: string;
+  reps: string;
+}> = {
+  'Side-Lying Thoracic Rotation (Open Book)': {
+    benefits: 'Gently restores mid-back rotation with the lower back blocked from compensating. Reduces upper back stiffness that drives neck pain, shoulder restriction, and lower back overload.',
+    targetRegions: ['Shoulder', 'Neck', 'Middle Back', 'Upper Back', 'Lower Back'],
+    equipment: ['Mat', 'Light Dumbbell'],
+    avoidIf: 'Painful rotation',
+    sets: '2',
+    reps: '6-10 / EACH SIDE',
+  },
+  'Prone Trap Raise': {
+    benefits: 'Strengthens the lower trapezius muscles to improve scapular depression and upward rotation, reducing neck strain and impingement risks.',
+    targetRegions: ['Upper Back', 'Shoulder', 'Middle Back'],
+    equipment: ['Mat'],
+    avoidIf: 'Shoulder pinching or impingement pain',
+    sets: '2',
+    reps: '12 / EACH SIDE',
+  },
+  'Side-Lying Shoulder External Rotation': {
+    benefits: 'Targets the infraspinatus and teres minor to stabilize the humeral head, balancing shoulder joint dynamics.',
+    targetRegions: ['Rotator Cuff', 'Shoulder'],
+    equipment: ['Resistance Band', 'Mat'],
+    avoidIf: 'Sharp pain in the front of the shoulder',
+    sets: '2',
+    reps: '10 / EACH SIDE',
+  },
+  'Suboccipital Release + Chin Nod': {
+    benefits: 'Relieves tension in suboccipital muscles at the base of skull, restoring cervical alignment and correcting forward head posture.',
+    targetRegions: ['Neck', 'Upper Back', 'Base of Skull'],
+    equipment: ['Massage Ball'],
+    avoidIf: 'Dizziness or numbness down the arms',
+    sets: '2',
+    reps: '10s HOLD',
+  },
+  'Serratus Wall Slide': {
+    benefits: 'Activates the serratus anterior to encourage healthy scapular upward rotation and ribcage alignment.',
+    targetRegions: ['Serratus Anterior', 'Shoulder', 'Ribs'],
+    equipment: ['Foam Roller', 'Wall'],
+    avoidIf: 'Inability to reach overhead without arching lower back',
+    sets: '2',
+    reps: '10 REPS',
+  },
+  'Side-Lying Low Trap Raise': {
+    benefits: 'Strengthens lower traps in a side-lying position, isolating shoulder blade stability under controlled gravity.',
+    targetRegions: ['Shoulder Blade', 'Lower Traps', 'Upper Back'],
+    equipment: ['Mat', 'Light Dumbbell'],
+    avoidIf: 'Neck tension or shoulder joint clicking',
+    sets: '2',
+    reps: '10 / EACH SIDE',
+  },
+  'Short Foot Activation Hold': {
+    benefits: 'Activates intrinsic foot muscles to lift the medial longitudinal arch, rebuilding natural foot stability and balance.',
+    targetRegions: ['Foot Arch', 'Ankle', 'Plantar Fascia'],
+    equipment: ['Mat'],
+    avoidIf: 'Foot cramping (relax and try again with less intensity)',
+    sets: '2',
+    reps: '5 x 10s HOLD',
+  },
+  'Standing Soleus Knee Bend Hold': {
+    benefits: 'Targets soleus muscle strength and tendon stiffness to increase ankle dorsiflexion mobility.',
+    targetRegions: ['Calf', 'Achilles Tendon', 'Ankle Joint'],
+    equipment: ['Strap Loop', 'Wall'],
+    avoidIf: 'Achilles tendon pain or pinches',
+    sets: '2',
+    reps: '30s HOLD',
+  },
+  'Single-Leg RNT Squat': {
+    benefits: 'Uses reactive neuromuscular training to correct knee valgus and build lateral ankle and hip control.',
+    targetRegions: ['Glute Medius', 'Ankle Stabilizers', 'Knee Joint'],
+    equipment: ['Resistance Band', 'Mat'],
+    avoidIf: 'Loss of balance or sharp knee patellar pain',
+    sets: '2',
+    reps: '10 / EACH SIDE',
+  },
+};
+
+const DEFAULT_DETAILS = {
+  benefits: 'Gently restores mobility and movement capability with the targeted area blocked from compensation. Improves neural activation and reduces stiffness.',
+  targetRegions: ['Shoulder', 'Neck', 'Back'],
+  equipment: ['Mat'],
+  avoidIf: 'Sharp pain or severe discomfort',
+  sets: '2',
+  reps: '10 reps',
+};
+
+export default function RoutineDetailsScreen() {
+  const theme = useTheme();
+  const themePreference = useSelector((state: RootState) => state.settings.theme);
+  const router = useRouter();
+  const { id } = useLocalSearchParams<{ id: string }>();
+
+  // Fetch current routine
+  const routine = ROUTINES.find((r) => r.id === id) || ROUTINES[0];
+
+  // Track expanded cards (default expand index 0)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+
+  const toggleExpand = (index: number) => {
+    setExpandedIndex(expandedIndex === index ? null : index);
+  };
+
+  const handleStartProtocol = () => {
+    router.push({
+      pathname: '/(others)/exercise-tracker',
+    });
+  };
+
+  const styles = createStyles(theme, themePreference);
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header */}
+        <Header onBackPress={() => router.back()} />
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {/* Routine Title */}
+          <Text style={styles.routineTitle}>{routine.title}</Text>
+
+          {/* Routine Metadata Sub-row */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaLeft}>
+              <Feather name="clock" size={13} color={theme.secondary} style={styles.metaIcon} />
+              <Text style={styles.metaDurationText}>{routine.duration}</Text>
+            </View>
+            <View style={styles.metaRight}>
+              <Text style={styles.equipmentLabel}>Equipment : </Text>
+              <View style={styles.equipmentIconsRow}>
+                {routine.equipment.map((eq, index) => (
+                  <Feather key={index} name={eq.icon} size={13} color={theme.secondary} />
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Phases List */}
+          {routine.phases.map((phase, index) => {
+            const isExpanded = expandedIndex === index;
+            const details = EXERCISE_DETAILS[phase.name] || DEFAULT_DETAILS;
+
+            return (
+              <View key={index} style={styles.phaseCard}>
+                <TouchableOpacity onPress={() => toggleExpand(index)} activeOpacity={0.9}>
+                  {/* Phase Badge */}
+                  <View style={styles.badgeWrapper}>
+                    <View style={styles.phaseBadge}>
+                      <Text style={styles.phaseBadgeText}>
+                        PHASE {index + 1} - {phase.phase}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Phase Title */}
+                  <Text style={styles.phaseTitle}>{phase.name}</Text>
+                </TouchableOpacity>
+
+                {/* Expandable Section */}
+                {isExpanded && (
+                  <View style={styles.expandedContent}>
+                    {/* Video Player Placeholder */}
+                    <View style={styles.videoPlayer}>
+                      <View style={styles.videoOverlay}>
+                        <View style={styles.playButtonCircle}>
+                          <Feather name="play" size={20} color="#FFF" style={{ marginLeft: 2 }} />
+                        </View>
+                      </View>
+                      <Text style={styles.videoLabel}>DEMO VIDEO</Text>
+                    </View>
+
+                    {/* Benefits */}
+                    <Text style={styles.sectionHeader}>BENEFITS</Text>
+                    <Text style={styles.sectionBody}>{details.benefits}</Text>
+
+                    {/* Target Regions */}
+                    <Text style={styles.sectionHeader}>TARGET REGIONS</Text>
+                    <View style={styles.badgeRow}>
+                      {details.targetRegions.map((region, rIdx) => (
+                        <View key={rIdx} style={styles.regionBadge}>
+                          <Text style={styles.regionBadgeText}>{region}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Equipment */}
+                    <Text style={styles.sectionHeader}>EQUIPMENT</Text>
+                    <View style={styles.badgeRow}>
+                      {details.equipment.map((eq, eIdx) => (
+                        <View key={eIdx} style={styles.regionBadge}>
+                          <Text style={styles.regionBadgeText}>{eq}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Avoid If warning */}
+                    <View style={styles.avoidIfContainer}>
+                      <View style={styles.avoidIfTitleRow}>
+                        <Feather name="alert-triangle" size={13} color={theme.error} style={{ marginRight: 6 }} />
+                        <Text style={styles.avoidIfTitle}>AVOID IF</Text>
+                      </View>
+                      <Text style={styles.avoidIfText}>{details.avoidIf}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Grid (Sets/Reps) */}
+                <View style={styles.gridContainer}>
+                  <View style={styles.gridBox}>
+                    <Feather name="layers" size={14} color={theme.secondary} style={styles.gridIcon} />
+                    <Text style={styles.gridVal}>{details.sets}</Text>
+                    <Text style={styles.gridLabel}>SETS</Text>
+                  </View>
+                  <View style={styles.gridBox}>
+                    <Feather name="repeat" size={14} color={theme.secondary} style={styles.gridIcon} />
+                    <Text style={styles.gridVal}>{details.reps.split(' ')[0]}</Text>
+                    <Text style={styles.gridLabel}>
+                      {details.reps.includes('/') ? 'REPS / EACH SIDE' : 'REPS'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Action button to toggle collapse/expand state */}
+                <TouchableOpacity
+                  style={styles.detailsButton}
+                  onPress={() => toggleExpand(index)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.detailsButtonText}>
+                    {isExpanded ? 'Collapse' : 'See Details'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </ScrollView>
+
+        {/* Start Protocol Fixed Footer Button */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.startProtocolBtn}
+            activeOpacity={0.8}
+            onPress={handleStartProtocol}
+          >
+            <Text style={styles.startProtocolText}>Start Protocol</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: string) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 24,
+      paddingBottom: 100, // Leave space for floating footer button
+    },
+    routineTitle: {
+      fontSize: 28,
+      fontWeight: '800',
+      color: theme.text,
+      marginTop: 8,
+      marginBottom: 12,
+      letterSpacing: -0.6,
+    },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 24,
+      gap: 16,
+    },
+    metaLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    metaIcon: {
+      marginRight: 6,
+    },
+    metaDurationText: {
+      color: theme.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    metaRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    equipmentLabel: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      fontWeight: '600',
+    },
+    equipmentIconsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    phaseCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 16,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+    },
+    badgeWrapper: {
+      alignItems: 'flex-start',
+      marginBottom: 12,
+    },
+    phaseBadge: {
+      backgroundColor: 'rgba(93, 230, 255, 0.12)',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+    },
+    phaseBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 0.8,
+    },
+    phaseTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 16,
+    },
+    expandedContent: {
+      marginTop: 4,
+    },
+    videoPlayer: {
+      height: 180,
+      borderRadius: 16,
+      backgroundColor: '#0F172A',
+      marginBottom: 20,
+      justifyContent: 'center',
+      alignItems: 'center',
+      position: 'relative',
+      overflow: 'hidden',
+    },
+    videoOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    playButtonCircle: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: 'rgba(93, 230, 255, 0.85)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#5DE6FF',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+    },
+    videoLabel: {
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+      fontSize: 9,
+      fontWeight: '800',
+      color: 'rgba(255, 255, 255, 0.5)',
+      letterSpacing: 1.0,
+    },
+    sectionHeader: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 1.0,
+      marginBottom: 8,
+    },
+    sectionBody: {
+      fontSize: 13,
+      color: theme.text,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    badgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 20,
+    },
+    regionBadge: {
+      backgroundColor: theme.backgroundElement,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+    },
+    regionBadgeText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    avoidIfContainer: {
+      backgroundColor: theme.error + '10',
+      borderColor: theme.error + '25',
+      borderRadius: 12,
+      borderWidth: 1,
+      padding: 12,
+      marginBottom: 20,
+    },
+    avoidIfTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    avoidIfTitle: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.error,
+      letterSpacing: 1.0,
+    },
+    avoidIfText: {
+      fontSize: 13,
+      color: theme.text,
+      lineHeight: 18,
+    },
+    gridContainer: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 16,
+    },
+    gridBox: {
+      flex: 1,
+      backgroundColor: theme.background,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      paddingVertical: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gridIcon: {
+      marginBottom: 6,
+    },
+    gridVal: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    gridLabel: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.8,
+    },
+    detailsButton: {
+      width: '100%',
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: themePreference === 'light' ? '#cdcdcdff' : theme.cardBorder,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    detailsButtonText: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      backgroundColor: theme.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.cardBorder,
+    },
+    startProtocolBtn: {
+      width: '100%',
+      height: 52,
+      borderRadius: 14,
+      backgroundColor: theme.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: theme.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+    startProtocolText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '800',
+    },
+  });

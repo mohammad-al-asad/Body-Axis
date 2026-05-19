@@ -1,7 +1,8 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
+import { CustomButton } from "@/components/ui/CustomButton";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -42,50 +43,75 @@ const goalOptions: GoalOption[] = [
 interface GoalStepProps {
   primaryGoal: string;
   setPrimaryGoal: (val: string) => void;
+  onNext: () => void;
 }
 
-export function GoalStep({ primaryGoal, setPrimaryGoal }: GoalStepProps) {
+export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
   return (
     <View style={styles.slide}>
-      <Text style={styles.title}>How does it feel?</Text>
-      <Text style={styles.subtitle}>
-        Identifying your sensory profile helps us calibrate recovery protocols
-        and optimize your movement form based on clinical biomechanics.
-      </Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, marginTop: 24 }}>
+        <Text style={styles.title}>How does it feel?</Text>
+        <Text style={styles.subtitle}>
+          Identifying your sensory profile helps us calibrate recovery protocols
+          and optimize your movement form based on clinical biomechanics.
+        </Text>
 
-      <View style={styles.optionsList}>
-        {goalOptions.map((opt) => {
-          const isSelected = primaryGoal === opt.id;
-          return (
-            <TouchableOpacity
-              key={opt.id}
-              style={[styles.optionCard, isSelected && styles.optionCardActive]}
-              activeOpacity={0.8}
-              onPress={() => setPrimaryGoal(opt.id)}
-            >
-              <View style={[styles.iconContainer, isSelected && styles.iconContainerActive]}>
-                <Feather
-                  name={opt.icon}
-                  size={18}
-                  color={isSelected ? theme.secondary : theme.textSecondary}
-                />
-              </View>
-              <View style={styles.cardTextContainer}>
-                <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
-                  {opt.title}
-                </Text>
-                <Text style={styles.cardSubtitle}>{opt.description}</Text>
-              </View>
-              {isSelected && (
-                <Feather name="check-circle" size={18} color={theme.secondary} style={styles.checkIcon} />
-              )}
-            </TouchableOpacity>
-          );
-        })}
-      </View>
+        <View style={styles.optionsList}>
+          {goalOptions.map((opt) => {
+            const isSelected = primaryGoal === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.optionCard, isSelected && styles.optionCardActive]}
+                activeOpacity={0.8}
+                onPress={() => setPrimaryGoal(opt.id)}
+              >
+                <View style={[styles.iconContainer, isSelected && styles.iconContainerActive]}>
+                  <Feather
+                    name={opt.icon}
+                    size={18}
+                    color={isSelected ? theme.secondary : theme.textSecondary}
+                  />
+                </View>
+                <View style={styles.cardTextContainer}>
+                  <Text style={[styles.cardTitle, isSelected && styles.cardTitleActive]}>
+                    {opt.title}
+                  </Text>
+                  <Text style={styles.cardSubtitle}>{opt.description}</Text>
+                </View>
+                {isSelected && (
+                  <Feather name="check-circle" size={18} color={theme.secondary} style={styles.checkIcon} />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.infoCard}>
+          <Feather name="info" size={16} color={theme.secondary} style={styles.infoIcon} />
+          <Text style={styles.infoText}>
+            These protocols are designed for general movement improvement and are
+            not a substitute for medical advice. If you are experiencing sharp,
+            shooting, or severe pain, numbness, tingling, or have a recent
+            injury or diagnosis, please consult a healthcare professional before
+            starting. This app is not intended to treat or diagnose any medical
+            condition.
+          </Text>
+        </View>
+
+        {/* Footer inside scroll */}
+        <View style={styles.footer}>
+          <CustomButton
+            title="Continue"
+            onPress={onNext}
+            disabled={!primaryGoal}
+            style={styles.actionBtn}
+          />
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -123,20 +149,21 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flexDirection: "row",
       alignItems: "center",
       marginBottom: 12,
-      shadowColor: "#000000",
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.05,
-      shadowRadius: 6,
-      elevation: 2,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     optionCardActive: {
       borderColor: theme.secondary,
-      backgroundColor: theme.backgroundSelected,
-      shadowColor: theme.secondary,
-      shadowOffset: { width: 0, height: 6 },
+      backgroundColor: theme.backgroundSelected === "#E0E1E6" ? "#050B14" : theme.backgroundSelected,
+
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.15,
-      shadowRadius: 12,
-      elevation: 4,
+      shadowRadius: 4,
     },
     iconContainer: {
       width: 40,
@@ -170,5 +197,38 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     checkIcon: {
       marginLeft: "auto",
+    },
+    footer: {
+      paddingTop: 24,
+      paddingBottom: 24,
+    },
+    actionBtn: {
+      width: "100%",
+    },
+    infoCard: {
+      backgroundColor: theme.backgroundElement,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 18,
+      padding: 16,
+      flexDirection: "row",
+      alignItems: "flex-start",
+      marginTop: 12,
+      marginBottom: 16,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+    },
+    infoIcon: {
+      marginRight: 12,
+      marginTop: 2,
+    },
+    infoText: {
+      flex: 1,
+      fontSize: 11,
+      color: theme.textSecondary,
+      lineHeight: 16,
     },
   });

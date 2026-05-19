@@ -1,12 +1,9 @@
-import { Image } from 'expo-image';
 import React, { useState } from 'react';
 import {
   Alert,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -15,6 +12,7 @@ import { router } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
 import { CustomTab } from '@/components/ui/CustomTab';
+import { AuthHeader } from '@/components/ui/AuthHeader';
 
 export default function PremiumScreen() {
   const theme = useTheme();
@@ -51,28 +49,13 @@ export default function PremiumScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        {/* Paywall Header */}
-        <View style={styles.headerBar}>
-          <TouchableOpacity style={styles.backButton} onPress={handleSkip} activeOpacity={0.75}>
-            <Feather name="arrow-left" size={20} color={theme.text} />
-          </TouchableOpacity>
-          
-          <Image
-            source={require('@/assets/images/app/Body Axis™.png')}
-            style={styles.logoImage}
-            contentFit="contain"
-          />
-
-          <TouchableOpacity style={styles.helpButton} onPress={handleHelp} activeOpacity={0.75}>
-            <Feather name="help-circle" size={20} color={theme.textSecondary} />
-          </TouchableOpacity>
-        </View>
+        <AuthHeader onBackPress={handleSkip} onHelpPress={handleHelp} showShadow />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Main Titles */}
           <View style={styles.titleContainer}>
             <Text style={styles.mainTitle}>
-              Axis <Text style={styles.highlightTitle}>Premium</Text>
+              Axis Premium
             </Text>
             <Text style={styles.subtitle}>
               One plan. Unlimited performance.{"\n"}Unlock every protocol in our library.
@@ -191,34 +174,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     safeArea: {
       flex: 1,
     },
-    headerBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 24,
-      paddingTop: 8,
-      paddingBottom: 12,
-    },
-    backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-    },
-    logoImage: {
-      width: 100,
-      height: 20,
-    },
-    helpButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      justifyContent: 'center',
-      alignItems: 'flex-end',
-    },
     scrollContent: {
       paddingBottom: 32,
+      marginTop:24
     },
     titleContainer: {
       alignItems: 'center',
@@ -234,9 +192,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginBottom: 8,
       textAlign: 'center',
     },
-    highlightTitle: {
-      color: theme.secondary,
-    },
     subtitle: {
       fontSize: 14,
       color: theme.textSecondary,
@@ -250,11 +205,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderColor: theme.cardBorder,
       marginHorizontal: 24,
       padding: 24,
-      shadowColor: '#3B82F61A',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.12,
-      shadowRadius: 12,
-      elevation: 4,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
       marginBottom: 24,
     },
     priceContainer: {
@@ -353,6 +308,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderColor: theme.grayBorder,
       padding: 16,
       alignItems: 'flex-start',
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     gridIcon: {
       marginBottom: 12,

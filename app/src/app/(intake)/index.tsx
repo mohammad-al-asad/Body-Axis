@@ -4,7 +4,6 @@ import {
   FlatList,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import { router } from "expo-router";
@@ -13,13 +12,11 @@ import { useSelector } from "react-redux";
 
 import { RootState } from "@/redux/store";
 import { useTheme } from "@/hooks/use-theme";
-import { CustomButton } from "@/components/ui/CustomButton";
 import { Header } from "@/components/Header";
-
-import { ImproveStep } from "@/components/intake/ImproveStep";
 import { PainAssessmentStep } from "@/components/intake/PainAssessmentStep";
 import { GoalStep } from "@/components/intake/GoalStep";
 import { ScheduleStep } from "@/components/intake/ScheduleStep";
+import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -39,7 +36,7 @@ export default function IntakeScreen() {
   const [avatarView, setAvatarView] = useState<"front" | "back">("front");
   const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
   const [primaryGoal, setPrimaryGoal] = useState<string>("");
-  
+
   // Schedule Step
   const [scheduleDays, setScheduleDays] = useState<number>(3);
   const [scheduleWeeks, setScheduleWeeks] = useState<number>(3);
@@ -80,9 +77,8 @@ export default function IntakeScreen() {
   };
 
   const slidesData = [
-    { id: "improve" },
-    { id: "pain_assessment" },
     { id: "goal" },
+    { id: "pain_assessment" },
     { id: "schedule" },
   ];
 
@@ -90,28 +86,41 @@ export default function IntakeScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
 
-        <Header 
-          showNotification={false}
-          onBackPress={activeIndex > 0 ? handleBack : undefined}
-        />
-        
-        {/* Top Header Wizard Navigation */}
-        <View style={styles.headerBar}>
-          <Text style={styles.progressLabel}>
-            STEP {activeIndex + 1} OF {slidesData.length}
-          </Text>
-
-          <View style={styles.placeholder} />
-        </View>
-
-        {/* Dynamic Horizontal Progress Bar */}
-        <View style={styles.progressTrack}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${((activeIndex + 1) / slidesData.length) * 100}%` },
-            ]}
+        <View style={styles.headerContainer}>
+          <Header
+            showNotification={false}
+            onBackPress={activeIndex > 0 ? handleBack : undefined}
+            hideShadow
           />
+
+          {/* Top Header Wizard Navigation */}
+          <View style={styles.headerBar}>
+            <Text style={styles.progressLabel}>
+              STEP {activeIndex + 1} OF {slidesData.length}
+            </Text>
+
+            <View style={styles.placeholder} />
+          </View>
+
+          {/* Dynamic Horizontal Progress Bar */}
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressBar,
+                { width: `${((activeIndex + 1) / slidesData.length) * 100}%` },
+              ]}
+            />
+          </View>
+
+          <Svg height={8} width="100%" style={styles.shadowSvg}>
+            <Defs>
+              <LinearGradient id="shadow" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor={theme.text} stopOpacity={0.08} />
+                <Stop offset="1" stopColor={theme.text} stopOpacity={0} />
+              </LinearGradient>
+            </Defs>
+            <Rect width="100%" height={8} fill="url(#shadow)" />
+          </Svg>
         </View>
 
         {/* Paginated Intake Wizard Slides */}
@@ -130,8 +139,6 @@ export default function IntakeScreen() {
           })}
           renderItem={({ item }) => {
             switch (item.id) {
-              case "improve":
-                return <ImproveStep improveGoal={improveGoal} setImproveGoal={setImproveGoal} />;
               case "pain_assessment":
                 return (
                   <PainAssessmentStep
@@ -140,10 +147,11 @@ export default function IntakeScreen() {
                     setAvatarView={setAvatarView}
                     selectedPainPoints={selectedPainPoints}
                     togglePainPoint={togglePainPoint}
+                    onNext={handleNext}
                   />
                 );
               case "goal":
-                return <GoalStep primaryGoal={primaryGoal} setPrimaryGoal={setPrimaryGoal} />;
+                return <GoalStep primaryGoal={primaryGoal} setPrimaryGoal={setPrimaryGoal} onNext={handleNext} />;
               case "schedule":
                 return (
                   <ScheduleStep
@@ -153,6 +161,8 @@ export default function IntakeScreen() {
                     setScheduleWeeks={setScheduleWeeks}
                     sessionDuration={sessionDuration}
                     setSessionDuration={setSessionDuration}
+                    onNext={handleNext}
+                    onGoToHome={() => router.push("/(tab)")}
                   />
                 );
               default:
@@ -160,20 +170,6 @@ export default function IntakeScreen() {
             }
           }}
         />
-
-        {/* Global Bottom Footer Navigation */}
-        <View style={styles.footer}>
-          <CustomButton
-            title={
-              activeIndex === slidesData.length - 1
-                ? "See My Movement Plans"
-                : "Continue"
-            }
-            onPress={handleNext}
-            disabled={isNextDisabled()}
-            style={styles.actionBtn}
-          />
-        </View>
       </SafeAreaView>
     </View>
   );
@@ -188,12 +184,22 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     safeArea: {
       flex: 1,
     },
+    headerContainer: {
+      position: 'relative',
+      zIndex: 10,
+    },
+    shadowSvg: {
+      position: 'absolute',
+      bottom: -8,
+      left: 0,
+      right: 0,
+    },
     headerBar: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       paddingHorizontal: 24,
-      paddingTop: 12,
+      paddingTop: 5,
       paddingBottom: 8,
     },
     progressLabel: {

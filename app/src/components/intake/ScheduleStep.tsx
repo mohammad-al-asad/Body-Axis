@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from
 import Svg, { Circle } from "react-native-svg";
 import { useTheme } from "@/hooks/use-theme";
 import { CustomSlider } from "@/components/ui/CustomSlider";
+import { CustomButton } from "@/components/ui/CustomButton";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
@@ -13,6 +14,8 @@ interface ScheduleStepProps {
   setScheduleWeeks: (val: number) => void;
   sessionDuration: number;
   setSessionDuration: (val: number) => void;
+  onNext: () => void;
+  onGoToHome: () => void;
 }
 
 export function ScheduleStep({
@@ -22,6 +25,8 @@ export function ScheduleStep({
   setScheduleWeeks,
   sessionDuration,
   setSessionDuration,
+  onNext,
+  onGoToHome,
 }: ScheduleStepProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -30,7 +35,7 @@ export function ScheduleStep({
 
   return (
     <View style={styles.slide}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, marginTop: 24 }}>
         <Text style={styles.title}>Your Movement Schedule</Text>
         <Text style={styles.subtitle}>
           Pick what works for your life and we&apos;ll build around it.
@@ -49,7 +54,7 @@ export function ScheduleStep({
           min={2}
           max={4}
           onValueChange={setScheduleWeeks}
-          activeColor="#A4C9FF"
+          activeColor={theme.secondary}
         />
 
         <View style={styles.durationContainer}>
@@ -138,6 +143,18 @@ export function ScheduleStep({
             provides the peak cognitive recovery ratio.
           </Text>
         </View>
+
+        {/* Footer inside scroll */}
+        <View style={styles.footer}>
+          <CustomButton
+            title="See My Movement Plans"
+            onPress={onNext}
+            style={styles.actionBtn}
+          />
+          <TouchableOpacity style={styles.backFooterBtn} onPress={onGoToHome}>
+            <Text style={styles.backFooterText}>Go to Home</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -175,32 +192,42 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     durationBtn: {
       flex: 1,
       height: 70,
-      backgroundColor: "rgba(17, 24, 39, 0.4)",
+      backgroundColor: theme.cardBackground,
       borderWidth: 1,
-      borderColor: "rgba(255, 255, 255, 0.05)",
+      borderColor: theme.cardBorder,
       borderRadius: 12,
       justifyContent: "center",
       alignItems: "center",
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     durationVal: {
       fontSize: 20,
       fontWeight: "700",
-      color: "#F9FAFB",
+      color: theme.text,
       marginBottom: 4,
     },
     durationLabel: {
       fontSize: 10,
       fontWeight: "600",
-      color: "#9CA3AF",
+      color: theme.textSecondary,
     },
     efficiencyCard: {
-      backgroundColor: "rgba(17, 24, 39, 0.4)",
+      backgroundColor: theme.cardBackground,
       borderWidth: 1,
-      borderColor: "rgba(255, 255, 255, 0.05)",
+      borderColor: theme.cardBorder,
       borderRadius: 20,
       padding: 30,
       alignItems: "center",
       marginBottom: 20,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     ringContainer: {
       width: 140,
@@ -216,45 +243,68 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     ringValue: {
       fontSize: 32,
       fontWeight: "800",
-      color: "#F9FAFB",
+      color: theme.text,
     },
     ringLabel: {
       fontSize: 10,
       fontWeight: "800",
-      color: "#5DE6FF",
+      color: theme.quaternary || theme.secondary,
       letterSpacing: 1,
     },
     efficiencyDesc: {
       fontSize: 13,
-      color: "#9CA3AF",
+      color: theme.textSecondary,
       textAlign: "center",
       lineHeight: 20,
       paddingHorizontal: 20,
     },
     paceCard: {
-      backgroundColor: "rgba(17, 24, 39, 0.4)",
+      backgroundColor: theme.cardBackground,
       borderWidth: 1,
-      borderColor: "rgba(255, 255, 255, 0.05)",
+      borderColor: theme.cardBorder,
       borderLeftWidth: 3,
-      borderLeftColor: "#5DE6FF",
+      borderLeftColor: theme.quaternary || theme.secondary,
       borderRadius: 16,
       padding: 20,
       marginBottom: 20,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     paceTitle: {
       fontSize: 11,
       fontWeight: "800",
-      color: "#5DE6FF",
+      color: theme.quaternary || theme.secondary,
       letterSpacing: 1,
       marginBottom: 10,
     },
     paceDesc: {
       fontSize: 13,
-      color: "#D1D5DB",
+      color: theme.text,
       lineHeight: 20,
     },
     paceHighlight: {
-      color: "#5DE6FF",
+      color: theme.quaternary || theme.secondary,
       fontWeight: "700",
+    },
+    footer: {
+      paddingTop: 24,
+      paddingBottom: 24,
+    },
+    actionBtn: {
+      width: "100%",
+    },
+    backFooterBtn: {
+      alignItems: "center",
+      justifyContent: "center",
+      paddingVertical: 16,
+      marginTop: 8,
+    },
+    backFooterText: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: theme.textSecondary,
     },
   });

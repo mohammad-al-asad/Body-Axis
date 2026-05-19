@@ -10,7 +10,6 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +29,7 @@ import {
   type SignupFormValues,
 } from '@/validation/auth';
 import { CustomButton } from '@/components/ui/CustomButton';
+import { CustomSheet } from '@/components/ui/CustomSheet';
 import { HugeiconsIcon } from '@hugeicons/react-native';
 import { Female02Icon, Male02Icon, ShieldBanIcon } from '@hugeicons/core-free-icons';
 
@@ -112,9 +112,8 @@ export default function SignUpScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}>
@@ -344,7 +343,7 @@ export default function SignUpScreen() {
                     <Text style={styles.socialText}>Google</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                    <Image source={require('@/assets/images/icons/apple.png')} style={styles.socialIconImage} contentFit="contain" />
+                    <Image source={require('@/assets/images/icons/apple.png')} style={[styles.socialIconImage, { tintColor: theme.text }]} contentFit="contain" />
                     <Text style={styles.socialText}>Apple</Text>
                   </TouchableOpacity>
                 </View>
@@ -366,44 +365,20 @@ export default function SignUpScreen() {
         </SafeAreaView>
 
         {/* Gender Picker Bottom Sheet Modal */}
-        {showGenderPicker && (
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowGenderPicker(false)}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Select Gender</Text>
-              {genderOptions.map((option) => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.modalOption,
-                    gender === option.value && styles.modalOptionActive,
-                  ]}
-                  onPress={() => {
-                    setValue('gender', option.value, {
-                      shouldDirty: true,
-                      shouldValidate: true,
-                    });
-                    setShowGenderPicker(false);
-                  }}>
-                  <Text
-                    style={[
-                      styles.modalOptionText,
-                      gender === option.value && styles.modalOptionTextActive,
-                    ]}>
-                    {option.label}
-                  </Text>
-                  {gender === option.value && (
-                    <Feather name="check" size={18} color={theme.secondary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          </TouchableOpacity>
-        )}
-      </View>
-    </TouchableWithoutFeedback>
+        <CustomSheet
+          visible={showGenderPicker}
+          onClose={() => setShowGenderPicker(false)}
+          title="Select Gender"
+          options={genderOptions}
+          selectedValue={gender}
+          onSelect={(val) => {
+            setValue('gender', val, {
+              shouldDirty: true,
+              shouldValidate: true,
+            });
+          }}
+        />
+    </View>
   );
 }
 
@@ -600,46 +575,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     fontSize: 14,
   },
   switchLink: {
-    color: theme.secondary,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(5, 11, 20, 0.75)',
-    justifyContent: 'flex-end',
-    zIndex: 2000,
-  },
-  modalContent: {
-    backgroundColor: theme.cardBackground,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: theme.cardBorder,
-  },
-  modalTitle: {
-    color: theme.text,
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderColor: theme.inputBorder,
-  },
-  modalOptionActive: {
-    borderColor: theme.secondary,
-  },
-  modalOptionText: {
-    color: theme.textSecondary,
-    fontSize: 16,
-  },
-  modalOptionTextActive: {
     color: theme.secondary,
     fontWeight: '600',
   },

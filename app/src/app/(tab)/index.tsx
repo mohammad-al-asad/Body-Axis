@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { CustomButton } from '@/components/ui/CustomButton';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
@@ -30,7 +31,7 @@ export default function HomeScreen() {
           {/* Hero Typography */}
           <View style={styles.heroContainer}>
             <Text style={styles.heroTitle}>
-              Move Better <Text style={styles.heroHighlight}>Starting Now.</Text>
+              Move Better Starting Now.
             </Text>
             <Text style={styles.heroSubtitle}>
               Your journey to better movement starts today. Unlock your strength and mobility with a custom movement plan built for your body.
@@ -49,7 +50,7 @@ export default function HomeScreen() {
             </Text>
             <CustomButton
               title="Get Started"
-              onPress={() => {}}
+              onPress={() => router.push("/(intake)")}
             />
           </View>
 
@@ -185,6 +186,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    marginTop: 24,
     paddingBottom: 40,
   },
   heroContainer: {
@@ -197,9 +199,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     color: theme.text,
     lineHeight: 36,
     letterSpacing: -0.5,
-  },
-  heroHighlight: {
-    color: theme.secondary,
   },
   heroSubtitle: {
     fontSize: 14,
@@ -215,6 +214,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.cardBorder,
     marginBottom: 24,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   quickActionHeader: {
     flexDirection: 'row',
@@ -247,6 +251,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.cardBorder,
     marginBottom: 28,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   progressHeader: {
     flexDirection: 'row',
@@ -310,6 +319,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: theme.cardBorder,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   planImageContainer: {
     width: '100%',
@@ -356,6 +370,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     borderColor: theme.cardBorder,
     overflow: 'hidden',
     marginBottom: 24,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   methodologyImage: {
     width: '100%',

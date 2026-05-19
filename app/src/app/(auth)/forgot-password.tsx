@@ -4,11 +4,11 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -19,6 +19,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
+import { AuthHeader } from '@/components/ui/AuthHeader';
 
 import { useRequestOtpMutation } from '@/redux/api/authApi';
 import { getApiErrorMessage } from '@/utils/apiError';
@@ -69,113 +70,100 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          {/* Custom Header Bar */}
-          <View style={styles.headerBar}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => router.back()}
-              style={styles.headerButton}
-            >
-              <Feather name="arrow-left" size={22} color="#FFFFFF" />
-            </TouchableOpacity>
-
-            <Image
-              source={require('@/assets/images/app/Body Axis™.png')}
-              style={styles.headerLogo}
-              contentFit="contain"
-            />
-
-            <TouchableOpacity activeOpacity={0.7} style={styles.headerButton}>
-              <Feather name="help-circle" size={22} color={theme.textSecondary} />
-            </TouchableOpacity>
-          </View>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+          <AuthHeader onBackPress={() => router.back()} onHelpPress={() => {}} />
 
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}
           >
-            {/* Logo/Icon above the card */}
-            <Image
-              source={require('@/assets/images/forgotIcon.png')}
-              style={styles.forgotIcon}
-              contentFit="contain"
-            />
-
-            {/* Main Center Card Container */}
-            <View style={styles.card}>
-
-              <Text style={styles.cardTitle}>Forgot Password</Text>
-              <Text style={styles.cardSubtitle}>
-                We will send a code to your email
-              </Text>
-
-              {/* Input Group */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>EMAIL ADDRESS</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="mail" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                  <Controller
-                    control={control}
-                    name="email"
-                    render={({ field: { onBlur, onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="name@example.com"
-                        placeholderTextColor={theme.textSecondary}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={value}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                      />
-                    )}
-                  />
-                </View>
-                {errors.email?.message && (
-                  <Text style={styles.errorText}>{errors.email.message}</Text>
-                )}
-              </View>
-
-              {/* Submit Action Button */}
-              <CustomButton
-                title="Send Code"
-                isLoading={isLoading}
-                onPress={handleSubmit(handleSendCode)}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              {/* Logo/Icon above the card */}
+              <Image
+                source={require('@/assets/images/forgotIcon.png')}
+                style={styles.forgotIcon}
+                contentFit="contain"
               />
 
-              {/* Back to Login Link */}
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => router.replace('/(auth)/sign-in')}
-                style={styles.backToLoginContainer}
-              >
-                <Feather name="arrow-left" size={16} color={theme.secondary} style={styles.backIcon} />
-                <Text style={styles.backToLoginText}>Back to Login</Text>
-              </TouchableOpacity>
-            </View>
+              {/* Main Center Card Container */}
+              <View style={styles.card}>
 
-            {/* Premium Encryption Footer */}
-            <View style={styles.footerContainer}>
-              <Text style={styles.footerProtectedText}>
-                PROTECTED BY BODY AXIS ENCRYPTION
-              </Text>
-              <View style={styles.footerLinksRow}>
-                <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={styles.footerLink}>Privacy Policy</Text>
-                </TouchableOpacity>
-                <Text style={styles.footerBullet}>•</Text>
-                <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={styles.footerLink}>Support</Text>
+                <Text style={styles.cardTitle}>Forgot Password</Text>
+                <Text style={styles.cardSubtitle}>
+                  We will send a code to your email
+                </Text>
+
+                {/* Input Group */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>EMAIL ADDRESS</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="mail" size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                    <Controller
+                      control={control}
+                      name="email"
+                      render={({ field: { onBlur, onChange, value } }) => (
+                        <TextInput
+                          style={styles.input}
+                          placeholder="name@example.com"
+                          placeholderTextColor={theme.textSecondary}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={value}
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                        />
+                      )}
+                    />
+                  </View>
+                  {errors.email?.message && (
+                    <Text style={styles.errorText}>{errors.email.message}</Text>
+                  )}
+                </View>
+
+                {/* Submit Action Button */}
+                <CustomButton
+                  title="Send Code"
+                  isLoading={isLoading}
+                  onPress={handleSubmit(handleSendCode)}
+                />
+
+                {/* Back to Login Link */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => router.replace('/(auth)/sign-in')}
+                  style={styles.backToLoginContainer}
+                >
+                  <Feather name="arrow-left" size={16} color={theme.secondary} style={styles.backIcon} />
+                  <Text style={styles.backToLoginText}>Back to Login</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+
+              {/* Premium Encryption Footer */}
+              <View style={styles.footerContainer}>
+                <Text style={styles.footerProtectedText}>
+                  PROTECTED BY BODY AXIS ENCRYPTION
+                </Text>
+                <View style={styles.footerLinksRow}>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.footerLink}>Privacy Policy</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.footerBullet}>•</Text>
+                  <TouchableOpacity activeOpacity={0.7}>
+                    <Text style={styles.footerLink}>Support</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
-      </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 }
 
@@ -187,29 +175,19 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  headerBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    height: 56,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.cardBorder,
-  },
-  headerButton: {
-    padding: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerLogo: {
-    width: 110,
-    height: 22,
-  },
   keyboardView: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   card: {
     backgroundColor: theme.cardBackground,
@@ -220,11 +198,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 8,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   forgotIcon: {
     width: 120,

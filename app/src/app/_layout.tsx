@@ -20,6 +20,13 @@ export default function Layout() {
           <Stack.Screen name="(auth)/set-password" />
           <Stack.Screen name="(auth)/premium" />
           <Stack.Screen name="(tab)" />
+          <Stack.Screen name="(others)/routine-details" />
+          <Stack.Screen name="(others)/exercise-tracker" />
+          <Stack.Screen name="(profile)/privacy" />
+          <Stack.Screen name="(profile)/terms" />
+          <Stack.Screen name="(profile)/support" />
+          <Stack.Screen name="(profile)/subscription" />
+          <Stack.Screen name="(profile)/notifications" />
         </Stack>
       </PersistGate>
     </Provider>

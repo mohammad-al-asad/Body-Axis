@@ -1,14 +1,19 @@
 {
   "expo": {
-    "name": "app",
-    "slug": "app",
+    "name": "Body Axis: Move Better",
+    "slug": "body-axis",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "app",
+    "icon": "./assets/images/app/logo.png",
+    "scheme": "bodyaxis",
     "userInterfaceStyle": "automatic",
+    "owner": "the-body-institute-llc",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/app/logo.png",
+      "bundleIdentifier": "com.jointhebodyinstitute.bodyaxis",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -16,7 +21,7 @@
         "foregroundImage": "./assets/images/app/logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.blackboys.app"
+      "package": "com.jointhebodyinstitute.bodyaxis"
     },
     "web": {
       "output": "static",
@@ -38,6 +43,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cdd50041-638c-42c3-930e-4407469b35f7"
+      }
     }
   }
 }

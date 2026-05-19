@@ -5,11 +5,11 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -90,141 +90,145 @@ export default function SignInScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardView}>
-            
-            {/* Centered branding header */}
-            <View style={styles.header}>
-              <Image
-                source={require('@/assets/images/app/illustrationWithText.png')}
-                style={styles.logoText}
-                contentFit="contain"
-              />
-              
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Continue your mobility journey</Text>
-            </View>
-
-            {/* Input Card Container */}
-            <View style={styles.card}>
-              {/* Email input field */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>EMAIL ADDRESS</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="mail" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                  <Controller
-                    control={control}
-                    name="email"
-                    render={({ field: { onBlur, onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="name@example.com"
-                        placeholderTextColor={theme.textSecondary}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={value}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                      />
-                    )}
-                  />
-                </View>
-                {errors.email?.message && (
-                  <Text style={styles.errorText}>{errors.email.message}</Text>
-                )}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+            >
+              {/* Centered branding header */}
+              <View style={styles.header}>
+                <Image
+                  source={require('@/assets/images/app/illustrationWithText.png')}
+                  style={styles.logoText}
+                  contentFit="contain"
+                />
+                
+                <Text style={styles.title}>Welcome Back</Text>
+                <Text style={styles.subtitle}>Continue your mobility journey</Text>
               </View>
 
-              {/* Password input field */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>PASSWORD</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="lock" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                  <Controller
-                    control={control}
-                    name="password"
-                    render={({ field: { onBlur, onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="••••••••"
-                        placeholderTextColor={theme.textSecondary}
-                        secureTextEntry={!showPassword}
-                        autoCapitalize="none"
-                        value={value}
-                        onBlur={onBlur}
-                        onChangeText={onChange}
-                      />
-                    )}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword(!showPassword)}
-                    activeOpacity={0.7}
-                    style={styles.eyeButton}>
-                    <Feather
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={18}
-                      color={theme.textSecondary}
+              {/* Input Card Container */}
+              <View style={styles.card}>
+                {/* Email input field */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>EMAIL ADDRESS</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="mail" size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                    <Controller
+                      control={control}
+                      name="email"
+                      render={({ field: { onBlur, onChange, value } }) => (
+                        <TextInput
+                          style={styles.input}
+                          placeholder="name@example.com"
+                          placeholderTextColor={theme.textSecondary}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          value={value}
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                        />
+                      )}
                     />
+                  </View>
+                  {errors.email?.message && (
+                    <Text style={styles.errorText}>{errors.email.message}</Text>
+                  )}
+                </View>
+
+                {/* Password input field */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>PASSWORD</Text>
+                  <View style={styles.inputWrapper}>
+                    <Feather name="lock" size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                    <Controller
+                      control={control}
+                      name="password"
+                      render={({ field: { onBlur, onChange, value } }) => (
+                        <TextInput
+                          style={styles.input}
+                          placeholder="••••••••"
+                          placeholderTextColor={theme.textSecondary}
+                          secureTextEntry={!showPassword}
+                          autoCapitalize="none"
+                          value={value}
+                          onBlur={onBlur}
+                          onChangeText={onChange}
+                        />
+                      )}
+                    />
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
+                      activeOpacity={0.7}
+                      style={styles.eyeButton}>
+                      <Feather
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={18}
+                        color={theme.textSecondary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {errors.password?.message && (
+                    <Text style={styles.errorText}>{errors.password.message}</Text>
+                  )}
+                </View>
+
+                {/* Forgot Password */}
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={styles.forgotContainer}
+                  onPress={() => router.push('/(auth)/forgot-password')}
+                >
+                  <Text style={styles.forgotText}>Forgot Password?</Text>
+                </TouchableOpacity>
+
+                {/* Action Submit Button */}
+                <CustomButton
+                  title="Sign In"
+                  isLoading={isLoading || isRequestingOtp}
+                  onPress={handleSubmit(onSubmit)}
+                />
+
+                {/* Third-party Sign In options */}
+                <View style={styles.separatorContainer}>
+                  <View style={styles.separatorLine} />
+                  <Text style={styles.separatorText}>OR CONTINUE WITH</Text>
+                  <View style={styles.separatorLine} />
+                </View>
+
+                {/* Social Row buttons */}
+                <View style={styles.socialRow}>
+                  <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                    <Image source={require('@/assets/images/icons/google.png')} style={styles.socialIconImage} contentFit="contain" />
+                    <Text style={styles.socialText}>Google</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                    <Image source={require('@/assets/images/icons/apple.png')} style={[styles.socialIconImage, { tintColor: theme.text }]} contentFit="contain" />
+                    <Text style={styles.socialText}>Apple</Text>
                   </TouchableOpacity>
                 </View>
-                {errors.password?.message && (
-                  <Text style={styles.errorText}>{errors.password.message}</Text>
-                )}
               </View>
 
-              {/* Forgot Password */}
-              <TouchableOpacity
-                activeOpacity={0.7}
-                style={styles.forgotContainer}
-                onPress={() => router.push('/(auth)/forgot-password')}
-              >
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-              </TouchableOpacity>
-
-              {/* Action Submit Button */}
-              <CustomButton
-                title="Sign In"
-                isLoading={isLoading || isRequestingOtp}
-                onPress={handleSubmit(onSubmit)}
-              />
-
-              {/* Third-party Sign In options */}
-              <View style={styles.separatorContainer}>
-                <View style={styles.separatorLine} />
-                <Text style={styles.separatorText}>OR CONTINUE WITH</Text>
-                <View style={styles.separatorLine} />
-              </View>
-
-              {/* Social Row buttons */}
-              <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                  <Image source={require('@/assets/images/icons/google.png')} style={styles.socialIconImage} contentFit="contain" />
-                  <Text style={styles.socialText}>Google</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
-                  <Image source={require('@/assets/images/icons/apple.png')} style={styles.socialIconImage} contentFit="contain" />
-                  <Text style={styles.socialText}>Apple</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Bottom transition footer */}
-            <View style={styles.bottomSwitch}>
-              <Text style={styles.bottomText}>
-                Do not have an account?{' '}
-                <Text style={styles.switchLink} onPress={() => router.replace('/(auth)/sign-up')}>
-                  Sign Up
+              {/* Bottom transition footer */}
+              <View style={styles.bottomSwitch}>
+                <Text style={styles.bottomText}>
+                  Do not have an account?{' '}
+                  <Text style={styles.switchLink} onPress={() => router.replace('/(auth)/sign-up')}>
+                    Sign Up
+                  </Text>
                 </Text>
-              </Text>
-            </View>
-
+              </View>
+            </ScrollView>
           </KeyboardAvoidingView>
         </SafeAreaView>
-      </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 }
 
@@ -238,8 +242,16 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+    width: '100%',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   header: {
     alignItems: 'center',
@@ -266,6 +278,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: theme.cardBorder,
+    elevation: 1,
+    shadowColor: theme.text,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
   inputGroup: {
     marginBottom: 20,

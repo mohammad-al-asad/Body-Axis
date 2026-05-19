@@ -1,23 +1,38 @@
 import { Image } from 'expo-image';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { toggleTheme } from '@/redux/slice/settings';
 import { logout } from '@/redux/slice/auth';
 import { RootState } from '@/redux/store';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
+import { CustomSwitch } from '@/components/ui/CustomSwitch';
+import { CustomSheet } from '@/components/ui/CustomSheet';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const languageOptions = [
+  { label: 'English (United States)', value: 'en' },
+  { label: 'Spanish (Español)', value: 'es' },
+  { label: 'French (Français)', value: 'fr' },
+  { label: 'German (Deutsch)', value: 'de' },
+];
+
+const measurementOptions = [
+  { label: 'Metric (kg, cm, km)', value: 'metric' },
+  { label: 'Imperial (lbs, in, mi)', value: 'imperial' },
+];
 
 export default function ProfileScreen() {
   const dispatch = useDispatch();
@@ -26,54 +41,46 @@ export default function ProfileScreen() {
   const styles = createStyles(theme);
 
   // Profile data states for interactive updates
+  const [name, setName] = useState('Alexandria Sterling');
+  const [gender, setGender] = useState('Female');
+  const [dob, setDob] = useState('12 May 1994');
   const [height, setHeight] = useState(174);
   const [weight, setWeight] = useState(75);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
+  const [language, setLanguage] = useState('en');
+  const [showMeasurementPicker, setShowMeasurementPicker] = useState(false);
+  const [measurementUnit, setMeasurementUnit] = useState('metric');
 
-  const handleUpdateHeight = () => {
-    Alert.prompt(
-      'Update Height',
-      'Enter your height in centimeters (cm):',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: (val) => {
-            const num = parseInt(val || '', 10);
-            if (!isNaN(num) && num > 50 && num < 300) {
-              setHeight(num);
-            } else {
-              Alert.alert('Invalid Entry', 'Please enter a valid height between 50 and 300 cm.');
-            }
-          },
-        },
-      ],
-      'plain-text',
-      height.toString()
-    );
+  const navigation = useNavigation();
+
+  const loadProfile = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('@user_profile');
+      if (stored) {
+        const data = JSON.parse(stored);
+        if (data.name) setName(data.name);
+        if (data.gender) setGender(data.gender);
+        if (data.dob) setDob(data.dob);
+        if (data.height) setHeight(Number(data.height));
+        if (data.weight) setWeight(Number(data.weight));
+      }
+    } catch (e) {
+      console.log('Failed to load profile data', e);
+    }
   };
 
-  const handleUpdateWeight = () => {
-    Alert.prompt(
-      'Update Weight',
-      'Enter your weight in kilograms (kg):',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: (val) => {
-            const num = parseInt(val || '', 10);
-            if (!isNaN(num) && num > 10 && num < 500) {
-              setWeight(num);
-            } else {
-              Alert.alert('Invalid Entry', 'Please enter a valid weight between 10 and 500 kg.');
-            }
-          },
-        },
-      ],
-      'plain-text',
-      weight.toString()
-    );
-  };
+  useEffect(() => {
+    loadProfile();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfile();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const selectedLanguageLabel = languageOptions.find((option) => option.value === language)?.label || 'English (United States)';
+  const selectedMeasurementLabel = measurementOptions.find((option) => option.value === measurementUnit)?.label || 'Metric (kg, cm, km)';
+
+
 
   const handleEditSection = (section: string) => {
     Alert.alert('Edit Information', `Would you like to edit your ${section} settings?`);
@@ -120,19 +127,7 @@ export default function ProfileScreen() {
   };
 
   const handleChangePassword = () => {
-    Alert.alert(
-      'Change Password',
-      'Redirecting to the set-password screen...',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Proceed',
-          onPress: () => {
-            router.push('/(auth)/set-password');
-          },
-        },
-      ]
-    );
+    router.push('/(profile)/change-password');
   };
 
   return (
@@ -155,13 +150,13 @@ export default function ProfileScreen() {
                 <Feather name="edit-2" size={10} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.mainName}>Jafor Mia</Text>
+            <Text style={styles.mainName}>{name}</Text>
           </View>
 
           {/* Personal Information */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>PERSONAL INFORMATION</Text>
-            <TouchableOpacity onPress={() => handleEditSection('Personal Information')}>
+            <TouchableOpacity onPress={() => router.push('/(profile)/edit-profile')}>
               <Feather name="edit-3" size={16} color={theme.secondary} />
             </TouchableOpacity>
           </View>
@@ -174,18 +169,7 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemLabel}>Name</Text>
-                <Text style={styles.itemValue}>Alexandria Sterling</Text>
-              </View>
-            </View>
-
-            {/* Email Row */}
-            <View style={[styles.cardItemRow, styles.rowBorderTop]}>
-              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
-                <Feather name="mail" size={16} color={theme.secondary} />
-              </View>
-              <View style={styles.itemTextContainer}>
-                <Text style={styles.itemLabel}>Email</Text>
-                <Text style={styles.itemValue}>a.sterling@gmail.com</Text>
+                <Text style={styles.itemValue}>{name}</Text>
               </View>
             </View>
 
@@ -193,12 +177,12 @@ export default function ProfileScreen() {
             <View style={[styles.columnsGrid, styles.rowBorderTop]}>
               <View style={styles.columnBox}>
                 <Text style={styles.columnLabel}>Gender</Text>
-                <Text style={styles.columnValue}>Female</Text>
+                <Text style={styles.columnValue}>{gender}</Text>
               </View>
 
               <View style={styles.columnBoxRight}>
                 <Text style={styles.columnLabel}>DOB</Text>
-                <Text style={styles.columnValue}>12 May 1994</Text>
+                <Text style={styles.columnValue}>{dob}</Text>
               </View>
             </View>
 
@@ -206,18 +190,18 @@ export default function ProfileScreen() {
             <View style={[styles.columnsGrid, styles.rowBorderTop]}>
               <View style={styles.columnBox}>
                 <Text style={styles.columnLabel}>Height</Text>
-                <Text style={styles.columnValue}>{height} <Text style={styles.unitLabel}>cm</Text></Text>
-                <TouchableOpacity onPress={handleUpdateHeight} activeOpacity={0.7} style={styles.updateLinkContainer}>
-                  <Text style={styles.updateLinkText}>UPDATE</Text>
-                </TouchableOpacity>
+                <Text style={styles.columnValue}>
+                  {measurementUnit === 'metric' ? height : Math.round(height / 2.54)}{' '}
+                  <Text style={styles.unitLabel}>{measurementUnit === 'metric' ? 'cm' : 'in'}</Text>
+                </Text>
               </View>
 
               <View style={styles.columnBoxRight}>
                 <Text style={styles.columnLabel}>Weight</Text>
-                <Text style={styles.columnValue}>{weight} <Text style={styles.unitLabel}>kgs</Text></Text>
-                <TouchableOpacity onPress={handleUpdateWeight} activeOpacity={0.7} style={styles.updateLinkContainer}>
-                  <Text style={styles.updateLinkText}>UPDATE</Text>
-                </TouchableOpacity>
+                <Text style={styles.columnValue}>
+                  {measurementUnit === 'metric' ? weight : Math.round(weight * 2.20462)}{' '}
+                  <Text style={styles.unitLabel}>{measurementUnit === 'metric' ? 'kgs' : 'lbs'}</Text>
+                </Text>
               </View>
             </View>
           </View>
@@ -225,9 +209,6 @@ export default function ProfileScreen() {
           {/* Security */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>SECURITY</Text>
-            <TouchableOpacity onPress={() => handleEditSection('Security Settings')}>
-              <Feather name="edit-3" size={16} color={theme.secondary} />
-            </TouchableOpacity>
           </View>
 
           <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={handleChangePassword}>
@@ -246,32 +227,30 @@ export default function ProfileScreen() {
           {/* Preferences */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>PREFERENCES</Text>
-            <TouchableOpacity onPress={() => handleEditSection('Preference Settings')}>
-              <Feather name="edit-3" size={16} color={theme.secondary} />
-            </TouchableOpacity>
+
           </View>
 
           <View style={styles.card}>
             {/* Language */}
-            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => handleEditSection('Language')}>
+            <TouchableOpacity style={styles.cardItemRow} activeOpacity={0.8} onPress={() => setShowLanguagePicker(true)}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.08)' }]}>
                 <Feather name="globe" size={16} color="#10B981" />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitleOnly}>Language</Text>
-                <Text style={styles.itemSubtitleOnly}>English (United States)</Text>
+                <Text style={styles.itemSubtitleOnly}>{selectedLanguageLabel}</Text>
               </View>
               <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
 
             {/* Measurement Units */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => handleEditSection('Measurement Units')}>
-              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(139, 92, 246, 0.08)' }]}>
-                <Feather name="sliders" size={16} color="#8B5CF6" />
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => setShowMeasurementPicker(true)}>
+              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
+                <MaterialCommunityIcons name="ruler" size={20} color={theme.secondary} />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitleOnly}>Measurement Units</Text>
-                <Text style={styles.itemSubtitleOnly}>Metric (kg, cm, km)</Text>
+                <Text style={styles.itemSubtitleOnly}>{selectedMeasurementLabel}</Text>
               </View>
               <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -284,7 +263,7 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             {/* Subscription */}
-            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => handleEditSection('Subscription Management')}>
+            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/(profile)/subscription')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
                 <Feather name="shield" size={16} color={theme.secondary} />
               </View>
@@ -295,12 +274,55 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Notifications */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => handleEditSection('Notification Settings')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/notifications')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
                 <Feather name="bell" size={16} color={theme.secondary} />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitleOnly}>Notification Settings</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Legal & Support */}
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionLabel}>LEGAL & SUPPORT</Text>
+          </View>
+
+          <View style={styles.card}>
+            {/* Privacy Policy */}
+            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/(profile)/privacy')}>
+              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
+                <Feather name="shield" size={16} color={theme.quaternary} />
+              </View>
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemTitleOnly}>Privacy Policy</Text>
+                <Text style={styles.itemSubtitleOnly}>Your data safety & privacy rules</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            {/* Terms of Service */}
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/terms')}>
+              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
+                <Feather name="file-text" size={16} color={theme.quaternary} />
+              </View>
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemTitleOnly}>Terms of Service</Text>
+                <Text style={styles.itemSubtitleOnly}>Usage agreement & rules</Text>
+              </View>
+              <Feather name="chevron-right" size={16} color={theme.textSecondary} />
+            </TouchableOpacity>
+
+            {/* Support & FAQ */}
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/support')}>
+              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
+                <Feather name="help-circle" size={16} color={theme.quaternary} />
+              </View>
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemTitleOnly}>Support & FAQ</Text>
+                <Text style={styles.itemSubtitleOnly}>Frequently asked questions & help</Text>
               </View>
               <Feather name="chevron-right" size={16} color={theme.textSecondary} />
             </TouchableOpacity>
@@ -332,11 +354,12 @@ export default function ProfileScreen() {
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitleOnly}>Dark Mode</Text>
               </View>
-              <Switch
+              <CustomSwitch
                 value={currentThemeMode === 'dark'}
-                onValueChange={() => dispatch(toggleTheme())}
-                trackColor={{ false: '#334155', true: theme.secondary }}
-                thumbColor='#F1F5F9'
+                onValueChange={() => {
+                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  dispatch(toggleTheme());
+                }}
               />
             </View>
 
@@ -365,6 +388,24 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
+
+        <CustomSheet
+          visible={showLanguagePicker}
+          onClose={() => setShowLanguagePicker(false)}
+          title="Select Language"
+          options={languageOptions}
+          selectedValue={language}
+          onSelect={(val) => setLanguage(val)}
+        />
+
+        <CustomSheet
+          visible={showMeasurementPicker}
+          onClose={() => setShowMeasurementPicker(false)}
+          title="Select Measurement Unit"
+          options={measurementOptions}
+          selectedValue={measurementUnit}
+          onSelect={(val) => setMeasurementUnit(val)}
+        />
       </SafeAreaView>
     </View>
   );
@@ -384,7 +425,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     avatarPanel: {
       alignItems: 'center',
-      marginTop: 18,
+      marginTop: 24,
       marginBottom: 24,
     },
     avatarGlowBorder: {
@@ -445,11 +486,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderColor: theme.cardBorder,
       marginHorizontal: 24,
       paddingHorizontal: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.08,
-      shadowRadius: 10,
-      elevation: 2,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
     },
     cardItemRow: {
       flexDirection: 'row',

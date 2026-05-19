@@ -11,11 +11,13 @@ export const Colors = {
     backgroundSelected: "#E0E1E6",
     textSecondary: "#60646C",
     cardBackground: "#F0F0F3",
-    cardBorder: "#E0E1E6",
+    cardBorder: "transparent",
     inputBackground: "#E0E1E6",
     inputBorder: "#D0D1D6",
     grayBorder: "#1118271A", // Light equivalent
     error: "#FF6B6B",
+    tertiary: "#ADC6FF",
+    quaternary: "#62FAE3",
   },
   dark: {
     primary: "#3B82F6",
@@ -25,12 +27,14 @@ export const Colors = {
     backgroundElement: "#0E1420",
     backgroundSelected: "#1C2B42",
     textSecondary: "#5C6E84",
-    cardBackground: "#111827B2",
+    cardBackground: "#111827",
     cardBorder: "#22D3EE4D",
     inputBackground: "#010F1F",
     inputBorder: "#1A2538",
-    grayBorder: "#111827B2",
+    grayBorder: "#111827",
     error: "#FF6B6B",
+    tertiary: "#ADC6FF",
+    quaternary: "#62FAE3",
   },
 } as const;
 

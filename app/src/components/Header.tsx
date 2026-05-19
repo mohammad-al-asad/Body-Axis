@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
+import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
 import { useTheme } from '@/hooks/use-theme';
 
 interface HeaderProps {
@@ -9,13 +10,15 @@ interface HeaderProps {
   onAvatarPress?: () => void;
   onBackPress?: () => void;
   showNotification?: boolean;
+  hideShadow?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   onBellPress, 
   onAvatarPress, 
   onBackPress,
-  showNotification = true 
+  showNotification = true,
+  hideShadow = false
 }) => {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -25,42 +28,59 @@ export const Header: React.FC<HeaderProps> = ({
   const edgeWidth = showNotification ? 88 : 36;
 
   return (
-    <View style={styles.headerRow}>
-      <View style={{ width: edgeWidth, alignItems: 'flex-start', justifyContent: 'center' }}>
-        {onBackPress && (
-          <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.75}>
-            <Feather name="arrow-left" size={24} color={theme.text} />
+    <View style={styles.headerWrapper}>
+      <View style={styles.headerRow}>
+        <View style={{ width: edgeWidth, alignItems: 'flex-start', justifyContent: 'center' }}>
+          {onBackPress && (
+            <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.75}>
+              <Feather name="arrow-left" size={24} color={theme.tertiary} />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        <Image
+          source={require('@/assets/images/app/Body Axis™.png')}
+          style={styles.headerLogo}
+          contentFit="contain"
+        />
+        
+        <View style={[styles.headerRight, { width: edgeWidth, justifyContent: 'flex-end' }]}>
+          {showNotification && (
+            <TouchableOpacity style={styles.iconButton} onPress={onBellPress} activeOpacity={0.75}>
+              <Feather name="bell" size={18} color={theme.text} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.75}>
+            <Image
+              source={{
+                uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
+              }}
+              style={styles.avatar}
+            />
           </TouchableOpacity>
-        )}
+        </View>
       </View>
-      
-      <Image
-        source={require('@/assets/images/app/Body Axis™.png')}
-        style={styles.headerLogo}
-        contentFit="contain"
-      />
-      
-      <View style={[styles.headerRight, { width: edgeWidth, justifyContent: 'flex-end' }]}>
-        {showNotification && (
-          <TouchableOpacity style={styles.iconButton} onPress={onBellPress} activeOpacity={0.75}>
-            <Feather name="bell" size={18} color={theme.text} />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.75}>
-          <Image
-            source={{
-              uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
-            }}
-            style={styles.avatar}
-          />
-        </TouchableOpacity>
-      </View>
+      {!hideShadow && (
+        <Svg height={8} width="100%" style={styles.shadowSvg}>
+          <Defs>
+            <LinearGradient id="shadow" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={theme.text} stopOpacity={0.08} />
+              <Stop offset="1" stopColor={theme.text} stopOpacity={0} />
+            </LinearGradient>
+          </Defs>
+          <Rect width="100%" height={8} fill="url(#shadow)" />
+        </Svg>
+      )}
     </View>
   );
 };
 
 const createStyles = (theme: ReturnType<typeof useTheme>) =>
   StyleSheet.create({
+    headerWrapper: {
+      position: 'relative',
+      zIndex: 10,
+    },
     headerRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -68,6 +88,13 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       paddingHorizontal: 24,
       paddingTop: 12,
       paddingBottom: 16,
+      backgroundColor: theme.background,
+    },
+    shadowSvg: {
+      position: 'absolute',
+      bottom: -8,
+      left: 0,
+      right: 0,
     },
     headerLogo: {
       width: 110,

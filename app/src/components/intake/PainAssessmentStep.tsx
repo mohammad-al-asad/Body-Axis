@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, ScrollView } from "react-native";
 import { useTheme } from "@/hooks/use-theme";
 import { CustomTab } from "@/components/ui/CustomTab";
+import { CustomButton } from "@/components/ui/CustomButton";
 
 const femaleFront = require("@/assets/images/avatar/femaleFront.png");
 const femaleBack = require("@/assets/images/avatar/femaleBack.png");
@@ -42,6 +43,7 @@ interface PainAssessmentStepProps {
   setAvatarView: (val: "front" | "back") => void;
   selectedPainPoints: string[];
   togglePainPoint: (label: string) => void;
+  onNext: () => void;
 }
 
 export function PainAssessmentStep({
@@ -50,6 +52,7 @@ export function PainAssessmentStep({
   setAvatarView,
   selectedPainPoints,
   togglePainPoint,
+  onNext,
 }: PainAssessmentStepProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -63,7 +66,7 @@ export function PainAssessmentStep({
 
   return (
     <View style={styles.slide}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, marginTop: 24 }}>
         <Text style={styles.title}>Where are you experiencing discomfort?</Text>
         <Text style={styles.subtitle}>
           Tap the areas on the 3D visualizer to pinpoint your pain points.
@@ -126,6 +129,16 @@ export function PainAssessmentStep({
             );
           })}
         </View>
+
+        {/* Footer inside scroll */}
+        <View style={styles.footer}>
+          <CustomButton
+            title="Continue"
+            onPress={onNext}
+            disabled={selectedPainPoints.length === 0}
+            style={styles.actionBtn}
+          />
+        </View>
       </ScrollView>
     </View>
   );
@@ -174,7 +187,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       height: 16,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: theme.cardBorder,
+      borderColor: "#fff",
       backgroundColor: "rgba(0,0,0,0.3)",
       justifyContent: "center",
       alignItems: "center",
@@ -188,5 +201,12 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       height: 6,
       borderRadius: 3,
       backgroundColor: theme.secondary,
+    },
+    footer: {
+      paddingTop: 24,
+      paddingBottom: 24,
+    },
+    actionBtn: {
+      width: "100%",
     },
   });

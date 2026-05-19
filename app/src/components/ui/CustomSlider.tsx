@@ -13,6 +13,7 @@ interface CustomSliderProps {
 
 export function CustomSlider({ label, value, min, max, onValueChange, activeColor }: CustomSliderProps) {
   const theme = useTheme();
+  const styles = createStyles(theme);
   const color = activeColor || theme.secondary;
   const [trackWidth, setTrackWidth] = useState(0);
   const steps = max - min;
@@ -44,9 +45,7 @@ export function CustomSlider({ label, value, min, max, onValueChange, activeColo
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const { locationX } = evt.nativeEvent;
         // Optional: snap immediately to tap position
-        // handlePan(0, locationX); 
       },
       onPanResponderMove: (evt, gestureState) => {
         // We use the initial tap X and add the dx (delta X)
@@ -71,7 +70,7 @@ export function CustomSlider({ label, value, min, max, onValueChange, activeColo
             styles.thumb, 
             { 
               backgroundColor: color, 
-              borderColor: theme.backgroundElement,
+              borderColor: theme.background,
               shadowColor: color,
               left: `${percentage * 100}%` 
             }
@@ -87,66 +86,72 @@ export function CustomSlider({ label, value, min, max, onValueChange, activeColo
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 20,
-    padding: 20,
-    borderRadius: 24,
-    backgroundColor: 'rgba(17, 24, 39, 0.4)', // theme.cardBackground approx
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  value: {
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  trackContainer: {
-    height: 30,
-    justifyContent: 'center',
-    position: 'relative',
-    paddingVertical: 10,
-  },
-  trackBackground: {
-    height: 4,
-    width: '100%',
-    borderRadius: 2,
-    position: 'absolute',
-  },
-  trackFill: {
-    height: 4,
-    borderRadius: 2,
-    position: 'absolute',
-    left: 0,
-  },
-  thumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 4,
-    position: 'absolute',
-    transform: [{ translateX: -10 }], // center the thumb exactly on its percentage
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  limitText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-});
+const createStyles = (theme: ReturnType<typeof useTheme>) =>
+  StyleSheet.create({
+    container: {
+      marginBottom: 20,
+      padding: 20,
+      borderRadius: 24,
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+    },
+    header: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    value: {
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    trackContainer: {
+      height: 30,
+      justifyContent: 'center',
+      position: 'relative',
+      paddingVertical: 10,
+    },
+    trackBackground: {
+      height: 4,
+      width: '100%',
+      borderRadius: 2,
+      position: 'absolute',
+    },
+    trackFill: {
+      height: 4,
+      borderRadius: 2,
+      position: 'absolute',
+      left: 0,
+    },
+    thumb: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 4,
+      position: 'absolute',
+      transform: [{ translateX: -10 }], // center the thumb exactly on its percentage
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    footer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginTop: 10,
+    },
+    limitText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+  });
