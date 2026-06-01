@@ -4,7 +4,7 @@ import { RootState } from "@/redux/store";
 export const Colors = {
   light: {
     primary: "#3B82F6",
-    secondary: "#44E2CD",
+    secondary: "#2cb09d",
     text: "#000000",
     background: "#ffffff",
     backgroundElement: "#F0F0F3",
@@ -17,7 +17,10 @@ export const Colors = {
     grayBorder: "#1118271A", // Light equivalent
     error: "#FF6B6B",
     tertiary: "#ADC6FF",
-    quaternary: "#62FAE3",
+    quaternary: "#2cb09d",
+    warning: "#d6973aff",
+    warningBG: "#D0A35F33"
+
   },
   dark: {
     primary: "#3B82F6",
@@ -35,6 +38,8 @@ export const Colors = {
     error: "#FF6B6B",
     tertiary: "#ADC6FF",
     quaternary: "#62FAE3",
+    warning: "#EF4444",
+    warningBG:"#ef444414"
   },
 } as const;
 

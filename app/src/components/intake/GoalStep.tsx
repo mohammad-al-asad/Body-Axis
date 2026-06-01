@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
-import { Feather } from "@expo/vector-icons";
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useTheme } from "@/hooks/use-theme";
 import { CustomButton } from "@/components/ui/CustomButton";
 
@@ -10,33 +10,33 @@ interface GoalOption {
   id: string;
   title: string;
   description: string;
-  icon: keyof typeof Feather.glyphMap;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
 }
 
 const goalOptions: GoalOption[] = [
   {
-    id: "weak_unstable",
-    title: "Feels Weak or Unstable",
-    description: "Difficulty supporting weight or a sensation of 'giving way' during motion.",
-    icon: "zap",
+    id: "stiff_tight",
+    title: "Stiff or Tight",
+    description: "Restricted movement or tension",
+    icon: "bandage",
   },
   {
     id: "aches_discomfort",
     title: "Aches or Discomfort",
-    description: "Generalized soreness or persistent low-level irritation after activity.",
-    icon: "wind",
+    description: "Dull or nagging sensation",
+    icon: "human",
   },
   {
-    id: "stiff_tight",
-    title: "Stiff or Tight",
-    description: "Restricted movement or persistent tension in joints or muscles.",
-    icon: "user",
+    id: "weak_unstable",
+    title: "Feels Weak or Unstable",
+    description: "Low strength or poor control",
+    icon: "human-capacity-decrease",
   },
   {
     id: "move_better",
     title: "Just Want to Move Better",
-    description: "No specific pain, but looking to optimize mobility and athletic form.",
-    icon: "heart",
+    description: "No pain, just improving",
+    icon: "run",
   },
 ];
 
@@ -53,10 +53,11 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
   return (
     <View style={styles.slide}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, marginTop: 24 }}>
-        <Text style={styles.title}>How does it feel?</Text>
+        <Text style={styles.title}>What would you like to
+improve?</Text>
         <Text style={styles.subtitle}>
-          Identifying your sensory profile helps us calibrate recovery protocols
-          and optimize your movement form based on clinical biomechanics.
+          Select the primary focus for your corrective
+exercise journey.
         </Text>
 
         <View style={styles.optionsList}>
@@ -70,9 +71,9 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
                 onPress={() => setPrimaryGoal(opt.id)}
               >
                 <View style={[styles.iconContainer, isSelected && styles.iconContainerActive]}>
-                  <Feather
+                  <MaterialCommunityIcons
                     name={opt.icon}
-                    size={18}
+                    size={22}
                     color={isSelected ? theme.secondary : theme.textSecondary}
                   />
                 </View>
@@ -82,9 +83,9 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
                   </Text>
                   <Text style={styles.cardSubtitle}>{opt.description}</Text>
                 </View>
-                {isSelected && (
-                  <Feather name="check-circle" size={18} color={theme.secondary} style={styles.checkIcon} />
-                )}
+                <View style={[styles.radioButton, isSelected && styles.radioButtonActive]}>
+                  {isSelected && <View style={styles.radioButtonDot} />}
+                </View>
               </TouchableOpacity>
             );
           })}
@@ -195,8 +196,24 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       color: theme.textSecondary,
       lineHeight: 16,
     },
-    checkIcon: {
+    radioButton: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
+      borderColor: theme.textSecondary,
+      justifyContent: "center",
+      alignItems: "center",
       marginLeft: "auto",
+    },
+    radioButtonActive: {
+      borderColor: theme.secondary,
+    },
+    radioButtonDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: theme.secondary,
     },
     footer: {
       paddingTop: 24,

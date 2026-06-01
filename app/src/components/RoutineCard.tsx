@@ -218,7 +218,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       height: 48,
       borderRadius: 14,
       borderWidth: 1.5,
-      borderColor: theme.cardBorder,
+      borderColor: theme.cardBorder === 'transparent' ? '#bdbdbdff' : theme.cardBorder,
       backgroundColor: 'transparent',
       justifyContent: 'center',
       alignItems: 'center',

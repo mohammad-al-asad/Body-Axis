@@ -19,22 +19,19 @@ interface PainHotspot {
 }
 
 const frontHotspots: PainHotspot[] = [
-  { id: "left_shoulder_front", label: "Left Shoulder", top: "25%", left: "35%" },
-  { id: "right_shoulder_front", label: "Right Shoulder", top: "25%", left: "60%" },
-  { id: "waist_left_front", label: "Waist", top: "45%", left: "40%" },
-  { id: "left_ankle_front", label: "Left Ankle", top: "78%", left: "40%" },
-  { id: "right_ankle_front", label: "Right Ankle", top: "78%", left: "63%" },
+  { id: "shoulder_front", label: "Shoulder", top: "27%", left: "60%" },
+  { id: "hips_front", label: "Hips", top: "45%", left: "40%" },
+  { id: "foot_ankle_front", label: "FOOT/ANKLE", top: "78%", left: "39%" },
 ];
 
 const backHotspots: PainHotspot[] = [
-  { id: "left_shoulder_back", label: "Left Shoulder", top: "25%", left: "42%" },
-  { id: "right_shoulder_back", label: "Right Shoulder", top: "28%", left: "60%" },
-  { id: "waist_right_back", label: "Waist", top: "42%", left: "60%" },
-  { id: "back_center_top", label: "Back Top", top: "25%", left: "52%" },
-  { id: "back_center_middle", label: "Back Center", top: "32%", left: "52%" },
-  { id: "back_center_bottom", label: "Back Bottom", top: "39%", left: "52%" },
-  { id: "left_ankle_back", label: "Left Ankle", top: "78%", left: "42%" },
-  { id: "right_ankle_back", label: "Right Ankle", top: "78%", left: "65%" },
+  { id: "shoulder_back", label: "Shoulder", top: "27%", left: "42%" },
+  { id: "hips_back", label: "Hips", top: "42%", left: "60%" },
+  { id: "glutes", label: "Glutes", top: "45%", left: "45%" },
+  { id: "neck_upper_back", label: "NECK/UPPER BACK", top: "25%", left: "52%" },
+  { id: "middle_back", label: "MIDDLE BACK", top: "32%", left: "52%" },
+  { id: "lower_back", label: "LOWER BACK", top: "39%", left: "52%" },
+  { id: "foot_ankle_back", label: "FOOT/ANKLE", top: "78%", left: "41%" },
 ];
 
 interface PainAssessmentStepProps {
@@ -110,7 +107,7 @@ export function PainAssessmentStep({
 
                 {isSelected && parseInt(spot.left) < 50 && (
                   <View style={{ position: 'absolute', right: 0, top: -7, flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginRight: 6, letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                    <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginRight: 6, letterSpacing: 0.5 }}>
                       {spot.label.toUpperCase()}
                     </Text>
                     <View style={{ width: 30, height: 1, backgroundColor: theme.secondary, shadowColor: theme.secondary, shadowOpacity: 0.8, shadowRadius: 4 }} />
@@ -120,7 +117,7 @@ export function PainAssessmentStep({
                 {isSelected && parseInt(spot.left) >= 50 && (
                   <View style={{ position: 'absolute', left: 0, top: -7, flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 30, height: 1, backgroundColor: theme.secondary, shadowColor: theme.secondary, shadowOpacity: 0.8, shadowRadius: 4 }} />
-                    <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginLeft: 6, letterSpacing: 0.5, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>
+                    <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginLeft: 6, letterSpacing: 0.5 }}>
                       {spot.label.toUpperCase()}
                     </Text>
                   </View>

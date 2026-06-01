@@ -275,9 +275,6 @@ export default function ProgressScreen() {
           {/* Achievements */}
           <View style={styles.sectionHeaderViewAll}>
             <Text style={styles.sectionTitle}>Achievements</Text>
-            <TouchableOpacity onPress={handleToggleAchievements} activeOpacity={0.7}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
           </View>
 
           <ScrollView

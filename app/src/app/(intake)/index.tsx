@@ -48,7 +48,7 @@ export default function IntakeScreen() {
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setActiveIndex(nextIndex);
     } else {
-      router.replace("/(auth)/premium");
+      router.replace("/(tab)/explore");
     }
   };
 
@@ -57,6 +57,8 @@ export default function IntakeScreen() {
       const prevIndex = activeIndex - 1;
       flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
       setActiveIndex(prevIndex);
+    }else{
+      router.replace('/(tab)')
     }
   };
 
@@ -69,16 +71,15 @@ export default function IntakeScreen() {
   };
 
   const isNextDisabled = () => {
-    if (activeIndex === 0 && !improveGoal) return true;
-    if (activeIndex === 1 && selectedPainPoints.length === 0) return true;
-    if (activeIndex === 2 && !primaryGoal) return true;
-    // Step 3 (schedule) requires no validation as it has defaults
+    if (activeIndex === 0 && selectedPainPoints.length === 0) return true;
+    if (activeIndex === 1 && !primaryGoal) return true;
+    // Step 2 (schedule) requires no validation as it has defaults
     return false;
   };
 
   const slidesData = [
-    { id: "goal" },
     { id: "pain_assessment" },
+    { id: "goal" },
     { id: "schedule" },
   ];
 
@@ -89,7 +90,7 @@ export default function IntakeScreen() {
         <View style={styles.headerContainer}>
           <Header
             showNotification={false}
-            onBackPress={activeIndex > 0 ? handleBack : undefined}
+            onBackPress={handleBack}
             hideShadow
           />
 

@@ -31,7 +31,7 @@ export default function PremiumScreen() {
         {
           text: 'Get Started',
           onPress: () => {
-            router.replace('/(intake)');
+            router.replace('/(tab)');
           },
         },
       ]
@@ -49,7 +49,7 @@ export default function PremiumScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <AuthHeader onBackPress={handleSkip} onHelpPress={handleHelp} showShadow />
+        <AuthHeader  onHelpPress={handleHelp} showShadow />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Main Titles */}
@@ -299,6 +299,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flexDirection: 'row',
       marginHorizontal: 24,
       gap: 16,
+      marginBottom:24
     },
     gridCard: {
       flex: 1,

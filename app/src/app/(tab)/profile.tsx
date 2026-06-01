@@ -363,30 +363,24 @@ export default function ProfileScreen() {
               />
             </View>
 
-            {/* Sign Out */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={handleSignOut}>
-              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
-                <Feather name="log-out" size={16} color="#EF4444" />
-              </View>
-              <View style={styles.itemTextContainer}>
-                <Text style={[styles.itemTitleOnly, { color: '#EF4444' }]}>Sign Out</Text>
-                <Text style={styles.itemSubtitleOnly}>Exit your active session</Text>
-              </View>
-              <Feather name="log-out" size={16} color="#EF4444" />
-            </TouchableOpacity>
-
             {/* Terminate Account */}
             <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={handleTerminateAccount}>
-              <View style={[styles.itemIconBox, { backgroundColor: 'rgba(239, 68, 68, 0.08)' }]}>
-                <Feather name="user-x" size={16} color="#EF4444" />
+              <View style={[styles.itemIconBox, { backgroundColor: theme.warningBG }]}>
+                <Feather name="user-x" size={16} color={theme.warning} />
               </View>
               <View style={styles.itemTextContainer}>
-                <Text style={[styles.itemTitleOnly, { color: '#EF4444' }]}>Terminate Account</Text>
-                <Text style={styles.itemSubtitleOnly}>Permanently delete all data</Text>
+                <Text style={[styles.itemTitleOnly, { color: theme.warning }]}>Terminate Account</Text>
+                <Text style={[styles.itemSubtitleOnly,{color: theme.warning}]}>Permanently delete all data</Text>
               </View>
-              <Feather name="alert-triangle" size={16} color="#EF4444" />
+              <Feather name="alert-triangle" size={16} color={theme.warning} />
             </TouchableOpacity>
           </View>
+
+          {/* Sign Out */}
+          <TouchableOpacity style={styles.signOutButton} activeOpacity={0.85} onPress={handleSignOut}>
+            <Feather name="log-out" size={16} color="#FFFFFF" style={styles.signOutIcon} />
+            <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
         </ScrollView>
 
         <CustomSheet
@@ -576,5 +570,28 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontWeight: '800',
       color: theme.secondary,
       letterSpacing: 0.5,
+    },
+    signOutButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#DC2626', // Hardcoded red
+      borderRadius: 16,
+      marginHorizontal: 24,
+      marginTop: 24,
+      paddingVertical: 16,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    signOutIcon: {
+      marginRight: 8,
+    },
+    signOutText: {
+      color: '#FFFFFF',
+      fontSize: 16,
+      fontWeight: '700',
     },
   });
