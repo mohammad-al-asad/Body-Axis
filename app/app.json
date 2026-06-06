@@ -7,6 +7,9 @@
     "icon": "./assets/images/app/logo.png",
     "scheme": "bodyaxis",
     "userInterfaceStyle": "automatic",
+    "permissions": [
+      "BILLING"
+    ],
     "owner": "the-body-institute-llc",
     "ios": {
       "icon": "./assets/images/app/logo.png",
