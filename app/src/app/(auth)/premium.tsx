@@ -1,50 +1,204 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useSelector } from 'react-redux';
+import Purchases, { PurchasesOffering } from 'react-native-purchases';
+
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
 import { CustomTab } from '@/components/ui/CustomTab';
 import { AuthHeader } from '@/components/ui/AuthHeader';
+import type { RootState } from '@/redux/store';
+import { useSyncSubscriptionStatusMutation } from '@/redux/api/subscriptionApi';
+import {
+  BillingPeriod,
+  configureRevenueCat,
+  getCurrentOffering,
+  getPackageForBillingPeriod,
+  getRevenueCatErrorMessage,
+  hasRealRevenueCatKey,
+  isPremiumCustomerInfo,
+  isRevenueCatSupported,
+  restoreRevenueCatPurchases,
+} from '@/services/revenueCat';
 
 export default function PremiumScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
+  const user = useSelector((state: RootState) => state.auth.user);
 
-  // Selector state: 'monthly' | 'yearly'
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [hasPremium, setHasPremium] = useState(false);
+  const [syncSubscriptionStatus] = useSyncSubscriptionStatusMutation();
 
-  const handleStartJourney = () => {
-    Alert.alert(
-      'Welcome to Premium!',
-      `You have successfully subscribed to the Axis ${
-        billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'
-      } plan.`,
-      [
-        {
-          text: 'Get Started',
-          onPress: () => {
-            router.replace('/(tab)');
-          },
-        },
-      ]
-    );
+  const monthlyPackage = useMemo(
+    () => getPackageForBillingPeriod(offering, 'monthly'),
+    [offering]
+  );
+  const yearlyPackage = useMemo(
+    () => getPackageForBillingPeriod(offering, 'yearly'),
+    [offering]
+  );
+  const selectedPackage = billingPeriod === 'monthly' ? monthlyPackage : yearlyPackage;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPlans() {
+      if (!user || !isRevenueCatSupported() || !hasRealRevenueCatKey()) {
+        return;
+      }
+
+      setIsLoadingPlans(true);
+
+      try {
+        await configureRevenueCat(user);
+        const currentOffering = await getCurrentOffering(user);
+        const customerInfo = await Purchases.getCustomerInfo();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setOffering(currentOffering);
+        setHasPremium(isPremiumCustomerInfo(customerInfo));
+      } catch (error) {
+        console.warn('Failed to load RevenueCat plans', error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingPlans(false);
+        }
+      }
+    }
+
+    loadPlans();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const handleStartJourney = async () => {
+    if (hasPremium) {
+      router.replace('/(tab)');
+      return;
+    }
+
+    if (!user) {
+      router.replace('/(auth)/sign-in');
+      return;
+    }
+
+    if (!isRevenueCatSupported()) {
+      Alert.alert('Subscriptions unavailable', 'Subscriptions can be purchased from the mobile app.');
+      return;
+    }
+
+    if (!hasRealRevenueCatKey()) {
+      Alert.alert(
+        'Subscriptions not configured',
+        'RevenueCat is using a placeholder key for this platform. Add the real public SDK key before testing purchases.'
+      );
+      return;
+    }
+
+    if (!selectedPackage) {
+      Alert.alert('Plan unavailable', 'RevenueCat did not return this plan yet. Check the offering and product setup.');
+      return;
+    }
+
+    setIsPurchasing(true);
+
+    try {
+      await configureRevenueCat(user);
+      const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
+
+      if (!isPremiumCustomerInfo(customerInfo)) {
+        Alert.alert('Subscription pending', 'The purchase completed, but premium access was not active yet. Please try restore purchase.');
+        return;
+      }
+
+      setHasPremium(true);
+      syncSubscriptionStatus().unwrap().catch((error) => {
+        console.warn('Backend subscription sync failed', error);
+      });
+
+      router.replace('/(tab)');
+    } catch (error) {
+      const message = getRevenueCatErrorMessage(error);
+      if (message) {
+        Alert.alert('Purchase failed', message);
+      }
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
-  const handleSkip = () => {
-    router.replace('/(tab)');
+  const handleRestore = async () => {
+    if (!user) {
+      router.replace('/(auth)/sign-in');
+      return;
+    }
+
+    if (!isRevenueCatSupported()) {
+      Alert.alert('Restore unavailable', 'Purchases can be restored from the mobile app.');
+      return;
+    }
+
+    if (!hasRealRevenueCatKey()) {
+      Alert.alert(
+        'Restore unavailable',
+        'RevenueCat is using a placeholder key for this platform. Add the real public SDK key before testing restore.'
+      );
+      return;
+    }
+
+    setIsRestoring(true);
+
+    try {
+      const customerInfo = await restoreRevenueCatPurchases(user);
+
+      if (!isPremiumCustomerInfo(customerInfo)) {
+        Alert.alert('No active subscription', 'No active premium subscription was found for this store account.');
+        return;
+      }
+
+      setHasPremium(true);
+      syncSubscriptionStatus().unwrap().catch((error) => {
+        console.warn('Backend subscription sync failed', error);
+      });
+
+      router.replace('/(tab)');
+    } catch (error) {
+      const message = getRevenueCatErrorMessage(error);
+      if (message) {
+        Alert.alert('Restore failed', message);
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const handleHelp = () => {
     Alert.alert('Subscription Info', 'Axis Premium gives you full, unrestricted access to all corrective routines, biological calibration protocols, and AI movement analytics.');
   };
+
+  const priceText = selectedPackage?.product.priceString ?? (billingPeriod === 'monthly' ? '$29.99' : '$199.99');
+  const periodText = billingPeriod === 'monthly' ? '/month' : '/year';
+  const ctaTitle = hasPremium ? 'Continue' : `Start ${billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'} Plan`;
 
   return (
     <View style={styles.container}>
@@ -82,10 +236,15 @@ export default function PremiumScreen() {
               </Text>
               <View style={styles.priceRow}>
                 <Text style={styles.priceAmount}>
-                  {billingPeriod === 'monthly' ? '$29.99' : '$19.99'}
+                  {isLoadingPlans ? '...' : priceText}
                 </Text>
-                <Text style={styles.pricePeriod}>/month</Text>
+                <Text style={styles.pricePeriod}>{periodText}</Text>
               </View>
+              {billingPeriod === 'yearly' && yearlyPackage?.product.pricePerMonthString && (
+                <Text style={styles.billingAnnuallyLabel}>
+                  {yearlyPackage.product.pricePerMonthString}/month billed annually
+                </Text>
+              )}
             </View>
 
             {/* Premium Features List */}
@@ -137,10 +296,23 @@ export default function PremiumScreen() {
 
             {/* Action CTA Button */}
             <CustomButton
-              title="Start Your Journey"
+              title={ctaTitle}
+              isLoading={isPurchasing || isLoadingPlans}
+              disabled={!hasPremium && !selectedPackage && hasRealRevenueCatKey()}
               onPress={handleStartJourney}
               style={styles.ctaButton}
             />
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              disabled={isRestoring}
+              onPress={handleRestore}
+              style={styles.restoreButton}
+            >
+              <Text style={styles.restoreButtonText}>
+                {isRestoring ? 'Restoring...' : 'Restore purchase'}
+              </Text>
+            </TouchableOpacity>
 
             <Text style={styles.cancelAnytimeLabel}>CANCEL ANYTIME</Text>
           </View>
@@ -287,6 +459,17 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowRadius: 10,
       elevation: 4,
       marginBottom: 16,
+    },
+    restoreButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 32,
+      marginBottom: 12,
+    },
+    restoreButtonText: {
+      color: theme.secondary,
+      fontSize: 14,
+      fontWeight: '700',
     },
     cancelAnytimeLabel: {
       fontSize: 11,

@@ -7,7 +7,22 @@ export const baseApi = createApi({
   reducerPath: 'baseApi',
   baseQuery: fetchBaseQuery({
     baseUrl,
+    prepareHeaders: (headers, { getState }) => {
+      const state = getState() as {
+        auth?: {
+          accessToken?: string | null;
+          tokenType?: string | null;
+        };
+      };
+      const accessToken = state.auth?.accessToken;
+
+      if (accessToken) {
+        headers.set('Authorization', `${state.auth?.tokenType ?? 'bearer'} ${accessToken}`);
+      }
+
+      return headers;
+    },
   }),
-  tagTypes: ['Auth'],
+  tagTypes: ['Auth', 'Subscription'],
   endpoints: () => ({}),
 });

@@ -3,12 +3,14 @@ import { Provider } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
 import { store, persistor } from "@/redux/store";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
+import { RevenueCatBootstrap } from "@/components/RevenueCatBootstrap";
 
 
 export default function Layout() {
   return (
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
+        <RevenueCatBootstrap />
         <AnimatedSplashOverlay />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(onboarding)" />

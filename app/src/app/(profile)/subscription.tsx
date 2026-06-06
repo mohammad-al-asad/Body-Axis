@@ -1,35 +1,116 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, Platform, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
+import { useSelector } from 'react-redux';
+
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
+import type { RootState } from '@/redux/store';
+import {
+  useGetSubscriptionStatusQuery,
+  useSyncSubscriptionStatusMutation,
+} from '@/redux/api/subscriptionApi';
+import {
+  getRevenueCatErrorMessage,
+  hasRealRevenueCatKey,
+  isPremiumCustomerInfo,
+  isRevenueCatSupported,
+  restoreRevenueCatPurchases,
+} from '@/services/revenueCat';
 
 export default function SubscriptionScreen() {
   const theme = useTheme();
   const router = useRouter();
   const styles = createStyles(theme);
+  const user = useSelector((state: RootState) => state.auth.user);
 
-  // Allow selecting plan options interactively
   const [selectedPlan, setSelectedPlan] = useState<'yearly' | 'monthly'>('yearly');
   const [isRestoring, setIsRestoring] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
   const [cardHeight, setCardHeight] = useState(0);
+  const { data: subscription } = useGetSubscriptionStatusQuery(undefined, {
+    skip: !user,
+  });
+  const [syncSubscriptionStatus] = useSyncSubscriptionStatusMutation();
 
-  const handleRestore = () => {
+  const activePlanTitle = useMemo(() => {
+    const productId = subscription?.product_id ?? '';
+    if (!subscription?.active) {
+      return 'No Active Plan';
+    }
+
+    return productId.toLowerCase().includes('year')
+      ? 'Premium Annual Plan'
+      : 'Premium Monthly Plan';
+  }, [subscription]);
+
+  const nextBilling = useMemo(() => {
+    if (!subscription?.expires_at) {
+      return 'Not available';
+    }
+
+    return new Date(subscription.expires_at).toLocaleDateString();
+  }, [subscription]);
+
+  useEffect(() => {
+    const productId = subscription?.product_id?.toLowerCase() ?? '';
+    if (productId.includes('month')) {
+      setSelectedPlan('monthly');
+    }
+    if (productId.includes('year')) {
+      setSelectedPlan('yearly');
+    }
+  }, [subscription?.product_id]);
+
+  const handleRestore = async () => {
+    if (!user) {
+      router.replace('/(auth)/sign-in');
+      return;
+    }
+
+    if (!isRevenueCatSupported()) {
+      Alert.alert('Restore unavailable', 'Purchases can be restored from the mobile app.');
+      return;
+    }
+
+    if (!hasRealRevenueCatKey()) {
+      Alert.alert(
+        'Restore unavailable',
+        'RevenueCat is using a placeholder key for this platform. Add the real public SDK key before testing restore.'
+      );
+      return;
+    }
+
     setIsRestoring(true);
-    setTimeout(() => {
-      setIsRestoring(false);
+
+    try {
+      const customerInfo = await restoreRevenueCatPurchases(user);
+
+      if (!isPremiumCustomerInfo(customerInfo)) {
+        Alert.alert('No active subscription', 'No active premium subscription was found for this store account.');
+        return;
+      }
+
+      await syncSubscriptionStatus().unwrap();
       Alert.alert('Restore Success', 'Your active membership has been successfully restored.');
-    }, 1000);
+    } catch (error) {
+      console.warn('Failed to restore RevenueCat purchases', error);
+      const message = getRevenueCatErrorMessage(error);
+      if (message) {
+        Alert.alert('Restore failed', message);
+      }
+    } finally {
+      setIsRestoring(false);
+    }
   };
 
   const handleManageSubscription = () => {
-    const url = Platform.OS === 'ios'
+    const url = subscription?.management_url ?? (Platform.OS === 'ios'
       ? 'https://apps.apple.com/account/subscriptions'
-      : 'https://play.google.com/store/account/subscriptions';
+      : 'https://play.google.com/store/account/subscriptions');
     
     Linking.openURL(url).catch((err) => {
       console.error("Failed to open store subscription URL:", err);
@@ -83,19 +164,21 @@ export default function SubscriptionScreen() {
                 </View>
               </View>
 
-              <Text style={styles.activePlanTitle}>Premium Annual Plan</Text>
+              <Text style={styles.activePlanTitle}>{activePlanTitle}</Text>
 
               <View style={styles.divider} />
 
               <View style={styles.activeCardFooterRow}>
                 <View>
                   <Text style={styles.nextBillingLabel}>NEXT BILLING</Text>
-                  <Text style={styles.nextBillingVal}>Dec 14, 2026</Text>
+                  <Text style={styles.nextBillingVal}>{nextBilling}</Text>
                 </View>
 
                 <View style={styles.validStatusBadge}>
-                  <View style={styles.validDot} />
-                  <Text style={styles.validStatusText}>Valid</Text>
+                  <View style={[styles.validDot, !subscription?.active && styles.inactiveDot]} />
+                  <Text style={styles.validStatusText}>
+                    {subscription?.active ? 'Valid' : 'Inactive'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -106,7 +189,7 @@ export default function SubscriptionScreen() {
           {benefits.map((benefit, idx) => (
             <View key={idx} style={styles.benefitCard}>
               <View style={styles.checkCircle}>
-                <Feather name="check" size={12} color={theme.quaternary || theme.secondary} />
+                <Feather name="check" size={12} color={theme.quaternary} />
               </View>
               <Text style={styles.benefitText}>{benefit}</Text>
             </View>
@@ -306,6 +389,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       backgroundColor: '#10B981',
       marginRight: 6,
     },
+    inactiveDot: {
+      backgroundColor: '#F97316',
+    },
     validStatusText: {
       color: '#FFFFFF',
       fontSize: 12,
@@ -368,14 +454,14 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowRadius: 4,
     },
     optionCardSelected: {
-      borderColor: theme.quaternary || theme.secondary,
+      borderColor: theme.quaternary,
       backgroundColor: theme.backgroundSelected === "#E0E1E6" ? "#050B14" : theme.backgroundSelected,
     },
     currentBadge: {
       position: 'absolute',
       top: -10,
       right: 15,
-      backgroundColor: theme.quaternary || theme.secondary,
+      backgroundColor: theme.quaternary,
       borderRadius: 10,
       paddingHorizontal: 10,
       paddingVertical: 3,
@@ -400,7 +486,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     optionPlanPrice: {
       fontSize: 19,
       fontWeight: '800',
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
     },
     pricePeriod: {
       fontSize: 14,
@@ -437,7 +523,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       alignItems: 'center',
     },
     manageBtnText: {
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
       fontSize: 14,
       fontWeight: '700',
       textDecorationLine: 'underline',
@@ -459,7 +545,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     footerLinkText: {
       fontSize: 12,
       fontWeight: '700',
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
     },
     footerDot: {
       fontSize: 12,
