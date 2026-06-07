@@ -1,5 +1,19 @@
 export function getApiErrorMessage(error: unknown): string {
-  if (!error || typeof error !== 'object') {
+  if (!error) {
+    return 'Something went wrong. Please try again.';
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === 'object') {
+    if ('message' in error && typeof (error as any).message === 'string') {
+      return (error as any).message;
+    }
+  }
+
+  if (typeof error !== 'object') {
     return 'Something went wrong. Please try again.';
   }
 

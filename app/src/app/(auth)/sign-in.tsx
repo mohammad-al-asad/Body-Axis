@@ -20,7 +20,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useDispatch } from 'react-redux';
 import { useTheme } from '@/hooks/use-theme';
 
-import { useLoginMutation, useRequestOtpMutation } from '@/redux/api/authApi';
+import {
+  useLoginMutation,
+  useRequestOtpMutation,
+  useGoogleSignInMutation,
+  useAppleSignInMutation,
+} from '@/redux/api/authApi';
+import { signInWithGoogle, signInWithApple } from '@/services/socialAuth';
 import { setCredentials } from '@/redux/slice/auth';
 import { getApiErrorMessage } from '@/utils/apiError';
 import { loginSchema, type LoginFormValues } from '@/validation/auth';
@@ -33,6 +39,64 @@ export default function SignInScreen() {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
   const [requestOtp, { isLoading: isRequestingOtp }] = useRequestOtpMutation();
+  const [googleSignIn, { isLoading: isGoogleLoading }] = useGoogleSignInMutation();
+  const [appleSignIn, { isLoading: isAppleLoading }] = useAppleSignInMutation();
+
+  const handleSocialAuthSuccess = (response: any) => {
+    dispatch(
+      setCredentials({
+        accessToken: response.access_token,
+        tokenType: response.token_type,
+        user: response.user,
+      })
+    );
+
+    if (!response.user.email_verified) {
+      router.replace({
+        pathname: '/(auth)/otp-verify',
+        params: {
+          email: response.user.email,
+          purpose: 'email_verify',
+        },
+      });
+      return;
+    }
+
+    router.replace('/(auth)/premium');
+  };
+
+  const handleGoogleSignIn = async () => {
+    Keyboard.dismiss();
+    try {
+      const result = await signInWithGoogle();
+      if (!result) return;
+
+      const response = await googleSignIn({
+        id_token: result.idToken,
+      }).unwrap();
+
+      handleSocialAuthSuccess(response);
+    } catch (error) {
+      Alert.alert('Google Sign In failed', getApiErrorMessage(error));
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    Keyboard.dismiss();
+    try {
+      const result = await signInWithApple();
+      if (!result) return;
+
+      const response = await appleSignIn({
+        identity_token: result.identityToken,
+        full_name: result.fullName,
+      }).unwrap();
+
+      handleSocialAuthSuccess(response);
+    } catch (error) {
+      Alert.alert('Apple Sign In failed', getApiErrorMessage(error));
+    }
+  };
 
   const {
     control,
@@ -205,11 +269,27 @@ export default function SignInScreen() {
 
                 {/* Social Row buttons */}
                 <View style={styles.socialRow}>
-                  <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={[
+                      styles.socialButton,
+                      (isLoading || isRequestingOtp || isGoogleLoading || isAppleLoading) && { opacity: 0.6 }
+                    ]}
+                    activeOpacity={0.8}
+                    disabled={isLoading || isRequestingOtp || isGoogleLoading || isAppleLoading}
+                    onPress={handleGoogleSignIn}
+                  >
                     <Image source={require('@/assets/images/icons/google.png')} style={styles.socialIconImage} contentFit="contain" />
                     <Text style={styles.socialText}>Google</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.socialButton} activeOpacity={0.8}>
+                  <TouchableOpacity
+                    style={[
+                      styles.socialButton,
+                      (isLoading || isRequestingOtp || isGoogleLoading || isAppleLoading) && { opacity: 0.6 }
+                    ]}
+                    activeOpacity={0.8}
+                    disabled={isLoading || isRequestingOtp || isGoogleLoading || isAppleLoading}
+                    onPress={handleAppleSignIn}
+                  >
                     <Image source={require('@/assets/images/icons/apple.png')} style={[styles.socialIconImage, { tintColor: theme.text }]} contentFit="contain" />
                     <Text style={styles.socialText}>Apple</Text>
                   </TouchableOpacity>
