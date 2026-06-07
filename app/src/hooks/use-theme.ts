@@ -48,3 +48,8 @@ export function useTheme() {
 
   return Colors[theme];
 }
+export function useThemeState() {
+  const themeState = useSelector((state: RootState) => state.settings.theme);
+
+  return themeState;
+}

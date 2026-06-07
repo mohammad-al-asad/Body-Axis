@@ -13,7 +13,6 @@ export type BillingPeriod = 'monthly' | 'yearly';
 export const REVENUECAT_ENTITLEMENT_ID =
   process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID ?? 'premium';
 
-const DUMMY_ANDROID_API_KEY = 'goog_dummy_android_key';
 const PLACEHOLDER_API_KEY_PARTS = [
   'dummy',
   'replace',
@@ -22,18 +21,33 @@ const PLACEHOLDER_API_KEY_PARTS = [
   'your-sdk-key',
 ];
 
+const TEST_STORE_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY ?? '';
+const TEST_EMAILS = [
+  'blackboys11914@gmail.com',
+  'maasad11914@gmail.com',
+];
+
 let configuredAppUserId: string | null = null;
+let configuredApiKey: string | null = null;
 let configurePromise: Promise<boolean> | null = null;
 
-function getRevenueCatApiKey() {
+function isTestUser(user: AuthUser | null): boolean {
+  if (!user?.email) return false;
+  return TEST_EMAILS.includes(user.email.toLowerCase());
+}
+
+function getRevenueCatApiKey(user: AuthUser | null = null) {
+  if (isTestUser(user)) {
+    return TEST_STORE_API_KEY;
+  }
+
   if (Platform.OS === 'ios') {
     return process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? null;
   }
 
   if (Platform.OS === 'android') {
     return (
-      process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ??
-      DUMMY_ANDROID_API_KEY
+      process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY
     );
   }
 
@@ -44,8 +58,8 @@ export function isRevenueCatSupported() {
   return Platform.OS === 'ios' || Platform.OS === 'android';
 }
 
-export function hasRealRevenueCatKey() {
-  const apiKey = getRevenueCatApiKey();
+export function hasRealRevenueCatKey(user: AuthUser | null = null) {
+  const apiKey = getRevenueCatApiKey(user);
 
   if (!apiKey) {
     return false;
@@ -60,9 +74,17 @@ export async function configureRevenueCat(user: AuthUser | null) {
     return false;
   }
 
-  const apiKey = getRevenueCatApiKey();
-  if (!apiKey || !hasRealRevenueCatKey() || !user?.id) {
+  const apiKey = getRevenueCatApiKey(user);
+  if (!apiKey || !hasRealRevenueCatKey(user) || !user?.id) {
     return false;
+  }
+
+  // If the API key changed (switching between test/production user),
+  // force reconfiguration
+  if (configuredApiKey && configuredApiKey !== apiKey) {
+    configurePromise = null;
+    configuredAppUserId = null;
+    configuredApiKey = null;
   }
 
   if (configurePromise && configuredAppUserId === user.id) {
@@ -73,7 +95,7 @@ export async function configureRevenueCat(user: AuthUser | null) {
     await Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.VERBOSE : LOG_LEVEL.INFO);
 
     const isConfigured = await Purchases.isConfigured();
-    if (!isConfigured) {
+    if (!isConfigured || configuredApiKey !== apiKey) {
       Purchases.configure({
         apiKey,
         appUserID: user.id,
@@ -83,6 +105,7 @@ export async function configureRevenueCat(user: AuthUser | null) {
     }
 
     configuredAppUserId = user.id;
+    configuredApiKey = apiKey;
     await Purchases.setAttributes({
       backend_user_id: user.id,
     });
@@ -108,6 +131,7 @@ export async function resetRevenueCatUser() {
 
   if (!isRevenueCatSupported() || !configuredAppUserId) {
     configuredAppUserId = null;
+    configuredApiKey = null;
     return;
   }
 
@@ -117,6 +141,7 @@ export async function resetRevenueCatUser() {
   }
 
   configuredAppUserId = null;
+  configuredApiKey = null;
 }
 
 export function isPremiumCustomerInfo(customerInfo: CustomerInfo) {
