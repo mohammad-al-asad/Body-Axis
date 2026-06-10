@@ -9,63 +9,71 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 
-interface AssessmentCard {
+interface MilestoneCard {
   id: string;
+  badge: string;
   title: string;
-  before: string;
-  now: string;
+  subtitle: string;
+  badgeColor: string;
 }
 
 interface AchievementItem {
   id: string;
   title: string;
-  icon: keyof typeof Feather.glyphMap;
+  icon: string;
+  iconType: 'feather' | 'material';
   color: string;
   glowColor: string;
   locked: boolean;
 }
 
-const ASSESSMENT_DATA: AssessmentCard[] = [
-  { id: '1', title: 'Hip Internal Rotation', before: 'Limited', now: 'Improved' },
-  { id: '2', title: 'Shoulder Extension', before: 'Restricted', now: 'Improved' },
-  { id: '3', title: 'Ankle Dorsiflexion', before: 'Stiff', now: 'Improved' },
+const MILESTONES_DATA: MilestoneCard[] = [
+  {
+    id: '1',
+    badge: 'UNLOCKS AT 15 DAYS',
+    title: 'Core Stability Unlock',
+    subtitle: 'Targeting deep transverse abdominis control.',
+    badgeColor: '#C084FC',
+  },
+  {
+    id: '2',
+    badge: 'NEXT LEVEL',
+    title: 'Advanced Mobility Intro',
+    subtitle: 'Proprioceptive calibration & athletic agility.',
+    badgeColor: '#44E2CD',
+  },
 ];
 
 const ACHIEVEMENTS_DATA: AchievementItem[] = [
   {
     id: '1',
-    title: '7 Day Streak',
-    icon: 'star',
-    color: '#3B82F6',
-    glowColor: 'rgba(59, 130, 246, 0.15)',
+    title: 'Early Bird',
+    icon: 'award',
+    iconType: 'feather',
+    color: '#C084FC',
+    glowColor: 'rgba(192, 132, 252, 0.15)',
     locked: false,
   },
   {
     id: '2',
-    title: 'Program Master',
-    icon: 'award',
+    title: '7-Day Streak',
+    icon: 'fire',
+    iconType: 'material',
     color: '#44E2CD',
     glowColor: 'rgba(68, 226, 205, 0.15)',
     locked: false,
   },
   {
     id: '3',
-    title: 'Consistency King',
-    icon: 'shield',
-    color: '#10B981',
-    glowColor: 'rgba(16, 185, 129, 0.15)',
-    locked: false,
-  },
-  {
-    id: '4',
-    title: 'Early Bird',
+    title: 'Legend',
     icon: 'lock',
-    color: '#64748B',
+    iconType: 'feather',
+    color: '#475569',
     glowColor: 'transparent',
     locked: true,
   },
@@ -87,7 +95,7 @@ export default function ProgressScreen() {
 
   const handleAchievementPress = (item: AchievementItem) => {
     if (item.locked) {
-      Alert.alert('Locked Achievement', 'Complete an exercise before 8:00 AM to unlock the Early Bird badge!');
+      Alert.alert('Locked Achievement', `Keep training to unlock the "${item.title}" badge!`);
     } else {
       Alert.alert('Unlocked Milestone!', `Congratulations! You unlocked the "${item.title}" achievement.`);
     }
@@ -202,72 +210,54 @@ export default function ProgressScreen() {
             </View>
           </View>
 
-          {/* What You've Improved */}
+          {/* Weekly Activity */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>What You've Improved</Text>
+            <Text style={styles.sectionTitle}>Weekly Activity</Text>
           </View>
 
-          <View style={styles.improvementCard}>
-            {/* Hip Mobility */}
-            <View style={styles.metricRow}>
-              <View style={styles.metricLabelRow}>
-                <Text style={styles.metricName}>Hip Mobility</Text>
-                <Text style={styles.metricStatusText}>Significant (+15%)</Text>
-              </View>
-              <View style={styles.metricTrack}>
-                <View style={[styles.metricFill, { width: '80%', backgroundColor: '#3B82F6' }]} />
-              </View>
+          <View style={styles.weeklyActivityCard}>
+            <Text style={styles.weeklyActivitySubtitle}>3 out of 4 sessions completed</Text>
+            {/* Pill progress bar */}
+            <View style={styles.weeklyActivityTrack}>
+              <View style={[styles.weeklyActivityFill, { width: '75%' }]} />
             </View>
 
-            {/* Posture */}
-            <View style={styles.metricRow}>
-              <View style={styles.metricLabelRow}>
-                <Text style={styles.metricName}>Posture</Text>
-                <Text style={styles.metricStatusText}>Optimal</Text>
-              </View>
-              <View style={styles.metricTrack}>
-                <View style={[styles.metricFill, { width: '95%', backgroundColor: '#3B82F6' }]} />
-              </View>
-            </View>
-
-            {/* Movement Quality */}
-            <View style={styles.metricRow}>
-              <View style={styles.metricLabelRow}>
-                <Text style={styles.metricName}>Movement Quality</Text>
-                <Text style={styles.metricStatusText}>Progressing</Text>
-              </View>
-              <View style={styles.metricTrack}>
-                <View style={[styles.metricFill, { width: '45%', backgroundColor: '#3B82F6' }]} />
-              </View>
+            {/* Days letters row */}
+            <View style={styles.daysRow}>
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
+                const isCompleted = idx < 3;
+                return (
+                  <Text
+                    key={idx}
+                    style={[
+                      styles.dayLetter,
+                      isCompleted ? styles.dayLetterCompleted : styles.dayLetterIncomplete,
+                    ]}
+                  >
+                    {day}
+                  </Text>
+                );
+              })}
             </View>
           </View>
 
-          {/* Assessment Comparison Horizontal Row */}
+          {/* Upcoming Milestones */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Assessment Comparison</Text>
+            <Text style={styles.sectionTitle}>Upcoming Milestones</Text>
           </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.assessmentScrollContent}
+            contentContainerStyle={styles.milestonesScrollContent}
           >
-            {ASSESSMENT_DATA.map((card) => (
-              <View key={card.id} style={styles.assessmentCard}>
-                <Text style={styles.assessmentCardTitle}>{card.title}</Text>
-                <View style={styles.assessmentCardRow}>
-                  <View style={styles.comparisonBox}>
-                    <Text style={styles.comparisonLabel}>BEFORE</Text>
-                    <Text style={styles.beforeValue}>{card.before}</Text>
-                  </View>
-
-                  <Feather name="arrow-right" size={16} color={theme.textSecondary} style={styles.arrowSpacing} />
-
-                  <View style={styles.comparisonBoxRight}>
-                    <Text style={styles.comparisonLabelRight}>NOW</Text>
-                    <Text style={styles.nowValue}>{card.now}</Text>
-                  </View>
-                </View>
+            {MILESTONES_DATA.map((card) => (
+              <View key={card.id} style={styles.milestoneCard}>
+                <Text style={[styles.milestoneBadgeText, { color: card.badgeColor }]}>
+                  {card.badge}
+                </Text>
+                <Text style={styles.milestoneTitle}>{card.title}</Text>
+                <Text style={styles.milestoneSubtitle}>{card.subtitle}</Text>
               </View>
             ))}
           </ScrollView>
@@ -275,6 +265,9 @@ export default function ProgressScreen() {
           {/* Achievements */}
           <View style={styles.sectionHeaderViewAll}>
             <Text style={styles.sectionTitle}>Achievements</Text>
+            <TouchableOpacity onPress={() => Alert.alert('Achievements', 'You have unlocked 2 out of 3 badges!')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView
@@ -296,7 +289,11 @@ export default function ProgressScreen() {
                     !item.locked && { backgroundColor: item.glowColor },
                   ]}
                 >
-                  <Feather name={item.icon} size={18} color={item.locked ? '#475569' : item.color} />
+                  {item.iconType === 'material' ? (
+                    <MaterialCommunityIcons name={item.icon as any} size={20} color={item.locked ? '#475569' : item.color} />
+                  ) : (
+                    <Feather name={item.icon as any} size={18} color={item.locked ? '#475569' : item.color} />
+                  )}
                 </View>
                 <Text style={styles.achievementTitle} numberOfLines={2}>
                   {item.title}
@@ -469,7 +466,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     viewAllText: {
       fontSize: 14,
       fontWeight: '600',
-      color: theme.textSecondary,
+      color: theme.secondary,
     },
     activeProgramCard: {
       marginHorizontal: 24,
@@ -544,7 +541,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       backgroundColor: theme.secondary,
       borderRadius: 3,
     },
-    improvementCard: {
+    weeklyActivityCard: {
       backgroundColor: theme.cardBackground,
       borderRadius: 20,
       borderWidth: 1,
@@ -558,99 +555,76 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowOpacity: 0.15,
       shadowRadius: 4,
     },
-    metricRow: {
-      marginBottom: 18,
+    weeklyActivitySubtitle: {
+      fontSize: 14,
+      color: theme.textSecondary,
+      fontWeight: '600',
+      marginBottom: 16,
     },
-    metricLabelRow: {
+    weeklyActivityTrack: {
+      height: 8,
+      backgroundColor: theme.inputBackground,
+      borderRadius: 4,
+      overflow: 'hidden',
+      marginBottom: 16,
+    },
+    weeklyActivityFill: {
+      height: '100%',
+      backgroundColor: theme.secondary,
+      borderRadius: 4,
+    },
+    daysRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
+      paddingHorizontal: 8,
     },
-    metricName: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    metricStatusText: {
+    dayLetter: {
       fontSize: 12,
-      fontWeight: '600',
+      fontWeight: '700',
+    },
+    dayLetterCompleted: {
       color: theme.secondary,
     },
-    metricTrack: {
-      height: 6,
-      backgroundColor: theme.inputBackground,
-      borderRadius: 3,
-      overflow: 'hidden',
+    dayLetterIncomplete: {
+      color: theme.textSecondary,
     },
-    metricFill: {
-      height: '100%',
-      borderRadius: 3,
-    },
-    assessmentScrollContent: {
+    milestonesScrollContent: {
       paddingLeft: 24,
       paddingRight: 12,
       marginBottom: 28,
     },
-    assessmentCard: {
+    milestoneCard: {
       backgroundColor: theme.cardBackground,
       borderRadius: 20,
       borderWidth: 1,
       borderColor: theme.cardBorder,
-      padding: 16,
+      padding: 20,
       marginRight: 14,
-      width: 260,
+      width: 240,
       elevation: 1,
       shadowColor: theme.text,
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
     },
-    assessmentCardTitle: {
-      fontSize: 15,
-      fontWeight: '700',
+    milestoneBadgeText: {
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+      marginBottom: 10,
+    },
+    milestoneTitle: {
+      fontSize: 18,
+      fontWeight: '800',
       color: theme.text,
-      marginBottom: 12,
+      marginBottom: 8,
+      letterSpacing: -0.2,
     },
-    assessmentCardRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-    },
-    comparisonBox: {
-      flex: 1,
-    },
-    comparisonBoxRight: {
-      flex: 1,
-      alignItems: 'flex-end',
-    },
-    comparisonLabel: {
-      fontSize: 10,
-      fontWeight: '700',
+    milestoneSubtitle: {
+      fontSize: 13,
       color: theme.textSecondary,
-      marginBottom: 4,
-      letterSpacing: 0.5,
-    },
-    comparisonLabelRight: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: theme.textSecondary,
-      marginBottom: 4,
-      letterSpacing: 0.5,
-      textAlign: 'right',
-    },
-    beforeValue: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#FF6B6B',
-    },
-    nowValue: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.secondary,
-    },
-    arrowSpacing: {
-      marginHorizontal: 12,
+      fontWeight: '500',
+      lineHeight: 18,
     },
     achievementsScrollContent: {
       paddingLeft: 24,

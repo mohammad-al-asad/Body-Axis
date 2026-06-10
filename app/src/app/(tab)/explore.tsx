@@ -36,8 +36,8 @@ export const ROUTINES: ResetRoutine[] = [
     title: 'The Achy Shoulder Reset',
     duration: '~15 Mins',
     equipment: [
+      { icon: 'square', name: 'Yoga Mat' },
       { icon: 'activity', name: 'Resistance Band' },
-      { icon: 'target', name: 'Massage Ball' },
     ],
     phases: [
       { phase: 'RESET', name: 'Side-Lying Thoracic Rotation (Open Book)' },
@@ -50,10 +50,8 @@ export const ROUTINES: ResetRoutine[] = [
     title: 'The Shoulder Impingement Reset',
     duration: '~15 Mins',
     equipment: [
+      { icon: 'square', name: 'Yoga Mat' },
       { icon: 'activity', name: 'Resistance Band' },
-      { icon: 'disc', name: 'Foam Roller' },
-      { icon: 'target', name: 'Massage Ball' },
-      { icon: 'layers', name: 'Strap Loop' },
     ],
     phases: [
       { phase: 'RESET', name: 'Suboccipital Release + Chin Nod' },
@@ -66,8 +64,8 @@ export const ROUTINES: ResetRoutine[] = [
     title: 'The Achy Ankle Reset',
     duration: '~15 Mins',
     equipment: [
-      { icon: 'target', name: 'Massage Ball' },
-      { icon: 'layers', name: 'Strap Loop' },
+      { icon: 'square', name: 'Yoga Mat' },
+      { icon: 'activity', name: 'Resistance Band' },
     ],
     phases: [
       { phase: 'RESET', name: 'Short Foot Activation Hold' },
