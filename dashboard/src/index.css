@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Manrope', sans-serif;
+}
+
+
+.subtract-width {
+    width: calc(100% - 18rem);
+}
+
+/* Premium Calendar Styles */
+.premium-calendar {
+    width: 280px !important;
+    background: #1E1E2D !important;
+    border: none !important;
+    font-family: inherit !important;
+    padding: 10px !important;
+}
+
+.premium-calendar .react-calendar__navigation {
+    margin-bottom: 10px !important;
+}
+
+.premium-calendar .react-calendar__navigation button {
+    color: white !important;
+    min-width: 34px !important;
+    background: none !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+}
+
+.premium-calendar .react-calendar__navigation button:enabled:hover,
+.premium-calendar .react-calendar__navigation button:enabled:focus {
+    background-color: #2D2D3F !important;
+    border-radius: 8px !important;
+}
+
+.premium-calendar .react-calendar__month-view__weekdays {
+    text-transform: uppercase !important;
+    font-weight: 700 !important;
+    font-size: 10px !important;
+    color: #94A3B8 !important;
+    padding-bottom: 8px !important;
+}
+
+.premium-calendar .react-calendar__month-view__weekdays__weekday abbr {
+    text-decoration: none !important;
+}
+
+.premium-calendar .react-calendar__tile {
+    color: #CBD5E1 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    padding: 10px 6px !important;
+    border-radius: 8px !important;
+}
+
+.premium-calendar .react-calendar__tile:enabled:hover,
+.premium-calendar .react-calendar__tile:enabled:focus {
+    background-color: #2D2D3F !important;
+    color: white !important;
+}
+
+.premium-calendar .react-calendar__tile--now {
+    background: #45407020 !important;
+    color: #454070 !important;
+    font-weight: 700 !important;
+}
+
+.premium-calendar .react-calendar__tile--active {
+    background: #454070 !important;
+    color: white !important;
+}
+
+.premium-calendar .react-calendar__tile--active:enabled:hover,
+.premium-calendar .react-calendar__tile--active:enabled:focus {
+    background: #454070 !important;
+}
+
+.premium-calendar .react-calendar__month-view__days__day--neighboringMonth {
+    color: #475569 !important;
+}
+
