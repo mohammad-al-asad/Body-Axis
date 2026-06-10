@@ -196,7 +196,7 @@ export default function PremiumScreen() {
     Alert.alert('Subscription Info', 'Axis Premium gives you full, unrestricted access to all corrective routines, biological calibration protocols, and AI movement analytics.');
   };
 
-  const priceText = selectedPackage?.product.priceString ?? (billingPeriod === 'monthly' ? '$29.99' : '$199.99');
+  const priceText = selectedPackage?.product.priceString;
   const periodText = billingPeriod === 'monthly' ? '/month' : '/year';
   const ctaTitle = hasPremium ? 'Continue' : `Start ${billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'} Plan`;
 
@@ -230,22 +230,35 @@ export default function PremiumScreen() {
             />
 
             {/* Price Display */}
-            <View style={styles.priceContainer}>
-              <Text style={styles.accessLabel}>
-                {billingPeriod === 'monthly' ? 'MONTHLY ACCESS' : 'ANNUAL ACCESS'}
-              </Text>
-              <View style={styles.priceRow}>
-                <Text style={styles.priceAmount}>
-                  {isLoadingPlans ? '...' : priceText}
+            {!isLoadingPlans && !selectedPackage ? (
+              <View style={styles.errorContainer}>
+                <Feather name="alert-circle" size={20} color={theme.error} style={{ marginBottom: 8 }} />
+                <Text style={styles.errorText}>
+                  Subscription plan is currently unavailable. Please check your connection or try again later.
                 </Text>
-                <Text style={styles.pricePeriod}>{periodText}</Text>
               </View>
-              {billingPeriod === 'yearly' && yearlyPackage?.product.pricePerMonthString && (
-                <Text style={styles.billingAnnuallyLabel}>
-                  {yearlyPackage.product.pricePerMonthString}/month billed annually
+            ) : (
+              <View style={styles.priceContainer}>
+                <Text style={styles.accessLabel}>
+                  {billingPeriod === 'monthly' ? 'MONTHLY ACCESS' : 'ANNUAL ACCESS'}
                 </Text>
-              )}
-            </View>
+                <View style={styles.priceRow}>
+                  <Text
+                    style={styles.priceAmount}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {isLoadingPlans ? '...' : priceText}
+                  </Text>
+                  <Text style={styles.pricePeriod} numberOfLines={1}>{periodText}</Text>
+                </View>
+                {billingPeriod === 'yearly' && yearlyPackage?.product.pricePerMonthString && (
+                  <Text style={styles.billingAnnuallyLabel}>
+                    {yearlyPackage.product.pricePerMonthString}/month billed annually
+                  </Text>
+                )}
+              </View>
+            )}
 
             {/* Premium Features List */}
             <View style={styles.featuresList}>
@@ -398,12 +411,16 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     priceRow: {
       flexDirection: 'row',
       alignItems: 'baseline',
+      justifyContent: 'center',
+      maxWidth: '100%',
+      paddingHorizontal: 8,
     },
     priceAmount: {
       fontSize: 48,
       fontWeight: '900',
       color: theme.text,
       letterSpacing: -1,
+      flexShrink: 1,
     },
     pricePeriod: {
       fontSize: 16,
@@ -511,5 +528,22 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 11,
       color: theme.textSecondary,
       lineHeight: 14,
+    },
+    errorContainer: {
+      backgroundColor: theme.error + '1A',
+      borderWidth: 1,
+      borderColor: theme.error,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+    },
+    errorText: {
+      color: theme.error,
+      fontSize: 13,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 18,
     },
   });
