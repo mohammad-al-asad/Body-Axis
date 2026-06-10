@@ -146,16 +146,14 @@ export default function RoutineDetailsScreen() {
           {/* Routine Metadata Sub-row */}
           <View style={styles.metaRow}>
             <View style={styles.metaLeft}>
-              <Feather name="clock" size={13} color={theme.secondary} style={styles.metaIcon} />
+              <Feather name="clock" size={14} color={theme.secondary} style={styles.metaIcon} />
               <Text style={styles.metaDurationText}>{routine.duration}</Text>
             </View>
             <View style={styles.metaRight}>
-              <Text style={styles.equipmentLabel}>Equipment : </Text>
-              <View style={styles.equipmentIconsRow}>
-                {routine.equipment.map((eq, index) => (
-                  <Feather key={index} name={eq.icon} size={13} color={theme.secondary} />
-                ))}
-              </View>
+              <Text style={styles.equipmentLabel}>Equipment: </Text>
+              <Text style={styles.equipmentNamesText}>
+                {routine.equipment.map((eq) => eq.name).join(' • ')}
+              </Text>
             </View>
           </View>
 
@@ -304,28 +302,35 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
     metaLeft: {
       flexDirection: 'row',
       alignItems: 'center',
+      backgroundColor: theme.inputBackground,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
     },
     metaIcon: {
       marginRight: 6,
     },
     metaDurationText: {
-      color: theme.textSecondary,
+      color: theme.text,
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '700',
     },
     metaRight: {
       flexDirection: 'row',
       alignItems: 'center',
+      marginLeft: 4,
     },
     equipmentLabel: {
       fontSize: 13,
       color: theme.textSecondary,
-      fontWeight: '600',
+      fontWeight: '700',
     },
-    equipmentIconsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
+    equipmentNamesText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: '#A855F7',
     },
     phaseCard: {
       backgroundColor: theme.cardBackground,

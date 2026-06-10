@@ -118,25 +118,6 @@ export function HomeOnboarding() {
         </View>
       </View>
 
-      {/* Progress Tracker Card */}
-      <View style={styles.progressCard}>
-        <View style={styles.progressHeader}>
-          <View style={styles.progressHeaderLeft}>
-            <Feather name="calendar" size={18} color={theme.secondary} style={{ marginRight: 8 }} />
-            <Text style={styles.progressTitle}>Week 01</Text>
-          </View>
-          <View style={styles.progressHeaderRight}>
-            <Text style={styles.progressStat}>Sets</Text>
-            <Text style={styles.progressStat}>Reps</Text>
-          </View>
-        </View>
-        <View style={styles.trackerBoxesRow}>
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <View key={i} style={styles.trackerBox} />
-          ))}
-        </View>
-      </View>
-
       {/* Suggested Plans Section */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Suggested Movement Plans</Text>

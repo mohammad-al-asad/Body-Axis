@@ -164,7 +164,7 @@ export default function OTPVerifyScreen() {
       }).unwrap();
 
       Alert.alert('Success', response.message);
-      router.replace('/(intake)');
+      router.replace('/(auth)/premium');
     } catch (error) {
       Alert.alert('Verification failed', getApiErrorMessage(error));
     }

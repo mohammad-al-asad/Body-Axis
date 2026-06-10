@@ -21,26 +21,11 @@ const PLACEHOLDER_API_KEY_PARTS = [
   'your-sdk-key',
 ];
 
-const TEST_STORE_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_TEST_API_KEY ?? '';
-const TEST_EMAILS = [
-  'blackboys11914@gmail.com',
-  'maasad11914@gmail.com',
-];
-
 let configuredAppUserId: string | null = null;
 let configuredApiKey: string | null = null;
 let configurePromise: Promise<boolean> | null = null;
 
-function isTestUser(user: AuthUser | null): boolean {
-  if (!user?.email) return false;
-  return TEST_EMAILS.includes(user.email.toLowerCase());
-}
-
 function getRevenueCatApiKey(user: AuthUser | null = null) {
-  if (isTestUser(user)) {
-    return TEST_STORE_API_KEY;
-  }
-
   if (Platform.OS === 'ios') {
     return process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? null;
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/use-theme';
 
 export interface RoutinePhase {
@@ -28,6 +29,11 @@ interface RoutineCardProps {
   onSeeDetails: () => void;
 }
 
+const EQUIPMENT_IMAGES: Record<string, any> = {
+  'Yoga Mat': require('@/assets/images/equipments/yogaMat.png'),
+  'Resistance Band': require('@/assets/images/equipments/resistanceBand.png'),
+};
+
 export function RoutineCard({ routine, isSaved, onToggleSave, onSeeDetails }: RoutineCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -37,22 +43,34 @@ export function RoutineCard({ routine, isSaved, onToggleSave, onSeeDetails }: Ro
       {/* Routine Title */}
       <Text style={styles.cardTitle}>{routine.title}</Text>
 
-      {/* Routine Metadata Sub-row (Mins, Equipment) */}
-      <View style={styles.metaRow}>
-        <View style={styles.metaLeft}>
-          <Feather name="clock" size={13} color={theme.secondary} style={styles.metaIcon} />
-          <Text style={styles.metaDurationText}>{routine.duration}</Text>
-        </View>
-        <View style={styles.metaRight}>
-          <Text style={styles.equipmentLabel}>Equipment : </Text>
-          <View style={styles.equipmentIconsRow}>
-            {routine.equipment.map((eq, index) => (
-              <View key={index} style={styles.equipmentIconWrapper}>
-                <Feather name={eq.icon} size={11} color={theme.text} />
+      {/* Equipment Needed Section */}
+      <View style={styles.equipmentSection}>
+        <Text style={styles.equipmentSectionTitle}>Equipment Needed:</Text>
+        <View style={styles.equipmentCardsRow}>
+          {routine.equipment.map((eq, index) => {
+            const imageAsset = EQUIPMENT_IMAGES[eq.name];
+            return (
+              <View key={index} style={styles.equipmentCard}>
+                {imageAsset ? (
+                  <Image source={imageAsset} style={styles.equipmentImage} />
+                ) : (
+                  <View style={styles.equipmentImagePlaceholder}>
+                    <Feather name={eq.icon} size={18} color={theme.textSecondary} />
+                  </View>
+                )}
+                <Text style={styles.equipmentCardName} numberOfLines={1}>
+                  {eq.name}
+                </Text>
               </View>
-            ))}
-          </View>
+            );
+          })}
         </View>
+      </View>
+
+      {/* Routine Duration Sub-row */}
+      <View style={styles.metaRow}>
+        <Feather name="clock" size={13} color={theme.secondary} style={styles.metaIcon} />
+        <Text style={styles.metaDurationText}>{routine.duration}</Text>
       </View>
 
       {/* Phase Descriptions */}
@@ -130,15 +148,59 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginBottom: 14,
       letterSpacing: -0.4,
     },
+    equipmentSection: {
+      marginBottom: 14,
+    },
+    equipmentSectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: theme.quaternary || theme.secondary,
+      letterSpacing: 0.8,
+      marginBottom: 12,
+    },
+    equipmentCardsRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    equipmentCard: {
+      width: 114,
+      height: 90,
+      backgroundColor: theme.backgroundElement,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 16,
+      padding: 8,
+      justifyContent: 'center',
+      alignItems: 'center',
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+    },
+    equipmentImage: {
+      width: 48,
+      height: 34,
+      contentFit: 'contain',
+    },
+    equipmentImagePlaceholder: {
+      width: 48,
+      height: 34,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    equipmentCardName: {
+      marginTop: 6,
+      fontSize: 11,
+      color: theme.textSecondary,
+      fontWeight: '700',
+      textAlign: 'center',
+      width: '100%',
+    },
     metaRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 20,
-    },
-    metaLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      marginVertical: 14,
     },
     metaIcon: {
       marginRight: 6,
@@ -148,44 +210,19 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 13,
       fontWeight: '600',
     },
-    metaRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    equipmentLabel: {
-      fontSize: 13,
-      color: theme.secondary,
-      fontWeight: '600',
-    },
-    equipmentIconsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    equipmentIconWrapper: {
-      width: 22,
-      height: 22,
-      borderRadius: 6,
-      backgroundColor: theme.inputBackground,
-      borderWidth: 1,
-      borderColor: theme.inputBorder,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     phasesContainer: {
       borderTopWidth: 1,
       borderTopColor: theme.inputBorder,
       paddingTop: 16,
-      marginBottom: 24,
-      gap: 16,
+      marginBottom: 20,
+      gap: 12,
     },
     phaseRow: {
       flexDirection: 'row',
-      marginBottom: 4,
     },
     phaseIndicatorLine: {
       width: 2,
-      backgroundColor: '#60A5FA4D',
+      backgroundColor: 'rgba(93, 230, 255, 0.25)',
       borderRadius: 1,
     },
     phaseContent: {
@@ -197,11 +234,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 11,
       fontWeight: '800',
       color: theme.textSecondary,
-      letterSpacing: 1.0,
+      letterSpacing: 0.8,
       marginBottom: 4,
     },
     phaseNameHighlight: {
-      color: theme.secondary,
+      color: theme.quaternary || theme.secondary,
     },
     exerciseName: {
       fontSize: 14,
