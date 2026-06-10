@@ -203,7 +203,7 @@ export default function PremiumScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <AuthHeader  onHelpPress={handleHelp} showShadow />
+        <AuthHeader onHelpPress={handleHelp} showShadow onBackPress={() => router.navigate('/(auth)/sign-in')} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Main Titles */}

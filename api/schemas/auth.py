@@ -83,6 +83,7 @@ class UserResponse(BaseModel):
     date_of_birth: date | None = None
     email_verified: bool
     auth_provider: str
+    is_intake_completed: bool = False
     created_at: datetime
 
 

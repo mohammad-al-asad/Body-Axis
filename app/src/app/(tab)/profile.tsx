@@ -37,6 +37,7 @@ const measurementOptions = [
 export default function ProfileScreen() {
   const dispatch = useDispatch();
   const currentThemeMode = useSelector((state: RootState) => state.settings.theme);
+  const user = useSelector((state: RootState) => state.auth.user);
   const theme = useTheme();
   const styles = createStyles(theme);
 
@@ -76,6 +77,23 @@ export default function ProfileScreen() {
     });
     return unsubscribe;
   }, [navigation]);
+
+  const displayName = user?.full_name || name;
+  const displayGender = user?.gender
+    ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
+    : gender;
+
+  const formatDob = (dobString: string | null) => {
+    if (!dobString) return dob;
+    try {
+      const date = new Date(dobString);
+      if (isNaN(date.getTime())) return dobString;
+      return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return dobString;
+    }
+  };
+  const displayDob = user?.date_of_birth ? formatDob(user.date_of_birth) : dob;
 
   const selectedLanguageLabel = languageOptions.find((option) => option.value === language)?.label || 'English (United States)';
   const selectedMeasurementLabel = measurementOptions.find((option) => option.value === measurementUnit)?.label || 'Metric (kg, cm, km)';
@@ -150,7 +168,7 @@ export default function ProfileScreen() {
                 <Feather name="edit-2" size={10} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
-            <Text style={styles.mainName}>{name}</Text>
+            <Text style={styles.mainName}>{displayName}</Text>
           </View>
 
           {/* Personal Information */}
@@ -169,20 +187,33 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemLabel}>Name</Text>
-                <Text style={styles.itemValue}>{name}</Text>
+                <Text style={styles.itemValue}>{displayName}</Text>
               </View>
             </View>
+
+            {/* Email Row */}
+            {user?.email && (
+              <View style={[styles.cardItemRow, styles.rowBorderTop]}>
+                <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
+                  <Feather name="mail" size={16} color={theme.secondary} />
+                </View>
+                <View style={styles.itemTextContainer}>
+                  <Text style={styles.itemLabel}>Email</Text>
+                  <Text style={styles.itemValue}>{user.email}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Gender and DOB Columns Grid */}
             <View style={[styles.columnsGrid, styles.rowBorderTop]}>
               <View style={styles.columnBox}>
                 <Text style={styles.columnLabel}>Gender</Text>
-                <Text style={styles.columnValue}>{gender}</Text>
+                <Text style={styles.columnValue}>{displayGender}</Text>
               </View>
 
               <View style={styles.columnBoxRight}>
                 <Text style={styles.columnLabel}>DOB</Text>
-                <Text style={styles.columnValue}>{dob}</Text>
+                <Text style={styles.columnValue}>{displayDob}</Text>
               </View>
             </View>
 

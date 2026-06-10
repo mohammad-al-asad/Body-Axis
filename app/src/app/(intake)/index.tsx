@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   View,
+  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -12,6 +13,7 @@ import { useSelector } from "react-redux";
 
 import { RootState } from "@/redux/store";
 import { useTheme } from "@/hooks/use-theme";
+import { useSaveIntakeMutation } from "@/redux/api/userApi";
 import { Header } from "@/components/Header";
 import { PainAssessmentStep } from "@/components/intake/PainAssessmentStep";
 import { GoalStep } from "@/components/intake/GoalStep";
@@ -32,7 +34,6 @@ export default function IntakeScreen() {
   const flatListRef = useRef<FlatList>(null);
 
   // Stateful Intake Answers
-  const [improveGoal, setImproveGoal] = useState<string>("reduce_pain");
   const [avatarView, setAvatarView] = useState<"front" | "back">("front");
   const [selectedPainPoints, setSelectedPainPoints] = useState<string[]>([]);
   const [primaryGoal, setPrimaryGoal] = useState<string>("");
@@ -42,13 +43,27 @@ export default function IntakeScreen() {
   const [scheduleWeeks, setScheduleWeeks] = useState<number>(3);
   const [sessionDuration, setSessionDuration] = useState<number>(45);
 
-  const handleNext = () => {
+  const [saveIntake, { isLoading: isSaving }] = useSaveIntakeMutation();
+
+  const handleNext = async () => {
     if (activeIndex < slidesData.length - 1) {
       const nextIndex = activeIndex + 1;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setActiveIndex(nextIndex);
     } else {
-      router.replace("/(tab)/explore");
+      try {
+        await saveIntake({
+          pain_points: selectedPainPoints,
+          primary_goal: primaryGoal,
+          schedule_days: scheduleDays,
+          schedule_weeks: scheduleWeeks,
+          session_duration: sessionDuration,
+        }).unwrap();
+        router.replace("/(tab)");
+      } catch (error) {
+        console.error("Failed to save intake data", error);
+        Alert.alert("Error", "Failed to save your intake data. Please try again.");
+      }
     }
   };
 
@@ -163,7 +178,8 @@ export default function IntakeScreen() {
                     sessionDuration={sessionDuration}
                     setSessionDuration={setSessionDuration}
                     onNext={handleNext}
-                    onGoToHome={() => router.push("/(tab)")}
+                    onGoToHome={handleBack}
+                    isSaving={isSaving}
                   />
                 );
               default:

@@ -4,7 +4,7 @@ from fastapi import APIRouter, FastAPI
 
 from core.config import settings
 from database import client, db
-from routers import auth, revenuecat, subscription
+from routers import auth, revenuecat, subscription, users
 from services.auth_service import ensure_auth_indexes
 from services.subscription_service import ensure_subscription_indexes
 
@@ -25,6 +25,7 @@ api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(auth.router)
 api_router.include_router(subscription.router)
 api_router.include_router(revenuecat.router)
+api_router.include_router(users.router)
 
 
 @api_router.get("/health")
