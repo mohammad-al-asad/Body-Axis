@@ -54,6 +54,7 @@ def _serialize_user(user: dict[str, Any]) -> dict[str, Any]:
         "date_of_birth": user.get("date_of_birth"),
         "email_verified": bool(user.get("email_verified", False)),
         "auth_provider": user.get("auth_provider", "password"),
+        "is_intake_completed": bool(user.get("is_intake_completed", False)),
         "created_at": user["created_at"],
     }
 
