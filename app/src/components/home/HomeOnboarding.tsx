@@ -12,7 +12,6 @@ import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 
 export function HomeOnboarding() {
   const theme = useTheme();
@@ -27,54 +26,45 @@ export function HomeOnboarding() {
       {/* Hero Image Section */}
       <View style={styles.heroImageContainer}>
         <Image
-          source={require('@/assets/images/avatar/femaleFront.png')}
+          source={require('@/assets/images/app/homeHero.png')}
           style={styles.heroImage}
           contentFit="cover"
         />
-        
-        {/* Absolute Overlay Circles (Body Axis Targets) */}
-        {/* Right shoulder area */}
-        <View style={[styles.targetDot, { top: '23%', right: '35%' }]}>
-          <View style={styles.targetDotOuter} />
-          <View style={styles.targetDotInner} />
-        </View>
 
-        {/* Left hip/pelvis area */}
-        <View style={[styles.targetDot, { top: '42%', left: '38%' }]}>
-          <View style={styles.targetDotOuter} />
-          <View style={styles.targetDotInner} />
-        </View>
-
-        {/* Dark linear gradient bottom to top for text readability and smooth background blend */}
+        {/* Smooth multi-stop linear gradient for text readability and background blend */}
         <LinearGradient
-          colors={['transparent', theme.background === '#ffffff' ? 'rgba(255, 255, 255, 0.45)' : 'rgba(5, 11, 20, 0.45)', theme.background]}
+          colors={[
+            'transparent', 
+            themeState === 'light' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(5, 11, 20, 0.2)', 
+            themeState === 'light' ? 'rgba(255, 255, 255, 0.85)' : theme.background, 
+            theme.background
+          ]}
+          locations={[0, 0.7, 0.8, 1.0]}
           style={StyleSheet.absoluteFillObject}
         />
 
         {/* Hero Centered Wording */}
         <View style={styles.heroTextContainer}>
-          <Text style={styles.heroTitleCentered}>
-            Welcome to Body Axis. Let's build your personalized movement plan so you can move better, feel better, live better.
+          <Text style={styles.heroTitle}>Welcome to Body Axis.</Text>
+          <Text style={styles.heroSubtitle}>
+            Let's build your personalized movement plan so you can move better, feel better, live better.
           </Text>
         </View>
+      </View>
 
-        {/* Floating Action Card with native BlurView */}
-        <BlurView
-          intensity={Platform.OS === 'ios' ? 25 : 30}
-          tint="prominent"
-          style={styles.initializationCard}>
-          <View style={styles.initializationInfo}>
-            <Text style={styles.initializationLabel}>INITIALIZATION</Text>
-            <Text style={styles.initializationTitle}>Build Your First Plan Now</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.getStartedButton}
-            activeOpacity={0.8}
-            onPress={() => router.push('/(intake)')}>
-            <Text style={styles.getStartedButtonText}>Get Started</Text>
-            <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-        </BlurView>
+      {/* Initialization Card */}
+      <View style={styles.initializationCard}>
+        <View style={styles.initializationInfo}>
+          <Text style={styles.initializationLabel}>INITIALIZATION</Text>
+          <Text style={styles.initializationTitle}>Build Your First Plan</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.getStartedButton}
+          activeOpacity={0.8}
+          onPress={() => router.push('/(intake)')}>
+          <Text style={styles.getStartedButtonText}>Get Started</Text>
+          <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
+        </TouchableOpacity>
       </View>
 
       {/* How It Works Section */}
@@ -113,16 +103,57 @@ export function HomeOnboarding() {
           </View>
           <Text style={styles.stepTitle}>Get Plan</Text>
           <Text style={styles.stepDescription}>
-            Get personalized plans with steps you can follow.
+            Change wording below: Get personalized plans with steps you can follow.
           </Text>
         </View>
       </View>
 
-      {/* Suggested Plans Section */}
+      {/* Our Methodology Section */}
+      <Text style={styles.methodologySectionTitle}>Our Methodology</Text>
+      <View style={styles.methodologyCard}>
+        <View style={styles.pillsRow}>
+          <View style={styles.resetPill}>
+            <Text style={styles.resetPillText}>RESET</Text>
+          </View>
+          <View style={styles.controlPill}>
+            <Text style={styles.controlPillText}>CONTROL</Text>
+          </View>
+          <View style={styles.integratePill}>
+            <Text style={styles.integratePillText}>INTEGRATE</Text>
+          </View>
+        </View>
+
+        <Text style={styles.methodologyText}>
+          The Body Axis™ approach is built on three pillars of performance science. We first{' '}
+          <Text style={styles.resetHighlight}>Reset</Text> the nervous system to eliminate compensation patterns, then establish{' '}
+          <Text style={styles.controlHighlight}>Control</Text> over specific movement ranges, and finally{' '}
+          <Text style={styles.integrateHighlight}>Integrate</Text> these gains into high-performance movement patterns.
+        </Text>
+
+        <View style={styles.methodologySubCards}>
+          <View style={styles.subCard}>
+            <Image
+              source={require('@/assets/images/icons/mechanicalArm.png')}
+              style={[styles.subCardIcon, { tintColor: theme.secondary }]}
+            />
+            <Text style={styles.subCardText}>Biometric Precision</Text>
+          </View>
+          <View style={styles.subCard}>
+            <Image
+              source={require('@/assets/images/icons/brain.png')}
+              style={[styles.subCardIcon, { tintColor: theme.secondary }]}
+            />
+            <Text style={styles.subCardText}>Neural Focus</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Explore Plans Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Suggested Movement Plans</Text>
-        <TouchableOpacity>
-          <Feather name="more-horizontal" size={20} color={theme.textSecondary} />
+        <Text style={styles.sectionTitle}>Explore Plans</Text>
+        <TouchableOpacity style={styles.viewAllBtn} activeOpacity={0.7}>
+          <Text style={styles.viewAllText}>View all</Text>
+          <Feather name="chevron-right" size={14} color={theme.secondary} style={{ marginLeft: 2 }} />
         </TouchableOpacity>
       </View>
 
@@ -140,11 +171,14 @@ export function HomeOnboarding() {
               style={styles.planImage}
             />
             <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>15m</Text>
+              <Text style={styles.durationText}>12 MIN</Text>
+            </View>
+            <View style={styles.playButton}>
+              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
             </View>
           </View>
           <Text style={styles.planTitle} numberOfLines={2}>Lower Back Decompression</Text>
-          <Text style={styles.planCategory}>Focused Mobility</Text>
+          <Text style={styles.planCategory}>Focus: Spinal Mobility & Relief</Text>
         </TouchableOpacity>
 
         {/* Plan Card B */}
@@ -155,11 +189,14 @@ export function HomeOnboarding() {
               style={styles.planImage}
             />
             <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>20m</Text>
+              <Text style={styles.durationText}>14 MIN</Text>
+            </View>
+            <View style={styles.playButton}>
+              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
             </View>
           </View>
-          <Text style={styles.planTitle} numberOfLines={2}>Spinal Articulation</Text>
-          <Text style={styles.planCategory}>Nervous System</Text>
+          <Text style={styles.planTitle} numberOfLines={2}>Hip Capsule Flow</Text>
+          <Text style={styles.planCategory}>Focus: Functional Range & Mobility</Text>
         </TouchableOpacity>
 
         {/* Plan Card C */}
@@ -170,51 +207,16 @@ export function HomeOnboarding() {
               style={styles.planImage}
             />
             <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>12m</Text>
+              <Text style={styles.durationText}>15 MIN</Text>
+            </View>
+            <View style={styles.playButton}>
+              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
             </View>
           </View>
-          <Text style={styles.planTitle} numberOfLines={2}>Hip Opening Flow</Text>
-          <Text style={styles.planCategory}>Joint Leverage</Text>
+          <Text style={styles.planTitle} numberOfLines={2}>Spinal Articulation</Text>
+          <Text style={styles.planCategory}>Focus: Nervous System Integration</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* The Methodology Card */}
-      <View style={styles.methodologyCard}>
-        <Image
-          source={{ uri: 'https://images.unsplash.com/photo-1599447421416-3414500d18a5?auto=format&fit=crop&w=600&q=80' }}
-          style={styles.methodologyImage}
-        />
-        <View style={styles.methodologyContent}>
-          <Text style={styles.methodologyLabel}>THE METHODOLOGY</Text>
-          <Text style={styles.methodologyTitle}>Move better. Feel better. Live better.</Text>
-
-          {/* Bullet row A */}
-          <View style={styles.methodologyRow}>
-            <View style={styles.methodologyIconWrapper}>
-              <Feather name="target" size={18} color={theme.secondary} />
-            </View>
-            <View style={styles.methodologyTextWrapper}>
-              <Text style={styles.methodologyRowTitle}>Tailored To Your Axis</Text>
-              <Text style={styles.methodologyRowDesc}>
-                We prioritize precision. Every plan is calculated to improve your functional range based on joint leverage and muscle elasticity.
-              </Text>
-            </View>
-          </View>
-
-          {/* Bullet row B */}
-          <View style={styles.methodologyRow}>
-            <View style={styles.methodologyIconWrapper}>
-              <Feather name="activity" size={18} color={theme.secondary} />
-            </View>
-            <View style={styles.methodologyTextWrapper}>
-              <Text style={styles.methodologyRowTitle}>Kinetic Flow Integration</Text>
-              <Text style={styles.methodologyRowDesc}>
-                Movements are designed to transition smoothly, increasing blood flow and neural readiness for immediate flexibility gains.
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
 
     </ScrollView>
   );
@@ -223,91 +225,73 @@ export function HomeOnboarding() {
 const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType<typeof useThemeState>) => StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
+    backgroundColor: theme.background,
   },
   heroImageContainer: {
     width: '100%',
-    height: 520,
+    height: 410,
     position: 'relative',
     overflow: 'hidden',
-    marginTop: 30,
   },
   heroImage: {
     width: '100%',
-    height: '100%',
-  },
-  targetDot: {
-    position: 'absolute',
-    width: 28,
-    height: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  targetDotOuter: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: theme.secondary,
-    opacity: 0.65,
-  },
-  targetDotInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 100,
-    backgroundColor: theme.secondary,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    height: '90%',
   },
   heroTextContainer: {
     position: 'absolute',
-    bottom: 180,
+    bottom: 10,
     left: 0,
     right: 0,
     paddingHorizontal: 24,
-    alignItems: 'center',
     zIndex: 5,
   },
-  heroTitleCentered: {
-    fontSize: 22,
-    fontWeight: 'bold',
+  heroTitle: {
+    fontSize: 24,
+    fontWeight: '800',
     color: themeState === 'light' ? '#050B14' : '#ffffff',
-    textAlign: 'left',
-    lineHeight: 26,
+    marginBottom: 6,
+    textShadowColor: themeState === 'light' ? 'transparent' : 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroSubtitle: {
+    fontSize: 14,
+    color: themeState === 'light' ? '#4B5563' : '#ffffff',
+    lineHeight: 20,
+    opacity: themeState === 'light' ? 1 : 0.9,
+    textShadowColor: themeState === 'light' ? 'transparent' : 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   initializationCard: {
-    position: 'absolute',
-    bottom: 50,
-    left: 16,
-    right: 16,
     borderRadius: 16,
-    backgroundColor: themeState === 'dark' ? 'rgba(0, 9, 28, 0.7)' : 'rgba(211, 211, 211, 0.7)',
-    borderWidth: 0,
-    padding: 25,
+    backgroundColor: theme.cardBackground,
+    borderWidth: 1,
+    borderColor: theme.cardBorder !== 'transparent' ? theme.cardBorder : theme.inputBorder,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    zIndex: 5,
-    overflow: 'hidden',
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 24,
   },
   initializationInfo: {
     flex: 1,
     marginRight: 12,
   },
   initializationLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: theme.secondary,
     letterSpacing: 1.2,
     marginBottom: 4,
   },
   initializationTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: themeState === 'light' ? '#050B14' : '#ffffff',
-    width: 150,
+    color: theme.text,
+    lineHeight: 22,
   },
   getStartedButton: {
     backgroundColor: theme.primary,
@@ -317,11 +301,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 2,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
   },
   getStartedButtonText: {
     color: '#FFFFFF',
@@ -329,17 +308,17 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     fontWeight: '700',
   },
   howItWorksContainer: {
-    paddingHorizontal: 24,
-    marginTop: 20,
+    paddingHorizontal: 16,
+    marginBottom: 24,
   },
   howItWorksHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   howItWorksTitle: {
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '800',
     color: theme.text,
     marginRight: 16,
   },
@@ -350,131 +329,183 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
   },
   stepCard: {
     backgroundColor: theme.cardBackground,
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: theme.cardBorder,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  stepBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(93, 230, 255, 0.08)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(93, 230, 255, 0.25)',
-    justifyContent: 'center',
+    borderColor: theme.cardBorder !== 'transparent' ? theme.cardBorder : theme.inputBorder,
+    padding: 20,
     alignItems: 'center',
     marginBottom: 16,
   },
+  stepBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: themeState === 'dark' ? '#050B14' : '#E0E1E6',
+    borderWidth: 1.5,
+    borderColor: theme.inputBorder,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   stepNumber: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: theme.secondary,
   },
   stepTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
     color: theme.text,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   stepDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: theme.textSecondary,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
-  progressCard: {
-    marginHorizontal: 24,
-    backgroundColor: theme.cardBackground,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: theme.cardBorder,
-    marginBottom: 28,
-    elevation: 1,
-    shadowColor: theme.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+  methodologySectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: theme.text,
+    marginHorizontal: 16,
+    marginBottom: 16,
     marginTop: 8,
   },
-  progressHeader: {
+  methodologyCard: {
+    marginHorizontal: 16,
+    backgroundColor: theme.cardBackground,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.cardBorder !== 'transparent' ? theme.cardBorder : theme.inputBorder,
+    padding: 20,
+    marginBottom: 28,
+  },
+  pillsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
     marginBottom: 16,
   },
-  progressHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  resetPill: {
+    backgroundColor: themeState === 'dark' ? '#2E1A3C' : '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  progressTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+  resetPillText: {
+    color: themeState === 'dark' ? '#D67BFF' : '#A855F7',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  controlPill: {
+    backgroundColor: themeState === 'dark' ? '#0D2D35' : '#CCFBF1',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  controlPillText: {
+    color: themeState === 'dark' ? '#62FAE3' : '#0D9488',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  integratePill: {
+    backgroundColor: themeState === 'dark' ? '#162C4E' : '#DBEAFE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  integratePillText: {
+    color: themeState === 'dark' ? '#ADC6FF' : '#2563EB',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  methodologyText: {
+    fontSize: 14,
     color: theme.text,
+    lineHeight: 22,
+    marginBottom: 20,
   },
-  progressHeaderRight: {
+  resetHighlight: {
+    color: themeState === 'dark' ? '#D67BFF' : '#A855F7',
+    fontWeight: '800',
+  },
+  controlHighlight: {
+    color: themeState === 'dark' ? '#62FAE3' : '#0D9488',
+    fontWeight: '800',
+  },
+  integrateHighlight: {
+    color: themeState === 'dark' ? '#ADC6FF' : '#2563EB',
+    fontWeight: '800',
+  },
+  methodologySubCards: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 12,
   },
-  progressStat: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontWeight: '500',
-  },
-  trackerBoxesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  trackerBox: {
+  subCard: {
     flex: 1,
-    aspectRatio: 1,
-    borderRadius: 10,
-    backgroundColor: theme.inputBackground,
+    backgroundColor: themeState === 'dark' ? '#070C15' : '#E0E1E6',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: theme.inputBorder,
+  },
+  subCardIcon: {
+    width: 20,
+    height: 20,
+    marginBottom: 6,
+  },
+  subCardText: {
+    color: theme.text,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 16,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     marginBottom: 16,
-    marginTop: 12,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: theme.text,
   },
+  viewAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    color: theme.secondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   horizontalScrollContent: {
-    paddingLeft: 24,
-    paddingRight: 12,
+    paddingLeft: 16,
+    paddingRight: 8,
     marginBottom: 28,
   },
   planCard: {
-    width: 200,
+    width: 240,
     marginRight: 16,
     backgroundColor: theme.cardBackground,
-    borderRadius: 20,
-    padding: 12,
+    borderRadius: 16,
+    padding: 10,
     borderWidth: 1,
-    borderColor: theme.cardBorder,
-    elevation: 1,
-    shadowColor: theme.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    borderColor: theme.cardBorder !== 'transparent' ? theme.cardBorder : theme.inputBorder,
   },
   planImageContainer: {
     width: '100%',
-    height: 120,
+    height: 130,
     borderRadius: 12,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 10,
     position: 'relative',
   },
   planImage: {
@@ -483,21 +514,32 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
   },
   durationBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: 'rgba(5, 11, 20, 0.75)',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
   },
   durationText: {
     color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  playButton: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: theme.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   planTitle: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '800',
     color: theme.text,
     lineHeight: 20,
     marginBottom: 4,
@@ -505,69 +547,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
   planCategory: {
     fontSize: 12,
     color: theme.textSecondary,
-  },
-  methodologyCard: {
-    marginHorizontal: 24,
-    backgroundColor: theme.cardBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.cardBorder,
-    overflow: 'hidden',
-    marginBottom: 24,
-    elevation: 1,
-    shadowColor: theme.text,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  methodologyImage: {
-    width: '100%',
-    height: 200,
-  },
-  methodologyContent: {
-    padding: 24,
-  },
-  methodologyLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: theme.secondary,
-    letterSpacing: 0.8,
-    marginBottom: 8,
-  },
-  methodologyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.text,
-    lineHeight: 26,
-    marginBottom: 24,
-  },
-  methodologyRow: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  methodologyIconWrapper: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.inputBackground,
-    borderWidth: 1,
-    borderColor: theme.inputBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  methodologyTextWrapper: {
-    flex: 1,
-  },
-  methodologyRowTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.text,
-    marginBottom: 6,
-  },
-  methodologyRowDesc: {
-    fontSize: 13,
-    color: theme.textSecondary,
-    lineHeight: 18,
+    fontWeight: '500',
   },
 });
