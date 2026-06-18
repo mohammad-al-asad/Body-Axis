@@ -94,15 +94,24 @@ export function HomeDashboard() {
           <Text style={styles.statLabel}>FOCUS AREAS</Text>
           <View style={styles.focusList}>
             <View style={styles.focusItem}>
-              <Feather name="activity" size={14} color={theme.secondary} style={{ marginRight: 6 }} />
+              <Image
+                source={require('@/assets/images/icons/hips.png')}
+                style={styles.focusIcon}
+              />
               <Text style={styles.focusText}>Hips</Text>
             </View>
             <View style={styles.focusItem}>
-              <Feather name="align-center" size={14} color={theme.secondary} style={{ marginRight: 6 }} />
+              <Image
+                source={require('@/assets/images/icons/lowerBack.png')}
+                style={styles.focusIcon}
+              />
               <Text style={styles.focusText}>Lower Back</Text>
             </View>
             <View style={styles.focusItem}>
-              <Feather name="award" size={14} color={theme.secondary} style={{ marginRight: 6 }} />
+              <Image
+                source={require('@/assets/images/icons/glutes.png')}
+                style={styles.focusIcon}
+              />
               <Text style={styles.focusText}>Glutes</Text>
             </View>
           </View>
@@ -113,7 +122,7 @@ export function HomeDashboard() {
       <View style={styles.statsRow}>
         {/* Streak Card */}
         <View style={[styles.halfCard, styles.streakCard]}>
-          <Ionicons name="flame" size={30} color="#FF6B6B" style={{ marginBottom: 6 }} />
+          <Ionicons name="flame" size={30} color="#DEB7FF" style={{ marginBottom: 6 }} />
           <Text style={[styles.statLabel, { marginBottom: 5 }]}>STREAK</Text>
           <Text style={[styles.streakValue, { marginBottom: 2 }]}>7 Days</Text>
           <Text style={styles.streakSubtext}>IN A ROW</Text>
@@ -124,9 +133,18 @@ export function HomeDashboard() {
           <Text style={styles.statLabel}>PLAN GOAL</Text>
           <Text style={styles.goalTitle}>Move with more control</Text>
           <View style={styles.bulletList}>
-            <Text style={styles.bulletItem}>• Build hip stability</Text>
-            <Text style={styles.bulletItem}>• Lower-back support</Text>
-            <Text style={styles.bulletItem}>• Glute strength</Text>
+            <View style={styles.bulletRow}>
+              <View style={[styles.bulletDot, { backgroundColor: theme.secondary }]} />
+              <Text style={styles.bulletItem}>Build hip stability</Text>
+            </View>
+            <View style={styles.bulletRow}>
+              <View style={[styles.bulletDot, { backgroundColor: theme.secondary }]} />
+              <Text style={styles.bulletItem}>Lower-back support</Text>
+            </View>
+            <View style={styles.bulletRow}>
+              <View style={[styles.bulletDot, { backgroundColor: theme.secondary }]} />
+              <Text style={styles.bulletItem}>Glute strength</Text>
+            </View>
           </View>
         </View>
       </View>
@@ -426,6 +444,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     color: theme.text,
     fontWeight: '500',
   },
+  focusIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 8,
+  },
   streakHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -439,7 +462,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
   streakSubtext: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#FF6B6B',
+    color: '#DEB7FF',
     letterSpacing: 0.5,
     marginTop: 2,
   },
@@ -451,6 +474,16 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
   },
   bulletList: {
     gap: 4,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bulletDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginRight: 8,
   },
   bulletItem: {
     fontSize: 12,
