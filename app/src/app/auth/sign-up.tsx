@@ -65,7 +65,7 @@ export default function SignUpScreen() {
 
     if (!response.user.email_verified) {
       router.replace({
-        pathname: '/(auth)/otp-verify',
+        pathname: '/auth/otp-verify',
         params: {
           email: response.user.email,
           purpose: 'email_verify',
@@ -74,7 +74,7 @@ export default function SignUpScreen() {
       return;
     }
 
-    router.replace('/(auth)/premium');
+    router.replace('/auth/premium');
   };
 
   const handleGoogleSignIn = async () => {
@@ -164,7 +164,7 @@ export default function SignUpScreen() {
       }
 
       router.push({
-        pathname: '/(auth)/otp-verify',
+        pathname: '/auth/otp-verify',
         params: {
           email: values.email.trim(),
           purpose: 'email_verify',
@@ -433,7 +433,7 @@ export default function SignUpScreen() {
               <View style={styles.bottomSwitch}>
                 <Text style={styles.bottomText}>
                   Already have an account?{' '}
-                  <Text style={styles.switchLink} onPress={() => router.replace('/(auth)/sign-in')}>
+                  <Text style={styles.switchLink} onPress={() => router.replace('/auth/sign-in')}>
                     Sign In
                   </Text>
                 </Text>

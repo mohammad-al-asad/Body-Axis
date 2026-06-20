@@ -10,8 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Purchases, { PurchasesOffering } from 'react-native-purchases';
+import { logout } from '@/redux/slice/auth';
 
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
@@ -34,6 +35,7 @@ import {
 export default function PremiumScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
+  const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
 
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
@@ -93,12 +95,12 @@ export default function PremiumScreen() {
 
   const handleStartJourney = async () => {
     if (hasPremium) {
-      router.replace('/(tab)');
+      router.replace('/');
       return;
     }
 
     if (!user) {
-      router.replace('/(auth)/sign-in');
+      router.replace('/auth/sign-in');
       return;
     }
 
@@ -136,7 +138,7 @@ export default function PremiumScreen() {
         console.warn('Backend subscription sync failed', error);
       });
 
-      router.replace('/(tab)');
+      router.replace('/');
     } catch (error) {
       const message = getRevenueCatErrorMessage(error);
       if (message) {
@@ -149,7 +151,7 @@ export default function PremiumScreen() {
 
   const handleRestore = async () => {
     if (!user) {
-      router.replace('/(auth)/sign-in');
+      router.replace('/auth/sign-in');
       return;
     }
 
@@ -181,7 +183,7 @@ export default function PremiumScreen() {
         console.warn('Backend subscription sync failed', error);
       });
 
-      router.replace('/(tab)');
+      router.replace('/');
     } catch (error) {
       const message = getRevenueCatErrorMessage(error);
       if (message) {
@@ -196,6 +198,11 @@ export default function PremiumScreen() {
     Alert.alert('Subscription Info', 'Axis Premium gives you full, unrestricted access to all corrective routines, biological calibration protocols, and AI movement analytics.');
   };
 
+  const handleBack = () => {
+    dispatch(logout());
+    router.replace('/auth/sign-in');
+  };
+
   const priceText = selectedPackage?.product.priceString;
   const periodText = billingPeriod === 'monthly' ? '/month' : '/year';
   const ctaTitle = hasPremium ? 'Continue' : `Start ${billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'} Plan`;
@@ -203,7 +210,7 @@ export default function PremiumScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <AuthHeader onHelpPress={handleHelp} showShadow onBackPress={() => router.navigate('/(auth)/sign-in')} />
+        <AuthHeader onHelpPress={handleHelp} showShadow onBackPress={handleBack} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Main Titles */}

@@ -58,7 +58,7 @@ export default function ForgotPasswordScreen() {
       }
 
       router.push({
-        pathname: '/(auth)/otp-verify',
+        pathname: '/auth/otp-verify',
         params: {
           email: values.email.trim(),
           purpose: 'forgot_password',
@@ -137,7 +137,7 @@ export default function ForgotPasswordScreen() {
                 {/* Back to Login Link */}
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => router.replace('/(auth)/sign-in')}
+                  onPress={() => router.replace('/auth/sign-in')}
                   style={styles.backToLoginContainer}
                 >
                   <Feather name="arrow-left" size={16} color={theme.secondary} style={styles.backIcon} />

@@ -59,7 +59,7 @@ export default function IntakeScreen() {
           schedule_weeks: scheduleWeeks,
           session_duration: sessionDuration,
         }).unwrap();
-        router.replace("/(tab)");
+        router.replace("/");
       } catch (error) {
         console.error("Failed to save intake data", error);
         Alert.alert("Error", "Failed to save your intake data. Please try again.");
@@ -73,7 +73,7 @@ export default function IntakeScreen() {
       flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
       setActiveIndex(prevIndex);
     }else{
-      router.replace('/(tab)')
+      router.replace('/')
     }
   };
 

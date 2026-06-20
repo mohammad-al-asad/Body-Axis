@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
+import { router } from 'expo-router';
 
 export function HomeDashboard() {
   const theme = useTheme();
@@ -51,7 +52,7 @@ export function HomeDashboard() {
 
         {/* Progress Tracker Bar */}
         <View style={styles.progressTextRow}>
-          <Text style={styles.progressTextLeft}>Session 1 of 3</Text>
+          <Text style={styles.progressTextLeft}>Plans 1 of 3</Text>
           <Text style={styles.progressTextRight}>33%</Text>
         </View>
         <View style={styles.progressBarContainer}>
@@ -59,14 +60,14 @@ export function HomeDashboard() {
         </View>
 
         {/* Start Today's Session Button */}
-        <TouchableOpacity style={styles.startSessionButton} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.startSessionButton} activeOpacity={0.9} onPress={()=>router.push("/sessions/session-details")}>
           <Feather name="play" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Text style={styles.startSessionButtonText}>Start Today's Session</Text>
         </TouchableOpacity>
 
         {/* Start New Plan Link */}
-        <TouchableOpacity style={styles.startNewPlanLink} activeOpacity={0.7}>
-          <Text style={styles.startNewPlanLinkText}>+ Start New Plan</Text>
+        <TouchableOpacity onPress={()=>router.push("/intake")} style={styles.startNewPlanLink} activeOpacity={0.7}>
+          <Text style={styles.startNewPlanLinkText}>+ Create New Session</Text>
         </TouchableOpacity>
       </View>
 
@@ -182,7 +183,10 @@ export function HomeDashboard() {
 
       {/* Explore Movement Plans Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Explore Movement Plans</Text>
+        <Text style={styles.sectionTitle}>Explore Movement Sessions</Text>
+        <TouchableOpacity onPress={()=>router.push("/sessions/index")}>
+          <Text style={styles.viewAllLink}>View All</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Horizontal Explore Row */}
@@ -207,14 +211,6 @@ export function HomeDashboard() {
             style={styles.exploreImage}
           />
           <Text style={styles.exploreTitle}>Upper Body Flex</Text>
-        </TouchableOpacity>
-
-        {/* See More Card */}
-        <TouchableOpacity style={styles.seeMoreCard} activeOpacity={0.8}>
-          <View style={styles.plusCircle}>
-            <Feather name="plus" size={24} color={theme.textSecondary} />
-          </View>
-          <Text style={styles.seeMoreText}>See More</Text>
         </TouchableOpacity>
       </ScrollView>
 

@@ -61,7 +61,7 @@ export function HomeOnboarding() {
         <TouchableOpacity
           style={styles.getStartedButton}
           activeOpacity={0.8}
-          onPress={() => router.push('/(intake)')}>
+          onPress={() => router.push('/intake')}>
           <Text style={styles.getStartedButtonText}>Get Started</Text>
           <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
