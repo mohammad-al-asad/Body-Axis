@@ -95,7 +95,7 @@ export default function PremiumScreen() {
 
   const handleStartJourney = async () => {
     if (hasPremium) {
-      router.replace('/');
+      router.replace('/auth/introduction');
       return;
     }
 
@@ -138,7 +138,7 @@ export default function PremiumScreen() {
         console.warn('Backend subscription sync failed', error);
       });
 
-      router.replace('/');
+      router.replace('/auth/introduction');
     } catch (error) {
       const message = getRevenueCatErrorMessage(error);
       if (message) {
@@ -183,7 +183,7 @@ export default function PremiumScreen() {
         console.warn('Backend subscription sync failed', error);
       });
 
-      router.replace('/');
+      router.replace('/introduction');
     } catch (error) {
       const message = getRevenueCatErrorMessage(error);
       if (message) {

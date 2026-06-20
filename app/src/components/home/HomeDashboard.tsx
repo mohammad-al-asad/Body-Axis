@@ -10,6 +10,7 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { router } from 'expo-router';
+import { SessionCard } from '@/components/SessionCard';
 
 export function HomeDashboard() {
   const theme = useTheme();
@@ -26,50 +27,21 @@ export function HomeDashboard() {
         <Text style={styles.welcomeText}>Welcome back, Christina.</Text>
       </View>
 
-      {/* Current Movement Plan Card */}
-      <View style={styles.currentPlanCard}>
-        <View style={styles.cardHeaderRow}>
-          <View>
-            <Text style={styles.currentPlanLabel}>CURRENT MOVEMENT PLAN</Text>
-            <Text style={styles.currentPlanTitle}>Hip Mobility + Core Stability</Text>
-          </View>
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>ACTIVE</Text>
-          </View>
-        </View>
-
-        {/* Phase & Schedule Info */}
-        <View style={styles.infoGrid}>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>PHASE</Text>
-            <Text style={styles.infoValue}>Week 01</Text>
-          </View>
-          <View style={styles.infoCol}>
-            <Text style={styles.infoLabel}>SCHEDULE</Text>
-            <Text style={styles.infoValue}>Repeat 3x</Text>
-          </View>
-        </View>
-
-        {/* Progress Tracker Bar */}
-        <View style={styles.progressTextRow}>
-          <Text style={styles.progressTextLeft}>Plans 1 of 3</Text>
-          <Text style={styles.progressTextRight}>33%</Text>
-        </View>
-        <View style={styles.progressBarContainer}>
-          <View style={styles.progressBarFill} />
-        </View>
-
-        {/* Start Today's Session Button */}
-        <TouchableOpacity style={styles.startSessionButton} activeOpacity={0.9} onPress={()=>router.push("/sessions/session-details")}>
-          <Feather name="play" size={16} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.startSessionButtonText}>Start Today's Session</Text>
-        </TouchableOpacity>
-
-        {/* Start New Plan Link */}
-        <TouchableOpacity onPress={()=>router.push("/intake")} style={styles.startNewPlanLink} activeOpacity={0.7}>
-          <Text style={styles.startNewPlanLinkText}>+ Create New Session</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Current Session Card */}
+      <SessionCard
+        session={{
+          title: 'Hip Mobility + Core Stability',
+          label: 'CURRENT MOVEMENT SESSION',
+          phase: 'Week 01',
+          schedule: 'Repeat 3x',
+          progressPercent: 33,
+          progressLabel: 'Plans 1 of 3',
+          isActive: true,
+        }}
+        startButtonText="Start Today's Session"
+        onStartPress={() => router.push('/sessions/session-details')}
+        onCreateNewPress={() => router.push('/intake')}
+      />
 
       {/* Row: Weekly Progress & Focus Areas */}
       <View style={styles.statsRow}>
@@ -184,7 +156,7 @@ export function HomeDashboard() {
       {/* Explore Movement Plans Section */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Explore Movement Sessions</Text>
-        <TouchableOpacity onPress={()=>router.push("/sessions/index")}>
+        <TouchableOpacity onPress={()=>router.push("/sessions")}>
           <Text style={styles.viewAllLink}>View All</Text>
         </TouchableOpacity>
       </View>
@@ -232,132 +204,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     fontWeight: '700',
     color: theme.text,
   },
-  currentPlanCard: {
-    backgroundColor: theme.cardBackground,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.cardBorder,
-    padding: 24,
-    marginBottom: 24,
-    elevation: 2,
-    shadowColor: theme.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  currentPlanLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: theme.secondary,
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  currentPlanTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: theme.text,
-    lineHeight: 26,
-    marginTop:10
-  },
-  activeBadge: {
-    backgroundColor: 'rgba(93, 230, 255, 0.1)',
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-    borderColor: 'rgba(93, 230, 255, 0.25)',
-  },
-  activeBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: theme.secondary,
-    letterSpacing: 0.5,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 32,
-  },
-  infoCol: {
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: theme.textSecondary,
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  infoValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: theme.text,
-  },
-  progressTextRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  progressTextLeft: {
-    fontSize: 12,
-    color: theme.textSecondary,
-    fontWeight: '500',
-  },
-  progressTextRight: {
-    fontSize: 12,
-    color: theme.secondary,
-    fontWeight: '700',
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: themeState === 'dark' ? '#141E30' : '#E0E1E6',
-    borderRadius: 3,
-    width: '100%',
-    overflow: 'hidden',
-    marginBottom: 24,
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: theme.secondary,
-    width: '33%',
-    borderRadius: 3,
-  },
-  startSessionButton: {
-    backgroundColor: theme.primary,
-    borderRadius: 14,
-    height: 54,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-  },
-  startSessionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  startNewPlanLink: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  startNewPlanLinkText: {
-    color: theme.secondary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
+
   statsRow: {
     flexDirection: 'row',
     gap: 16,

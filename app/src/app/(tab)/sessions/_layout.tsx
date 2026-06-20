@@ -5,6 +5,7 @@ export default function SessionsStackLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
       <Stack.Screen name="plan-details" />
+      <Stack.Screen name="session-details" />
       <Stack.Screen name="exercise-tracker" />
     </Stack>
   );
