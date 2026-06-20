@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Modal, TextInput } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme, useThemeState } from "@/hooks/use-theme";
 import { CustomButton } from "@/components/ui/CustomButton";
 import { CustomSheet } from "@/components/ui/CustomSheet";
 
@@ -15,7 +15,7 @@ interface ScheduleStepProps {
   setScheduleWeeks: (val: number) => void;
   sessionDuration: number;
   setSessionDuration: (val: number) => void;
-  onNext: () => void;
+  onNext: (sessionName?: string) => void;
   onGoToHome: () => void;
   isSaving?: boolean;
 }
@@ -38,9 +38,25 @@ export function ScheduleStep({
   isSaving = false,
 }: ScheduleStepProps) {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const themeState = useThemeState();
+  const styles = createStyles(theme, themeState);
 
   const [showWeeksSheet, setShowWeeksSheet] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [sessionName, setSessionName] = useState("");
+
+  const handleConfirmPress = () => {
+    setShowNameModal(true);
+  };
+
+  const handleSaveName = () => {
+    setShowNameModal(false);
+    onNext(sessionName);
+  };
+
+  const handleCancelName = () => {
+    setShowNameModal(false);
+  };
 
   // Efficiency calculation
   const efficiency = Math.round(((scheduleDays * sessionDuration) / 180) * 98);
@@ -193,8 +209,8 @@ export function ScheduleStep({
         {/* Footer actions */}
         <View style={styles.footer}>
           <CustomButton
-            title="See My Movement Plans"
-            onPress={onNext}
+            title="Confirm My Movement Session"
+            onPress={handleConfirmPress}
             style={styles.actionBtn}
             isLoading={isSaving}
             disabled={isSaving}
@@ -214,11 +230,52 @@ export function ScheduleStep({
         selectedValue={scheduleWeeks}
         onSelect={(val) => setScheduleWeeks(val)}
       />
+
+      {/* Set Session Name Modal */}
+      <Modal
+        visible={showNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={handleCancelName}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Set Session Name</Text>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. Shoulder workout"
+              placeholderTextColor={themeState === 'dark' ? '#5C6E84' : '#9CA3AF'}
+              value={sessionName}
+              onChangeText={setSessionName}
+              autoFocus
+            />
+
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                activeOpacity={0.7}
+                onPress={handleCancelName}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalSaveBtn}
+                activeOpacity={0.8}
+                onPress={handleSaveName}
+              >
+                <Text style={styles.modalSaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>) =>
+const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType<typeof useThemeState>) =>
   StyleSheet.create({
     slide: {
       width: SCREEN_WIDTH,
@@ -442,5 +499,70 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 15,
       fontWeight: "600",
       color: theme.textSecondary,
+    },
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.6)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+    },
+    modalContent: {
+      width: '100%',
+      maxWidth: 320,
+      backgroundColor: themeState === 'dark' ? '#1E2633' : theme.cardBackground,
+      borderRadius: 16,
+      padding: 24,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: themeState === 'dark' ? '#2A3649' : theme.inputBorder,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 20,
+      textAlign: 'center',
+    },
+    modalInput: {
+      width: '100%',
+      height: 52,
+      backgroundColor: themeState === 'dark' ? '#0F141C' : theme.inputBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      fontSize: 15,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: themeState === 'dark' ? '#2A3649' : theme.inputBorder,
+      marginBottom: 24,
+    },
+    modalButtonsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      width: '100%',
+      paddingHorizontal: 8,
+    },
+    modalCancelBtn: {
+      paddingVertical: 12,
+      paddingHorizontal: 20,
+    },
+    modalCancelText: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#94A3B8',
+    },
+    modalSaveBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      paddingVertical: 12,
+      paddingHorizontal: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalSaveText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
     },
   });

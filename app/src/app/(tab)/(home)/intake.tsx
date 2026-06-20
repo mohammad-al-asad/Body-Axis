@@ -45,7 +45,7 @@ export default function IntakeScreen() {
 
   const [saveIntake, { isLoading: isSaving }] = useSaveIntakeMutation();
 
-  const handleNext = async () => {
+  const handleNext = async (sessionName?: string) => {
     if (activeIndex < slidesData.length - 1) {
       const nextIndex = activeIndex + 1;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
@@ -58,6 +58,7 @@ export default function IntakeScreen() {
           schedule_days: scheduleDays,
           schedule_weeks: scheduleWeeks,
           session_duration: sessionDuration,
+          session_name: sessionName,
         }).unwrap();
         router.replace("/");
       } catch (error) {

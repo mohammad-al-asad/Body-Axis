@@ -8,6 +8,7 @@ export interface IntakeRequest {
   schedule_days: number;
   schedule_weeks: number;
   session_duration: number;
+  session_name?: string;
 }
 
 export const userApi = baseApi.injectEndpoints({
