@@ -55,6 +55,7 @@ export default function SignUpScreen() {
   const [appleSignIn, { isLoading: isAppleLoading }] = useAppleSignInMutation();
 
   const handleSocialAuthSuccess = (response: any) => {
+    console.log('--- SOCIAL SIGN-IN SUCCESS RESPONSE ---', JSON.stringify(response, null, 2));
     dispatch(
       setCredentials({
         accessToken: response.access_token,
@@ -150,6 +151,7 @@ export default function SignUpScreen() {
         gender: values.gender,
         date_of_birth: dateOfBirth,
       }).unwrap();
+      console.log('--- SIGN-UP SUCCESS RESPONSE ---', JSON.stringify(response, null, 2));
 
       dispatch(
         setCredentials({

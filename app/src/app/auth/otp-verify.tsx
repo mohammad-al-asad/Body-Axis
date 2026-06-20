@@ -17,8 +17,11 @@ import { Feather } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useDispatch, useSelector } from 'react-redux';
 import { useTheme } from '@/hooks/use-theme';
 import { AuthHeader } from '@/components/ui/AuthHeader';
+import { updateUser } from '@/redux/slice/auth';
+import type { RootState } from '@/redux/store';
 
 import {
   type OtpPurpose,
@@ -42,6 +45,8 @@ function getParam(value: string | string[] | undefined): string {
 export default function OTPVerifyScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
+  const dispatch = useDispatch();
+  const user = useSelector((state: RootState) => state.auth.user);
   const params = useLocalSearchParams<{ email?: string; purpose?: string }>();
   const email = getParam(params.email);
   const purposeParam = getParam(params.purpose);
@@ -162,6 +167,10 @@ export default function OTPVerifyScreen() {
         purpose: values.purpose,
         otp_code: values.otpCode,
       }).unwrap();
+
+      if (values.purpose === 'email_verify' && user) {
+        dispatch(updateUser({ ...user, email_verified: true }));
+      }
 
       Alert.alert('Success', response.message);
       router.replace('/auth/premium');

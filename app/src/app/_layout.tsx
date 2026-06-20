@@ -11,13 +11,16 @@ import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 function RootStack() {
   const firstTime = useSelector((state: RootState) => state.settings.firstTime);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const user = useSelector((state: RootState) => state.auth.user);
+
+  const isEmailVerified = isAuthenticated && !!user?.email_verified;
 
   const { data: subscription, isLoading } = useGetSubscriptionStatusQuery(undefined, {
-    skip: !isAuthenticated,
+    skip: !isEmailVerified,
   });
 
-  // Show loading while subscription status is being fetched for authenticated users
-  if (isAuthenticated && isLoading) {
+  // Show loading while subscription status is being fetched for verified authenticated users
+  if (isEmailVerified && isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
         <ActivityIndicator size="large" />
@@ -25,21 +28,21 @@ function RootStack() {
     );
   }
 
-  const hasActiveSubscription = isAuthenticated && !!subscription?.active;
+  const hasActiveSubscription = isEmailVerified && !!subscription?.active;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
       {/* Onboarding — only accessible on first launch before auth */}
       <Stack.Protected guard={firstTime && !isAuthenticated}>
-        <Stack.Screen name="onboarding/index" />
+        <Stack.Screen name="onboarding" />
       </Stack.Protected>
 
-      {/* Auth route — accessible when either not authenticated or authenticated but without active subscription */}
+      {/* Auth route — accessible when not authenticated, or authenticated but not fully subscribed */}
       <Stack.Protected guard={(!isAuthenticated && !firstTime) || (isAuthenticated && !hasActiveSubscription)}>
         <Stack.Screen name="auth" />
       </Stack.Protected>
 
-      {/* Main app — authenticated with active subscription */}
+      {/* Main app — authenticated with verified email and active subscription */}
       <Stack.Protected guard={hasActiveSubscription}>
         <Stack.Screen name="(tab)" />
       </Stack.Protected>
