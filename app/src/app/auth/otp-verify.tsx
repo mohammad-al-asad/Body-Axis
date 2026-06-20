@@ -146,7 +146,7 @@ export default function OTPVerifyScreen() {
         return;
       }
       router.push({
-        pathname: '/(auth)/set-password',
+        pathname: '/auth/set-password',
         params: {
           email: values.email,
           purpose: values.purpose,
@@ -164,7 +164,7 @@ export default function OTPVerifyScreen() {
       }).unwrap();
 
       Alert.alert('Success', response.message);
-      router.replace('/(auth)/premium');
+      router.replace('/auth/premium');
     } catch (error) {
       Alert.alert('Verification failed', getApiErrorMessage(error));
     }
@@ -258,7 +258,7 @@ export default function OTPVerifyScreen() {
                 {/* Back to Login Link */}
                 <TouchableOpacity
                   activeOpacity={0.7}
-                  onPress={() => router.replace('/(auth)/sign-in')}
+                  onPress={() => router.replace('/auth/sign-in')}
                   style={styles.backToLoginContainer}
                 >
                   <Feather name="arrow-left" size={16} color={theme.secondary} style={styles.backIcon} />

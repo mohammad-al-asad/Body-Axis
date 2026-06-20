@@ -265,9 +265,6 @@ export default function ProgressScreen() {
           {/* Achievements */}
           <View style={styles.sectionHeaderViewAll}>
             <Text style={styles.sectionTitle}>Achievements</Text>
-            <TouchableOpacity onPress={() => Alert.alert('Achievements', 'You have unlocked 2 out of 3 badges!')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
           </View>
 
           <ScrollView

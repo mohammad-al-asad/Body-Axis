@@ -119,7 +119,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
-            router.replace('/(auth)/sign-in');
+            router.replace('/auth/sign-in');
           },
         },
       ]
@@ -137,7 +137,7 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: () => {
             Alert.alert('Account Deleted', 'Your profile has been terminated.');
-            router.replace('/(auth)/sign-in');
+            router.replace('/auth/sign-in');
           },
         },
       ]
@@ -145,7 +145,7 @@ export default function ProfileScreen() {
   };
 
   const handleChangePassword = () => {
-    router.push('/(profile)/change-password');
+    router.push('/profile/change-password');
   };
 
   return (
@@ -174,7 +174,7 @@ export default function ProfileScreen() {
           {/* Personal Information */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionLabel}>PERSONAL INFORMATION</Text>
-            <TouchableOpacity onPress={() => router.push('/(profile)/edit-profile')}>
+            <TouchableOpacity onPress={() => router.push('/profile/edit-profile')}>
               <Feather name="edit-3" size={16} color={theme.secondary} />
             </TouchableOpacity>
           </View>
@@ -294,7 +294,7 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             {/* Subscription */}
-            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/(profile)/subscription')}>
+            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/profile/subscription')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
                 <Feather name="shield" size={16} color={theme.secondary} />
               </View>
@@ -305,7 +305,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Notifications */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/notifications')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/profile/notifications')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(93, 230, 255, 0.08)' }]}>
                 <Feather name="bell" size={16} color={theme.secondary} />
               </View>
@@ -323,7 +323,7 @@ export default function ProfileScreen() {
 
           <View style={styles.card}>
             {/* Privacy Policy */}
-            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/(profile)/privacy')}>
+            <TouchableOpacity style={styles.cardItemRowNoBorder} activeOpacity={0.8} onPress={() => router.push('/profile/privacy')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
                 <Feather name="shield" size={16} color={theme.quaternary} />
               </View>
@@ -335,7 +335,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Terms of Service */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/terms')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/profile/terms')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
                 <Feather name="file-text" size={16} color={theme.quaternary} />
               </View>
@@ -347,7 +347,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Support & FAQ */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/(profile)/support')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/profile/support')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
                 <Feather name="help-circle" size={16} color={theme.quaternary} />
               </View>

@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/use-theme';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface RoutinePhase {
   phase: string;
@@ -14,45 +16,68 @@ export interface RoutineEquipment {
   icon: keyof typeof Feather.glyphMap;
 }
 
-export interface Routine {
+export interface ResetPlan {
   id: string;
   title: string;
   duration: string;
+  isActive?: boolean;
+  progressPercent?: number;
+  progressLabel?: string;
   equipment: RoutineEquipment[];
   phases: RoutinePhase[];
 }
 
-interface RoutineCardProps {
-  routine: Routine;
+interface PlanCardProps {
+  plan: ResetPlan;
   isSaved: boolean;
   onToggleSave: () => void;
   onSeeDetails: () => void;
 }
 
 const EQUIPMENT_IMAGES: Record<string, any> = {
-  'Yoga Mat': require('@/assets/images/equipments/yogaMat.png'),
-  'Resistance Band': require('@/assets/images/equipments/resistanceBand.png'),
+  'Yoga Mat': require('@/assets/images/equipments/YogaMat.png'),
+  'Mat': require('@/assets/images/equipments/YogaMat.png'),
+  'Resistance Band': require('@/assets/images/equipments/ResistanceBand.png'),
+  'Mini Band': require('@/assets/images/equipments/MiniBand.png'),
+  'Dumbbell': require('@/assets/images/equipments/Dumbbell.png'),
+  'Light Dumbbell': require('@/assets/images/equipments/Dumbbell.png'),
+  'Foam Roller': require('@/assets/images/equipments/FoamRoller.png'),
+  'Lacrosse Ball': require('@/assets/images/equipments/LacrosseBall.png'),
+  'Massage Ball': require('@/assets/images/equipments/LacrosseBall.png'),
+  'Yoga Block': require('@/assets/images/equipments/YogaBlock.png'),
+  'Bench': require('@/assets/images/equipments/Bench.png'),
 };
 
-export function RoutineCard({ routine, isSaved, onToggleSave, onSeeDetails }: RoutineCardProps) {
+export function PlanCard({ plan, isSaved, onToggleSave, onSeeDetails }: PlanCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
   return (
     <View style={styles.card}>
-      {/* Routine Title */}
-      <Text style={styles.cardTitle}>{routine.title}</Text>
+      {/* Title & Active Badge Row */}
+      <View style={styles.cardHeaderRow}>
+        <Text style={styles.cardTitle}>{plan.title}</Text>
+        {plan.isActive && (
+          <View style={styles.activeBadge}>
+            <Text style={styles.activeBadgeText}>ACTIVE</Text>
+          </View>
+        )}
+      </View>
 
       {/* Equipment Needed Section */}
       <View style={styles.equipmentSection}>
         <Text style={styles.equipmentSectionTitle}>Equipment Needed:</Text>
-        <View style={styles.equipmentCardsRow}>
-          {routine.equipment.map((eq, index) => {
+        <View style={styles.equipmentGrid}>
+          {plan.equipment.map((eq, index) => {
             const imageAsset = EQUIPMENT_IMAGES[eq.name];
             return (
               <View key={index} style={styles.equipmentCard}>
                 {imageAsset ? (
-                  <Image source={imageAsset} style={styles.equipmentImage} />
+                  <Image
+                    source={imageAsset}
+                    style={styles.equipmentImage}
+                    contentFit="contain"
+                  />
                 ) : (
                   <View style={styles.equipmentImagePlaceholder}>
                     <Feather name={eq.icon} size={18} color={theme.textSecondary} />
@@ -70,17 +95,17 @@ export function RoutineCard({ routine, isSaved, onToggleSave, onSeeDetails }: Ro
       {/* Routine Duration Sub-row */}
       <View style={styles.metaRow}>
         <Feather name="clock" size={13} color={theme.secondary} style={styles.metaIcon} />
-        <Text style={styles.metaDurationText}>{routine.duration}</Text>
+        <Text style={styles.metaDurationText}>{plan.duration}</Text>
       </View>
 
       {/* Phase Descriptions */}
       <View style={styles.phasesContainer}>
-        {routine.phases.map((ph, index) => (
+        {plan.phases.map((ph, index) => (
           <View key={index} style={styles.phaseRow}>
             <View style={styles.phaseIndicatorLine} />
             <View style={styles.phaseContent}>
               <Text style={styles.phaseText}>
-                PHASE : <Text style={styles.phaseNameHighlight}>{ph.phase.toUpperCase()}</Text>
+                PHASE {index + 1}: <Text style={styles.phaseNameHighlight}>{ph.phase.toUpperCase()}</Text>
               </Text>
               <Text style={styles.exerciseName} numberOfLines={1}>
                 {ph.name}
@@ -88,6 +113,17 @@ export function RoutineCard({ routine, isSaved, onToggleSave, onSeeDetails }: Ro
             </View>
           </View>
         ))}
+      </View>
+
+      {/* Progress Bar Section */}
+      <View style={styles.progressSection}>
+        <View style={styles.progressTextRow}>
+          <Text style={styles.progressTextLeft}>{plan.progressLabel || 'Exercise 1 of 3'}</Text>
+          <Text style={styles.progressTextRight}>{plan.progressPercent ?? 33}%</Text>
+        </View>
+        <View style={styles.progressBarContainer}>
+          <View style={[styles.progressBarFill, { width: `${plan.progressPercent ?? 33}%` }]} />
+        </View>
       </View>
 
       {/* Action Buttons Row */}
@@ -132,7 +168,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderRadius: 24,
       borderWidth: 1,
       borderColor: theme.cardBorder,
-      marginHorizontal: 24,
       padding: 24,
       marginBottom: 20,
       elevation: 1,
@@ -141,12 +176,31 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowOpacity: 0.15,
       shadowRadius: 4,
     },
+    cardHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
     cardTitle: {
       fontSize: 22,
       fontWeight: '800',
       color: theme.text,
-      marginBottom: 14,
       letterSpacing: -0.4,
+    },
+    activeBadge: {
+      backgroundColor: 'rgba(93, 230, 255, 0.1)',
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderWidth: 1,
+      borderColor: 'rgba(93, 230, 255, 0.25)',
+    },
+    activeBadgeText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 0.5,
     },
     equipmentSection: {
       marginBottom: 14,
@@ -154,16 +208,18 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     equipmentSectionTitle: {
       fontSize: 12,
       fontWeight: '800',
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
       letterSpacing: 0.8,
       marginBottom: 12,
     },
-    equipmentCardsRow: {
+    equipmentGrid: {
       flexDirection: 'row',
-      gap: 12,
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+      rowGap: 10,
     },
     equipmentCard: {
-      width: 114,
+      width: '48.5%', // Always fits exactly 2 columns without rounding wrap issues
       height: 90,
       backgroundColor: theme.backgroundElement,
       borderWidth: 1,
@@ -172,20 +228,14 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       padding: 8,
       justifyContent: 'center',
       alignItems: 'center',
-      elevation: 1,
-      shadowColor: theme.text,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.1,
-      shadowRadius: 2,
     },
     equipmentImage: {
-      width: 48,
-      height: 34,
-      contentFit: 'contain',
+      width: 60,
+      height: 42,
     },
     equipmentImagePlaceholder: {
-      width: 48,
-      height: 34,
+      width: 60,
+      height: 42,
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -215,18 +265,19 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderTopColor: theme.inputBorder,
       paddingTop: 16,
       marginBottom: 20,
-      gap: 12,
+      gap: 16,
     },
     phaseRow: {
       flexDirection: 'row',
     },
     phaseIndicatorLine: {
       width: 2,
-      backgroundColor: 'rgba(93, 230, 255, 0.25)',
+      backgroundColor: theme.secondary,
       borderRadius: 1,
+      marginRight: 12,
+      alignSelf: 'stretch',
     },
     phaseContent: {
-      marginLeft: 12,
       flex: 1,
       justifyContent: 'center',
     },
@@ -238,12 +289,43 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginBottom: 4,
     },
     phaseNameHighlight: {
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
     },
     exerciseName: {
       fontSize: 14,
       fontWeight: '600',
       color: theme.text,
+    },
+    progressSection: {
+      marginBottom: 20,
+    },
+    progressTextRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    progressTextLeft: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      fontWeight: '500',
+    },
+    progressTextRight: {
+      fontSize: 12,
+      color: theme.secondary,
+      fontWeight: '700',
+    },
+    progressBarContainer: {
+      height: 6,
+      backgroundColor: '#141E30',
+      borderRadius: 3,
+      width: '100%',
+      overflow: 'hidden',
+    },
+    progressBarFill: {
+      height: '100%',
+      backgroundColor: theme.secondary,
+      borderRadius: 3,
     },
     cardActionsRow: {
       flexDirection: 'row',

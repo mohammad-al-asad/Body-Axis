@@ -1,10 +1,51 @@
 import { Stack } from "expo-router";
-import { Provider } from "react-redux";
+import { ActivityIndicator, View } from "react-native";
+import { Provider, useSelector } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
-import { store, persistor } from "@/redux/store";
+import { store, persistor, RootState } from "@/redux/store";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { RevenueCatBootstrap } from "@/components/RevenueCatBootstrap";
+import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 
+
+function RootStack() {
+  const firstTime = useSelector((state: RootState) => state.settings.firstTime);
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
+  const { data: subscription, isLoading } = useGetSubscriptionStatusQuery(undefined, {
+    skip: !isAuthenticated,
+  });
+
+  // Show loading while subscription status is being fetched for authenticated users
+  if (isAuthenticated && isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  const hasActiveSubscription = isAuthenticated && !!subscription?.active;
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Onboarding — only accessible on first launch before auth */}
+      <Stack.Protected guard={firstTime && !isAuthenticated}>
+        <Stack.Screen name="onboarding/index" />
+      </Stack.Protected>
+
+      {/* Auth route — accessible when either not authenticated or authenticated but without active subscription */}
+      <Stack.Protected guard={(!isAuthenticated && !firstTime) || (isAuthenticated && !hasActiveSubscription)}>
+        <Stack.Screen name="auth" />
+      </Stack.Protected>
+
+      {/* Main app — authenticated with active subscription */}
+      <Stack.Protected guard={hasActiveSubscription}>
+        <Stack.Screen name="(tab)" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
 
 export default function Layout() {
   return (
@@ -12,24 +53,7 @@ export default function Layout() {
       <PersistGate loading={null} persistor={persistor}>
         <RevenueCatBootstrap />
         <AnimatedSplashOverlay />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(onboarding)" />
-          <Stack.Screen name="(intake)" />
-          <Stack.Screen name="(auth)/sign-in" />
-          <Stack.Screen name="(auth)/sign-up" />
-          <Stack.Screen name="(auth)/forgot-password" />
-          <Stack.Screen name="(auth)/otp-verify" />
-          <Stack.Screen name="(auth)/set-password" />
-          <Stack.Screen name="(auth)/premium" />
-          <Stack.Screen name="(tab)" />
-          <Stack.Screen name="(others)/routine-details" />
-          <Stack.Screen name="(others)/exercise-tracker" />
-          <Stack.Screen name="(profile)/privacy" />
-          <Stack.Screen name="(profile)/terms" />
-          <Stack.Screen name="(profile)/support" />
-          <Stack.Screen name="(profile)/subscription" />
-          <Stack.Screen name="(profile)/notifications" />
-        </Stack>
+        <RootStack />
       </PersistGate>
     </Provider>
   );
