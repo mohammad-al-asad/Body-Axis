@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { ROUTINES } from '../(tab)/explore';
+import { PLANS } from './session-details';
 import { Header } from '@/components/Header';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
@@ -95,6 +95,30 @@ const EXERCISE_DETAILS: Record<string, {
     sets: '2',
     reps: '10 / EACH SIDE',
   },
+  'Full Body Foam Roll & Lacrosse Release': {
+    benefits: 'Uses a Foam Roller and Lacrosse Ball to release trigger points, restore soft-tissue quality, and increase systemic range of motion.',
+    targetRegions: ['Glutes', 'Calves', 'Upper Back', 'Foot Arch'],
+    equipment: ['Foam Roller', 'Lacrosse Ball'],
+    avoidIf: 'Severe muscle strain, bruising, or acute bone fractures.',
+    sets: '3',
+    reps: '60s HOLD',
+  },
+  'Banded Dumbbell Bench Press': {
+    benefits: 'Combines resistance band tension and dumbbells on a gym bench to load and stabilize the shoulders and chest through a controlled range.',
+    targetRegions: ['Chest', 'Shoulders', 'Triceps'],
+    equipment: ['Resistance Band', 'Dumbbell', 'Bench'],
+    avoidIf: 'Shoulder impingement or pain during horizontal pressing.',
+    sets: '3',
+    reps: '10 REPS',
+  },
+  'Yoga Block Squat Calibration': {
+    benefits: 'Utilizes a Yoga Block between the knees and a Mini Band around the thighs to optimize hip alignment and foot arch stability during squats.',
+    targetRegions: ['Glutes', 'Hips', 'Quads', 'Core'],
+    equipment: ['Yoga Mat', 'Yoga Block', 'Mini Band'],
+    avoidIf: 'Sharp knee patellar pain or back stiffness.',
+    sets: '3',
+    reps: '12 REPS',
+  },
 };
 
 const DEFAULT_DETAILS = {
@@ -106,14 +130,14 @@ const DEFAULT_DETAILS = {
   reps: '10 reps',
 };
 
-export default function RoutineDetailsScreen() {
+export default function PlanDetailsScreen() {
   const theme = useTheme();
   const themePreference = useSelector((state: RootState) => state.settings.theme);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  // Fetch current routine
-  const routine = ROUTINES.find((r) => r.id === id) || ROUTINES[0];
+  // Fetch current plan
+  const plan = PLANS.find((r) => r.id === id) || PLANS[0];
 
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
@@ -124,7 +148,8 @@ export default function RoutineDetailsScreen() {
 
   const handleStartProtocol = () => {
     router.push({
-      pathname: '/(others)/exercise-tracker',
+      pathname: '/sessions/exercise-tracker',
+      params: { id: plan.id },
     });
   };
 
@@ -140,25 +165,27 @@ export default function RoutineDetailsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {/* Routine Title */}
-          <Text style={styles.routineTitle}>{routine.title}</Text>
+          {/* Plan Title */}
+          <Text style={styles.planTitle}>{plan.title}</Text>
 
-          {/* Routine Metadata Sub-row */}
+          {/* Plan Metadata Sub-row */}
           <View style={styles.metaRow}>
             <View style={styles.metaLeft}>
               <Feather name="clock" size={14} color={theme.secondary} style={styles.metaIcon} />
-              <Text style={styles.metaDurationText}>{routine.duration}</Text>
+              <Text style={styles.metaDurationText}>{plan.duration}</Text>
             </View>
             <View style={styles.metaRight}>
-              <Text style={styles.equipmentLabel}>Equipment: </Text>
-              <Text style={styles.equipmentNamesText}>
-                {routine.equipment.map((eq) => eq.name).join(' • ')}
+              <Text style={styles.equipmentLabel}>
+                Equipment:{' '}
+                <Text style={styles.equipmentNamesText}>
+                  {plan.equipment.map((eq) => eq.name).join(' • ')}
+                </Text>
               </Text>
             </View>
           </View>
 
           {/* Phases List */}
-          {routine.phases.map((phase, index) => {
+          {plan.phases.map((phase, index) => {
             const isExpanded = expandedIndex === index;
             const details = EXERCISE_DETAILS[phase.name] || DEFAULT_DETAILS;
 
@@ -285,7 +312,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       paddingHorizontal: 24,
       paddingBottom: 100, // Leave space for floating footer button
     },
-    routineTitle: {
+    planTitle: {
       fontSize: 28,
       fontWeight: '800',
       color: theme.text,
@@ -295,7 +322,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
     },
     metaRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       marginBottom: 24,
       gap: 16,
     },
@@ -318,14 +345,15 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       fontWeight: '700',
     },
     metaRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flex: 1,
+      flexShrink: 1,
       marginLeft: 4,
     },
     equipmentLabel: {
       fontSize: 13,
       color: theme.textSecondary,
       fontWeight: '700',
+      flexShrink: 1,
     },
     equipmentNamesText: {
       fontSize: 12,

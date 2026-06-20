@@ -73,21 +73,6 @@ export default function NotificationsScreen() {
             />
           </View>
 
-          {/* Assessment Reminders */}
-          <View style={styles.cardItem}>
-            <View style={styles.iconBox}>
-              <Feather name="bar-chart-2" size={18} color={theme.text} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.itemTitle}>Assessment reminders</Text>
-              <Text style={styles.itemSubtitle}>Bi-weekly body scans</Text>
-            </View>
-            <CustomSwitch
-              value={settings.assessmentReminders}
-              onValueChange={() => toggleSetting('assessmentReminders')}
-            />
-          </View>
-
           {/* Section: Program Updates */}
           <Text style={styles.sectionHeader}>PROGRAM UPDATES</Text>
 

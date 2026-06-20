@@ -53,7 +53,7 @@ export default function SignInScreen() {
 
     if (!response.user.email_verified) {
       router.replace({
-        pathname: '/(auth)/otp-verify',
+        pathname: '/auth/otp-verify',
         params: {
           email: response.user.email,
           purpose: 'email_verify',
@@ -62,7 +62,7 @@ export default function SignInScreen() {
       return;
     }
 
-    router.replace('/(auth)/premium');
+    router.replace('/auth/premium');
   };
 
   const handleGoogleSignIn = async () => {
@@ -138,7 +138,7 @@ export default function SignInScreen() {
         }
 
         router.replace({
-          pathname: '/(auth)/otp-verify',
+          pathname: '/auth/otp-verify',
           params: {
             email: response.user.email,
             purpose: 'email_verify',
@@ -147,7 +147,7 @@ export default function SignInScreen() {
         return;
       }
 
-      router.replace('/(auth)/premium');
+      router.replace('/auth/premium');
     } catch (error) {
       Alert.alert('Sign in failed', getApiErrorMessage(error));
     }
@@ -248,7 +248,7 @@ export default function SignInScreen() {
                 <TouchableOpacity
                   activeOpacity={0.7}
                   style={styles.forgotContainer}
-                  onPress={() => router.push('/(auth)/forgot-password')}
+                  onPress={() => router.push('/auth/forgot-password')}
                 >
                   <Text style={styles.forgotText}>Forgot Password?</Text>
                 </TouchableOpacity>
@@ -300,7 +300,7 @@ export default function SignInScreen() {
               <View style={styles.bottomSwitch}>
                 <Text style={styles.bottomText}>
                   Do not have an account?{' '}
-                  <Text style={styles.switchLink} onPress={() => router.replace('/(auth)/sign-up')}>
+                  <Text style={styles.switchLink} onPress={() => router.replace('/auth/sign-up')}>
                     Sign Up
                   </Text>
                 </Text>
