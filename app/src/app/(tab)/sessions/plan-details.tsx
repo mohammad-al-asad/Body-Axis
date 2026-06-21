@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Image,
   View,
   Text,
   StyleSheet,
@@ -8,12 +9,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useEventListener } from 'expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { PLANS } from './session-details';
 import { Header } from '@/components/Header';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
 
 const EXERCISE_DETAILS: Record<string, {
   benefits: string;
@@ -141,16 +145,38 @@ export default function PlanDetailsScreen() {
 
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
+  const [isDemoVideoStarted, setIsDemoVideoStarted] = useState(false);
+  const demoVideoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+
+  useEventListener(demoVideoPlayer, 'playToEnd', () => {
+    demoVideoPlayer.pause();
+    setIsDemoVideoStarted(false);
+  });
 
   const toggleExpand = (index: number) => {
+    demoVideoPlayer.pause();
+    demoVideoPlayer.currentTime = 0;
+    setIsDemoVideoStarted(false);
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
+  const handlePlayDemo = () => {
+    demoVideoPlayer.currentTime = 0;
+    demoVideoPlayer.play();
+    setIsDemoVideoStarted(true);
+  };
+
   const handleStartProtocol = () => {
+    demoVideoPlayer.pause();
     router.push({
       pathname: '/sessions/exercise-tracker',
       params: { id: plan.id },
     });
+  };
+
+  const handleBack = () => {
+    demoVideoPlayer.pause();
+    router.back();
   };
 
   const styles = createStyles(theme, themePreference);
@@ -159,7 +185,7 @@ export default function PlanDetailsScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
-        <Header onBackPress={() => router.back()} />
+        <Header onBackPress={handleBack} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -208,14 +234,39 @@ export default function PlanDetailsScreen() {
                 {/* Expandable Section */}
                 {isExpanded && (
                   <View style={styles.expandedContent}>
-                    {/* Video Player Placeholder */}
+                    {/* Video Player */}
                     <View style={styles.videoPlayer}>
-                      <View style={styles.videoOverlay}>
-                        <View style={styles.playButtonCircle}>
-                          <Feather name="play" size={20} color="#FFF" style={{ marginLeft: 2 }} />
-                        </View>
-                      </View>
-                      <Text style={styles.videoLabel}>DEMO VIDEO</Text>
+                      {isDemoVideoStarted ? (
+                        <VideoView
+                          player={demoVideoPlayer}
+                          contentFit="cover"
+                          nativeControls
+                          fullscreenOptions={{ enable: true }}
+                          style={styles.video}
+                        />
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.videoThumbnailButton}
+                          activeOpacity={0.9}
+                          onPress={handlePlayDemo}
+                        >
+                          <Image
+                            source={{ uri: DEMO_VIDEO_THUMBNAIL_URL }}
+                            style={styles.videoThumbnail}
+                          />
+                          <View style={styles.videoOverlay}>
+                            <View style={styles.playButtonCircle}>
+                              <Feather
+                                name="play"
+                                size={20}
+                                color="#FFF"
+                                style={{ marginLeft: 2 }}
+                              />
+                            </View>
+                          </View>
+                          <Text style={styles.videoLabel}>DEMO VIDEO</Text>
+                        </TouchableOpacity>
+                      )}
                     </View>
 
                     {/* Benefits */}
@@ -408,12 +459,20 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       position: 'relative',
       overflow: 'hidden',
     },
+    video: {
+      width: '100%',
+      height: '100%',
+    },
+    videoThumbnailButton: {
+      width: '100%',
+      height: '100%',
+    },
+    videoThumbnail: {
+      width: '100%',
+      height: '100%',
+    },
     videoOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.25)',
       justifyContent: 'center',
       alignItems: 'center',
@@ -436,8 +495,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       left: 12,
       fontSize: 9,
       fontWeight: '800',
-      color: 'rgba(255, 255, 255, 0.5)',
-      letterSpacing: 1.0,
+      color: 'rgba(255, 255, 255, 0.75)',
+      letterSpacing: 1,
     },
     sectionHeader: {
       fontSize: 10,

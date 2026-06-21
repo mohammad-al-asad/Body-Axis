@@ -150,10 +150,9 @@ export function HomeOnboarding() {
 
       {/* Explore Plans Section */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Explore Plans</Text>
-        <TouchableOpacity style={styles.viewAllBtn} activeOpacity={0.7}>
-          <Text style={styles.viewAllText}>View all</Text>
-          <Feather name="chevron-right" size={14} color={theme.secondary} style={{ marginLeft: 2 }} />
+        <Text style={styles.sectionTitle}>Explore Movement Sessions</Text>
+        <TouchableOpacity onPress={()=>router.push("/sessions")}>
+          <Text style={styles.viewAllLink}>View All</Text>
         </TouchableOpacity>
       </View>
 
@@ -548,5 +547,10 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     fontSize: 12,
     color: theme.textSecondary,
     fontWeight: '500',
+  },
+    viewAllLink: {
+    color: theme.secondary,
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

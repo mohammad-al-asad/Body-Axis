@@ -1,5 +1,1272 @@
-import { View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { useEventListener } from 'expo';
+import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
+
+import { Header } from '@/components/Header';
+import { ISLAMIC_DEMO_VIDEO_URL, DEMO_VIDEO_THUMBNAIL_URL } from '@/constants/videos';
+import { useTheme } from '@/hooks/use-theme';
+import { PLANS as ROUTINES } from './session-details';
+
+const EXERCISE_METADATA: Record<string, {
+  benefits: string;
+  targetRegions: string[];
+  equipment: string[];
+  sets: string;
+  repsVal: string;
+  repsLabel: string;
+}> = {
+  'Side-Lying Thoracic Rotation (Open Book)': {
+    benefits: 'Gently restores mid-back rotation with the lower back blocked from compensating. Reduces upper back stiffness that drives neck pain, shoulder restriction, and lower back overload.',
+    targetRegions: ['Shoulder', 'Neck', 'Middle Back', 'Upper Back', 'Lower Back'],
+    equipment: ['Mat', 'Light Dumbbell'],
+    sets: '2',
+    repsVal: '6-10',
+    repsLabel: 'REPS / EACH SIDE',
+  },
+  'Prone Trap Raise': {
+    benefits: 'Strengthens lower and middle trapezius muscles. Helps stabilize the scapula, correcting rounded shoulders and enhancing posture under loads.',
+    targetRegions: ['Upper Back', 'Scapula', 'Shoulders'],
+    equipment: ['Mat', 'Light Weights'],
+    sets: '3',
+    repsVal: '10-12',
+    repsLabel: 'REPS / SET',
+  },
+  'Side-Lying Shoulder External Rotation': {
+    benefits: 'Targets the rotator cuff (infraspinatus/teres minor) to improve humeral head control and alleviate shoulder impingement symptoms.',
+    targetRegions: ['Rotator Cuff', 'Shoulder Joint'],
+    equipment: ['Mat', 'Dumbbell'],
+    sets: '2',
+    repsVal: '10-15',
+    repsLabel: 'REPS / EACH SIDE',
+  },
+  'Suboccipital Release + Chin Nod': {
+    benefits: 'Releases tight neck muscles at the skull base and strengthens deep neck flexors to combat forward head posture.',
+    targetRegions: ['Neck Flexors', 'Suboccipitals', 'Cervical Spine'],
+    equipment: ['Mat', 'Lacrosse Ball'],
+    sets: '2',
+    repsVal: '10s',
+    repsLabel: 'HOLD / EACH REP',
+  },
+  'Serratus Wall Slide': {
+    benefits: 'Activates the serratus anterior to facilitate upward rotation and protraction of the shoulder blade, reducing clicking and pain.',
+    targetRegions: ['Serratus Anterior', 'Scapular Stabilizers'],
+    equipment: ['Wall', 'Foam Roller'],
+    sets: '3',
+    repsVal: '8-10',
+    repsLabel: 'REPS / SET',
+  },
+  'Side-Lying Low Trap Raise': {
+    benefits: 'Isolates the lower fibers of the trapezius. Crucial for overhead arm lifting mechanics and counteracting upper trap dominance.',
+    targetRegions: ['Lower Trapezius', 'Upper Back'],
+    equipment: ['Mat', 'Dumbbell'],
+    sets: '3',
+    repsVal: '10',
+    repsLabel: 'REPS / EACH SIDE',
+  },
+  'Short Foot Activation Hold': {
+    benefits: 'Builds intrinsic foot muscle strength, lifts the medial longitudinal arch, and improves knee alignment tracking from the ground up.',
+    targetRegions: ['Foot Arch', 'Ankle Stabilizers'],
+    equipment: ['None (Barefoot)'],
+    sets: '2',
+    repsVal: '10s',
+    repsLabel: 'HOLD / EACH REP',
+  },
+  'Standing Soleus Knee Bend Hold': {
+    benefits: 'Isolates the deep soleus calf muscle under bent knee alignment to improve ankle dorsiflexion mobility and stability.',
+    targetRegions: ['Soleus Muscle', 'Achilles Tendon', 'Ankle'],
+    equipment: ['Wall', 'Yoga Block'],
+    sets: '3',
+    repsVal: '30s',
+    repsLabel: 'HOLD / EACH SET',
+  },
+  'Single-Leg RNT Squat': {
+    benefits: 'Uses reactive neuromuscular training to correct knee valgus (caving in). Retrains optimal hip and knee tracking.',
+    targetRegions: ['Glutes', 'Knee Joint', 'Ankle'],
+    equipment: ['Resistance Band', 'Mat'],
+    sets: '3',
+    repsVal: '10',
+    repsLabel: 'REPS / EACH SIDE',
+  },
+};
 
 export default function ExerciseTrackerScreen() {
-  return <View />;
+  const theme = useTheme();
+  const router = useRouter();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    initialPhaseIndex?: string | string[];
+  }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const initialPhaseIndex = Array.isArray(params.initialPhaseIndex)
+    ? params.initialPhaseIndex[0]
+    : params.initialPhaseIndex;
+
+  const routine = ROUTINES.find((item) => item.id === id) ?? ROUTINES[0];
+  const parsedInitialIndex = Number.parseInt(initialPhaseIndex ?? '0', 10);
+  const safeInitialIndex = Number.isNaN(parsedInitialIndex)
+    ? 0
+    : Math.min(Math.max(parsedInitialIndex, 0), routine.phases.length - 1);
+
+  const [currentIdx, setCurrentIdx] = useState(safeInitialIndex);
+  const [currentSet, setCurrentSet] = useState(1);
+  const [repsCount, setRepsCount] = useState(10);
+  const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>([
+    { reps: 0, completed: false },
+    { reps: 0, completed: false },
+  ]);
+
+  // Timer states
+  const [isTimerVisible, setIsTimerVisible] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(45);
+  const [timerDuration, setTimerDuration] = useState(45);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+  const [isTimerStartedYet, setIsTimerStartedYet] = useState(false);
+  const [isDurationDropdownVisible, setIsDurationDropdownVisible] = useState(false);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+
+  const handleCloseVideo = () => {
+    videoPlayer.pause();
+    setIsVideoPlaying(false);
+  };
+
+  const handleOpenVideo = () => {
+    videoPlayer.currentTime = 0;
+    videoPlayer.play();
+    setIsVideoPlaying(true);
+  };
+
+  useEventListener(videoPlayer, 'playToEnd', handleCloseVideo);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isTimerVisible && isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds((prev) => {
+          if (prev <= 1) {
+            setIsTimerRunning(false);
+            setIsTimerVisible(false);
+            setIsTimerStartedYet(false);
+            // Move current set to next set (since it's complete)
+            if (currentSet < 2) {
+              setCurrentSet((prevSet) => prevSet + 1);
+            } else {
+              // Both sets completed
+              setCurrentSet(3);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerVisible, isTimerRunning, currentSet]);
+
+
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')}`;
+  };
+
+  const currentPhase = routine.phases[currentIdx] ?? routine.phases[0];
+  const upcomingPhase = routine.phases[currentIdx + 1];
+  const exerciseMetadata = EXERCISE_METADATA[currentPhase.name] ?? EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+
+  const handleLogSetPress = () => {
+    if (currentSet > 2) return;
+
+    // Log reps for the current set
+    setSetsData((prev) => {
+      const next = [...prev];
+      next[currentSet - 1] = { reps: repsCount, completed: true };
+      return next;
+    });
+
+    // Make timer visible in stopped mode, and set to selected duration
+    setTimerSeconds(timerDuration);
+    setIsTimerVisible(true);
+    setIsTimerRunning(false);
+    setIsTimerStartedYet(false);
+  };
+
+  const handleSkipTimer = () => {
+    setIsTimerVisible(false);
+    setIsTimerRunning(false);
+    setIsTimerStartedYet(false);
+
+    // Move to next set
+    if (currentSet < 2) {
+      setCurrentSet((prev) => prev + 1);
+    } else {
+      setCurrentSet(3);
+    }
+  };
+
+  const handleFinishTimer = () => {
+    setIsTimerVisible(false);
+    setIsTimerRunning(false);
+    setIsTimerStartedYet(false);
+
+    // Move to next set
+    if (currentSet < 2) {
+      setCurrentSet((prev) => prev + 1);
+    } else {
+      setCurrentSet(3);
+    }
+  };
+
+  const handleToggleTimer = () => {
+    if (!isTimerStartedYet) {
+      setIsTimerStartedYet(true);
+    }
+    const nextRunning = !isTimerRunning;
+    if (nextRunning) {
+      setIsDurationDropdownVisible(false);
+    }
+    setIsTimerRunning(nextRunning);
+  };
+
+  const handlePeriodChange = (period: number) => {
+    setTimerDuration(period);
+    setTimerSeconds(period);
+  };
+
+  const handleNextExercise = () => {
+    videoPlayer.pause();
+    setIsVideoPlaying(false);
+    if (currentIdx < routine.phases.length - 1) {
+      setCurrentIdx((prev) => prev + 1);
+      setCurrentSet(1);
+      setSetsData([
+        { reps: 0, completed: false },
+        { reps: 0, completed: false },
+      ]);
+      setRepsCount(10);
+      setIsTimerVisible(false);
+      setIsTimerRunning(false);
+      setIsTimerStartedYet(false);
+      return;
+    }
+
+    router.replace('/sessions');
+  };
+
+  const styles = createStyles(theme, isTimerRunning);
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <Header onBackPress={() => { videoPlayer.pause(); router.back(); }} showNotification />
+
+        {/* Learn the Exercise Modal */}
+        <Modal
+          visible={isDetailsVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setIsDetailsVisible(false)}
+        >
+          <TouchableOpacity
+            style={styles.detailsModalOverlay}
+            activeOpacity={1}
+            onPress={() => setIsDetailsVisible(false)}
+          >
+            <TouchableOpacity
+              activeOpacity={1}
+              style={styles.detailsModalContainer}
+              onPress={() => {}}
+            >
+              {/* Header */}
+              <View style={styles.detailsModalHeader}>
+                <Text style={styles.detailsModalTitle}>Learn the excercise</Text>
+                <TouchableOpacity onPress={() => setIsDetailsVisible(false)} activeOpacity={0.7}>
+                  <Feather name="x" size={20} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                {/* Benefits */}
+                <Text style={styles.detailsSectionHeader}>BENEFITS</Text>
+                <Text style={styles.detailsBenefitsText}>
+                  {exerciseMetadata.benefits}
+                </Text>
+
+                {/* Target Regions */}
+                <Text style={styles.detailsSectionHeader}>TARGET REGIONS</Text>
+                <View style={styles.tagsContainer}>
+                  {exerciseMetadata.targetRegions.map((region) => (
+                    <View key={region} style={styles.tagBadge}>
+                      <Text style={styles.tagText}>{region}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Equipment */}
+                <Text style={styles.detailsSectionHeader}>EQUIPMENT</Text>
+                <View style={styles.tagsContainer}>
+                  {exerciseMetadata.equipment.map((item) => (
+                    <View key={item} style={styles.tagBadge}>
+                      <Text style={styles.tagText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Grid cards */}
+                <View style={styles.detailsGridRow}>
+                  <View style={styles.detailsGridCard}>
+                    <Feather name="layers" size={20} color={theme.secondary} style={styles.gridCardIcon} />
+                    <Text style={styles.gridCardValue}>{exerciseMetadata.sets}</Text>
+                    <Text style={styles.gridCardLabel}>SETS</Text>
+                  </View>
+
+                  <View style={styles.detailsGridCard}>
+                    <Feather name="repeat" size={20} color={theme.secondary} style={styles.gridCardIcon} />
+                    <Text style={styles.gridCardValue}>{exerciseMetadata.repsVal}</Text>
+                    <Text style={styles.gridCardLabel}>{exerciseMetadata.repsLabel}</Text>
+                  </View>
+                </View>
+
+                {/* Watch Full Video Button */}
+                <TouchableOpacity
+                  style={styles.watchFullVideoBtn}
+                  onPress={() => {
+                    setIsDetailsVisible(false);
+                    handleOpenVideo();
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.watchFullVideoBtnText}>Watch Full Video</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+
+          <View style={styles.progressHeaderRow}>
+            <View>
+              <Text style={styles.progressStatusText}>PLAN IN PROGRESS</Text>
+              <Text style={styles.progressSubText}>
+                EXERCISE {currentIdx + 1} OF {routine.phases.length}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.exerciseMetaSection}>
+            <View style={styles.exerciseMetaRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.phaseLabel}>
+                  PHASE {currentIdx + 1}:{' '}
+                  <Text style={styles.phaseLabelHighlight}>
+                    {currentPhase.phase.toUpperCase()}
+                  </Text>
+                </Text>
+                <Text style={styles.exerciseTitle}>
+                  {currentPhase.name}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.detailsBtn}
+                onPress={() => setIsDetailsVisible(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.detailsBtnText}>DETAILS</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Video Preview Card */}
+          <View style={styles.videoCard}>
+            {isVideoPlaying ? (
+              <VideoView
+                player={videoPlayer}
+                contentFit="cover"
+                nativeControls
+                fullscreenOptions={{ enable: true }}
+                style={styles.video}
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.videoThumbnailButton}
+                activeOpacity={0.9}
+                onPress={handleOpenVideo}
+              >
+                <Image
+                  source={{ uri: DEMO_VIDEO_THUMBNAIL_URL }}
+                  style={styles.videoThumbnail}
+                />
+                <View style={styles.videoOverlay}>
+                  <View style={styles.playButtonCircle}>
+                    <Feather
+                      name="play"
+                      size={20}
+                      color="#FFF"
+                      style={{ marginLeft: 2 }}
+                    />
+                  </View>
+                </View>
+                <Text style={styles.videoLabel}>DEMO VIDEO</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* START SET Section */}
+          <Text style={styles.sectionHeader}>START SET</Text>
+          <View style={[styles.startSetCard, isTimerRunning && styles.disabledCard]}>
+            <Text style={styles.startSetTitle}>
+              Log Set {currentSet <= 2 ? currentSet : 2}
+            </Text>
+            <Text style={styles.startSetSubtitle}>Target: 2 Set - 10 Reps</Text>
+
+            <View style={styles.counterRow}>
+              <TouchableOpacity
+                style={styles.counterBtn}
+                disabled={isTimerRunning || currentSet > 2}
+                onPress={() => setRepsCount((prev) => Math.max(1, prev - 1))}
+              >
+                <Feather name="minus" size={20} color={isTimerRunning || currentSet > 2 ? theme.textSecondary : theme.text} />
+              </TouchableOpacity>
+
+              <View style={styles.repsCountContainer}>
+                <Text style={styles.repsCountNumber}>{repsCount.toString().padStart(2, '0')}</Text>
+                <Text style={styles.repsCountLabel}>REPS</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.counterBtn}
+                disabled={isTimerRunning || currentSet > 2}
+                onPress={() => setRepsCount((prev) => prev + 1)}
+              >
+                <Feather name="plus" size={20} color={isTimerRunning || currentSet > 2 ? theme.textSecondary : theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.logSetBtn,
+                (isTimerRunning || currentSet > 2) && styles.logSetBtnDisabled,
+              ]}
+              disabled={isTimerRunning || currentSet > 2}
+              onPress={handleLogSetPress}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.logSetBtnText}>Log Set</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Timer overlay / card */}
+          {isTimerVisible && (
+            <View style={styles.timerCard}>
+              <View style={styles.timerContentRow}>
+                <View style={styles.timerContentLeft}>
+                  <View style={styles.timerIconWrapper}>
+                    <Feather name="clock" size={20} color={theme.secondary} />
+                  </View>
+                  <View style={styles.timerTextContainer}>
+                    <Text style={styles.timerLabel}>REST TIMER</Text>
+                    <Text style={styles.timerText}>{formatTime(timerSeconds)}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.skipTimerBtn}
+                  onPress={handleSkipTimer}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.skipTimerBtnText}>Skip</Text>
+                  <Feather name="skip-forward" size={12} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.timerControlsRow}>
+                <TouchableOpacity
+                  style={[styles.durationSelect, isTimerRunning && styles.durationSelectDisabled]}
+                  disabled={isTimerRunning}
+                  onPress={() => setIsDurationDropdownVisible((prev) => !prev)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.durationSelectText}>{timerDuration} sec timer</Text>
+                  <Feather
+                    name={isDurationDropdownVisible ? 'chevron-up' : 'chevron-down'}
+                    size={14}
+                    color={theme.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.playBtn}
+                  onPress={handleToggleTimer}
+                  activeOpacity={0.8}
+                >
+                  <Feather
+                    name={isTimerRunning ? 'pause' : 'play'}
+                    size={20}
+                    color="#050B14"
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.stopBtn,
+                    !isTimerStartedYet && styles.stopBtnDisabled,
+                  ]}
+                  disabled={!isTimerStartedYet}
+                  onPress={handleFinishTimer}
+                  activeOpacity={0.8}
+                >
+                  <Feather
+                    name="square"
+                    size={16}
+                    color={isTimerStartedYet ? theme.text : theme.textSecondary}
+                  />
+                </TouchableOpacity>
+              </View>
+
+              {/* Inline Selection Dropdown Box */}
+              {isDurationDropdownVisible && (
+                <View style={styles.inlineDropdownBox}>
+                  {[30, 45, 60, 90].map((period, idx, arr) => (
+                    <TouchableOpacity
+                      key={period}
+                      style={[
+                        styles.inlineDropdownOption,
+                        timerDuration === period && styles.inlineDropdownOptionActive,
+                        idx === arr.length - 1 && { borderBottomWidth: 0 },
+                      ]}
+                      onPress={() => {
+                        handlePeriodChange(period);
+                        setIsDurationDropdownVisible(false);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.inlineDropdownOptionText,
+                          timerDuration === period && styles.inlineDropdownOptionTextActive,
+                        ]}
+                      >
+                        {period} sec timer
+                      </Text>
+                      {timerDuration === period && (
+                        <Feather name="check" size={14} color={theme.secondary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* SET BREAKDOWN Section */}
+          <Text style={styles.sectionHeader}>SET BREAKDOWN</Text>
+          <View style={styles.breakdownContainer}>
+            {setsData.map((item, index) => {
+              const setNum = index + 1;
+              const isActive = setNum === currentSet;
+
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.breakdownItem,
+                    isActive && styles.breakdownItemActive,
+                  ]}
+                >
+                  <View style={styles.breakdownLeft}>
+                    <View
+                      style={[
+                        styles.breakdownIconWrapper,
+                        item.completed && styles.breakdownIconWrapperCompleted,
+                        isActive && styles.breakdownIconWrapperActive,
+                      ]}
+                    >
+                      {item.completed ? (
+                        <Feather name="check" size={12} color="#10B981" />
+                      ) : isActive ? (
+                        <Feather name="clock" size={12} color="#22D3EE" />
+                      ) : (
+                        <Feather name="circle" size={12} color={theme.textSecondary} />
+                      )}
+                    </View>
+
+                    <View>
+                      <Text style={styles.breakdownTitle}>Set {setNum}</Text>
+                      <Text style={styles.breakdownStatus}>
+                        {item.completed ? 'COMPLETED' : isActive ? 'CURRENT PHASE' : 'PENDING'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text style={styles.breakdownReps}>
+                    {item.completed ? item.reps.toString().padStart(2, '0') : '00'}/10
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Upcoming Section */}
+          <Text style={styles.upcomingHeader}>UPCOMING</Text>
+          {upcomingPhase ? (
+            <View style={styles.upcomingCard}>
+              <View style={styles.upcomingInfo}>
+                <Text style={styles.upcomingPhaseType}>
+                  PHASE : {upcomingPhase.phase.toUpperCase()}
+                </Text>
+                <Text style={styles.upcomingName} numberOfLines={1}>
+                  {upcomingPhase.name}
+                </Text>
+              </View>
+              <View style={styles.nextBadge}>
+                <Text style={styles.nextBadgeText}>NEXT</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.upcomingCard}>
+              <View style={styles.upcomingInfo}>
+                <Text style={styles.upcomingPhaseType}>ROUTINE COMPLETE NEXT</Text>
+                <Text style={styles.upcomingName}>Finish up and log your routine</Text>
+              </View>
+              <View style={styles.nextBadge}>
+                <Text style={styles.nextBadgeText}>END</Text>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Footer next exercise button */}
+        <View style={styles.footerRow}>
+          <TouchableOpacity
+            style={[
+              styles.nextExerciseBtn,
+              isTimerRunning && styles.nextExerciseBtnDisabled,
+            ]}
+            disabled={isTimerRunning}
+            onPress={handleNextExercise}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.nextExerciseBtnText}>
+              {currentIdx < routine.phases.length - 1 ? 'Next Exercise' : 'Finish Routine'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
 }
+
+const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingHorizontal: 24,
+      paddingTop: 20,
+      paddingBottom: 100,
+    },
+    backContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    backIcon: {
+      marginRight: 8,
+    },
+    backText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.tertiary,
+    },
+    progressHeaderRow: {
+      marginBottom: 16,
+    },
+    progressStatusText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 1.2,
+      marginBottom: 4,
+    },
+    progressSubText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    exerciseMetaSection: {
+      marginBottom: 16,
+    },
+    exerciseMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    phaseLabel: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    phaseLabelHighlight: {
+      color: '#C084FC',
+    },
+    exerciseTitle: {
+      fontSize: 22,
+      fontWeight: '800',
+      color: theme.text,
+      letterSpacing: -0.5,
+      lineHeight: 28,
+    },
+    detailsBtn: {
+      alignSelf: 'flex-start',
+      marginTop: 2,
+    },
+    detailsBtnText: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 0.5,
+    },
+    videoCard: {
+      width: '100%',
+      height: 200,
+      borderRadius: 16,
+      overflow: 'hidden',
+      position: 'relative',
+      marginBottom: 24,
+      backgroundColor: '#1E2633',
+    },
+    videoThumbnail: {
+      width: '100%',
+      height: '100%',
+    },
+    video: {
+      width: '100%',
+      height: '100%',
+    },
+    videoThumbnailButton: {
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+    },
+    videoOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    playButtonCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: theme.secondary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    videoLabel: {
+      position: 'absolute',
+      top: 12,
+      left: 12,
+      fontSize: 8,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      letterSpacing: 0.8,
+    },
+    sectionHeader: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 1,
+      marginBottom: 10,
+    },
+    startSetCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 20,
+      marginBottom: 24,
+      alignItems: 'center',
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.15,
+      shadowRadius: 4,
+    },
+    disabledCard: {
+      opacity: 0.5,
+    },
+    startSetTitle: {
+      fontSize: 18,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    startSetSubtitle: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      marginBottom: 20,
+    },
+    counterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 32,
+      marginBottom: 24,
+    },
+    counterBtn: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      backgroundColor: theme.inputBackground,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    repsCountContainer: {
+      alignItems: 'center',
+      minWidth: 80,
+    },
+    repsCountNumber: {
+      fontSize: 32,
+      fontWeight: '800',
+      color: theme.secondary,
+    },
+    repsCountLabel: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.5,
+      marginTop: 2,
+    },
+    logSetBtn: {
+      width: '100%',
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    logSetBtnDisabled: {
+      borderColor: theme.cardBorder,
+    },
+    logSetBtnText: {
+      color: theme.text,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    timerCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 16,
+      marginBottom: 24,
+      elevation: 1,
+      shadowColor: theme.text,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+    },
+    timerContentRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    timerContentLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    skipTimerBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: theme.inputBackground,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+    },
+    skipTimerBtnText: {
+      fontSize: 11,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.5,
+    },
+    timerIconWrapper: {
+      width: 48,
+      height: 48,
+      borderRadius: 12,
+      backgroundColor: theme.inputBackground,
+      borderWidth: 1.5,
+      borderColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timerTextContainer: {
+      justifyContent: 'center',
+    },
+    timerLabel: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.8,
+      marginBottom: 2,
+    },
+    timerText: {
+      fontSize: 24,
+      fontWeight: '900',
+      color: theme.secondary,
+    },
+    timerControlsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      marginTop: 16,
+    },
+    durationSelect: {
+      flex: 1,
+      height: 48,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      backgroundColor: theme.inputBackground,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    },
+    durationSelectDisabled: {
+      opacity: 0.6,
+    },
+    durationSelectText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    playBtn: {
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+      backgroundColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    stopBtn: {
+      width: 48,
+      height: 48,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: theme.text,
+      backgroundColor: 'transparent',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    stopBtnDisabled: {
+      borderColor: theme.inputBorder,
+    },
+    inlineDropdownBox: {
+      marginTop: 12,
+      backgroundColor: theme.inputBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      overflow: 'hidden',
+    },
+    inlineDropdownOption: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.inputBorder,
+    },
+    inlineDropdownOptionActive: {
+      backgroundColor: theme.backgroundSelected,
+    },
+    inlineDropdownOptionText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
+    inlineDropdownOptionTextActive: {
+      color: theme.secondary,
+      fontWeight: '700',
+    },
+
+    breakdownContainer: {
+      marginBottom: 24,
+      gap: 12,
+    },
+    breakdownItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 16,
+      padding: 16,
+    },
+    breakdownItemActive: {
+      borderColor: theme.secondary,
+    },
+    breakdownLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    breakdownIconWrapper: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: theme.inputBackground,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    breakdownIconWrapperCompleted: {
+      backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    },
+    breakdownIconWrapperActive: {
+      backgroundColor: theme.secondary + '1A',
+    },
+    breakdownTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+      marginBottom: 2,
+    },
+    breakdownStatus: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.5,
+    },
+    breakdownReps: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: theme.text,
+    },
+    upcomingHeader: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 1,
+      marginBottom: 10,
+    },
+    upcomingCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 20,
+    },
+    upcomingInfo: {
+      flex: 1,
+      paddingRight: 12,
+    },
+    upcomingPhaseType: {
+      fontSize: 8,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    upcomingName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    nextBadge: {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.08)',
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+    },
+    nextBadgeText: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.5,
+    },
+    footerRow: {
+      paddingHorizontal: 24,
+      paddingVertical: 16,
+      backgroundColor: theme.background,
+      borderTopWidth: 1,
+      borderTopColor: theme.cardBorder,
+    },
+    nextExerciseBtn: {
+      width: '100%',
+      height: 50,
+      borderRadius: 14,
+      backgroundColor: '#1D4ED8', // Solid deep blue
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: '#1D4ED8',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.3,
+      shadowRadius: 6,
+      elevation: 4,
+    },
+    nextExerciseBtnDisabled: {
+      backgroundColor: theme.inputBackground,
+      shadowColor: 'transparent',
+      elevation: 0,
+      opacity: 0.5,
+    },
+    nextExerciseBtnText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    detailsModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.75)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+    },
+    detailsModalContainer: {
+      width: '100%',
+      backgroundColor: theme.cardBackground,
+      borderRadius: 24,
+      padding: 24,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      maxHeight: '85%',
+    },
+    detailsModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 20,
+    },
+    detailsModalTitle: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: theme.text,
+    },
+    detailsSectionHeader: {
+      fontSize: 10,
+      fontWeight: '800',
+      color: theme.secondary,
+      letterSpacing: 1.0,
+      marginBottom: 12,
+      marginTop: 18,
+    },
+    detailsBenefitsText: {
+      fontSize: 14,
+      color: theme.text,
+      lineHeight: 22,
+      opacity: 0.9,
+    },
+    tagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    tagBadge: {
+      backgroundColor: theme.backgroundSelected,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+    },
+    tagText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    detailsGridRow: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 20,
+      marginBottom: 24,
+    },
+    detailsGridCard: {
+      flex: 1,
+      backgroundColor: theme.inputBackground,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      borderRadius: 16,
+      padding: 16,
+      alignItems: 'center',
+    },
+    gridCardIcon: {
+      marginBottom: 8,
+    },
+    gridCardValue: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 4,
+    },
+    gridCardLabel: {
+      fontSize: 9,
+      fontWeight: '800',
+      color: theme.textSecondary,
+      letterSpacing: 0.5,
+    },
+    watchFullVideoBtn: {
+      width: '100%',
+      height: 48,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 12,
+    },
+    watchFullVideoBtnText: {
+      color: theme.secondary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+
+  });

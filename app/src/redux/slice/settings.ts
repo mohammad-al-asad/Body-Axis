@@ -4,11 +4,15 @@ import { Appearance } from 'react-native';
 interface SettingsState {
   theme: 'light' | 'dark';
   firstTime: boolean;
+  hasSeenIntroduction: boolean;
+  localIsPremium: boolean;
 }
 
 const initialState: SettingsState = {
   theme: Appearance.getColorScheme() === 'light' ? 'light' : 'dark',
   firstTime: true,
+  hasSeenIntroduction: false,
+  localIsPremium: false,
 };
 
 export const settingsSlice = createSlice({
@@ -24,8 +28,14 @@ export const settingsSlice = createSlice({
     completeOnboarding: (state) => {
       state.firstTime = false;
     },
+    completeIntroduction: (state) => {
+      state.hasSeenIntroduction = true;
+    },
+    setLocalIsPremium: (state, action: PayloadAction<boolean>) => {
+      state.localIsPremium = action.payload;
+    },
   },
 });
 
-export const { setTheme, toggleTheme, completeOnboarding } = settingsSlice.actions;
+export const { setTheme, toggleTheme, completeOnboarding, completeIntroduction, setLocalIsPremium } = settingsSlice.actions;
 export default settingsSlice.reducer;
