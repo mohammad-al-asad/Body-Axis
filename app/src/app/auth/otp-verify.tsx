@@ -7,10 +7,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { OtpInput, OtpInputRef } from 'react-native-otp-entry';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
@@ -33,7 +33,6 @@ import { otpVerifySchema, type OtpVerifyFormValues } from '@/validation/auth';
 import { CustomButton } from '@/components/ui/CustomButton';
 
 const otpLength = 4;
-const otpIndexes = Array.from({ length: otpLength }, (_, index) => index);
 
 function getParam(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
@@ -53,12 +52,11 @@ export default function OTPVerifyScreen() {
   const purpose: OtpPurpose =
     purposeParam === 'email_verify' ? 'email_verify' : 'forgot_password';
 
-  const [otp, setOtp] = useState<string[]>(Array(otpLength).fill(''));
   const [timer, setTimer] = useState(59);
   const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
   const [requestOtp, { isLoading: isResending }] = useRequestOtpMutation();
 
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const otpRef = useRef<OtpInputRef>(null);
 
   const {
     handleSubmit,
@@ -82,47 +80,19 @@ export default function OTPVerifyScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleChangeText = (text: string, index: number) => {
-    const cleanText = text.replace(/[^0-9]/g, '').slice(0, otpLength - index);
-    const newOtp = otpIndexes.map((otpIndex) => otp[otpIndex] ?? '');
-
-    if (cleanText.length > 1) {
-      cleanText.split('').forEach((digit, offset) => {
-        if (index + offset < otpLength) {
-          newOtp[index + offset] = digit;
-        }
-      });
-    } else {
-      newOtp[index] = cleanText;
-    }
-
-    setOtp(newOtp);
-    setValue('otpCode', newOtp.join(''), {
+  const handleOtpChange = (text: string) => {
+    setValue('otpCode', text, {
       shouldDirty: true,
       shouldValidate: true,
     });
-
-    if (cleanText.length > 0) {
-      const nextIndex = Math.min(index + cleanText.length, otpLength - 1);
-      inputRefs.current[nextIndex]?.focus();
-    }
-  };
-
-  const handleKeyPress = (e: any, index: number) => {
-    // Backspace to return to previous input cell
-    if (e.nativeEvent.key === 'Backspace' && otp[index] === '' && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
   };
 
   const clearOtp = () => {
-    const emptyOtp = Array(otpLength).fill('');
-    setOtp(emptyOtp);
+    otpRef.current?.clear();
     setValue('otpCode', '', {
       shouldDirty: true,
       shouldValidate: true,
     });
-    inputRefs.current[0]?.focus();
   };
 
   const handleResend = async () => {
@@ -216,26 +186,21 @@ export default function OTPVerifyScreen() {
                 </Text>
 
                 {/* 4-Digit OTP Grid */}
-                <View style={styles.otpGrid}>
-                  {otpIndexes.map((index) => (
-                    <View key={index} style={styles.otpInputWrapper}>
-                      <TextInput
-                        ref={(ref) => {
-                          inputRefs.current[index] = ref;
-                        }}
-                        style={styles.otpInput}
-                        keyboardType="number-pad"
-                        maxLength={1}
-                        value={otp[index] ?? ''}
-                        onChangeText={(text) => handleChangeText(text, index)}
-                        onKeyPress={(e) => handleKeyPress(e, index)}
-                        placeholderTextColor="#3A4D62"
-                        placeholder="-"
-                        textAlign="center"
-                      />
-                    </View>
-                  ))}
-                </View>
+                {/* 4-Digit OTP Entry */}
+                <OtpInput
+                  ref={otpRef}
+                  numberOfDigits={otpLength}
+                  onTextChange={handleOtpChange}
+                  focusColor={theme.secondary}
+                  theme={{
+                    containerStyle: styles.otpContainer,
+                    inputsContainerStyle: styles.otpInputsContainer,
+                    pinCodeContainerStyle: styles.otpPinCodeContainer,
+                    pinCodeTextStyle: styles.otpPinCodeText,
+                    focusStickStyle: styles.otpFocusStick,
+                    focusedPinCodeContainerStyle: styles.otpFocusedPinCodeContainer,
+                  }}
+                />
                 {errors.otpCode?.message && (
                   <Text style={styles.errorText}>{errors.otpCode.message}</Text>
                 )}
@@ -355,14 +320,17 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  otpGrid: {
+  otpContainer: {
+    width: '100%',
+    marginBottom: 24,
+  },
+  otpInputsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
     paddingHorizontal: 10,
-    marginBottom: 24,
   },
-  otpInputWrapper: {
+  otpPinCodeContainer: {
     backgroundColor: theme.inputBackground,
     borderRadius: 12,
     borderWidth: 1,
@@ -372,12 +340,20 @@ const createStyles = (theme: ReturnType<typeof useTheme>) => StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  otpInput: {
+  otpPinCodeText: {
     color: theme.text,
     fontSize: 22,
     fontWeight: '700',
-    width: '100%',
-    height: '100%',
+    textAlign: 'center',
+  },
+  otpFocusStick: {
+    backgroundColor: theme.secondary,
+    width: 2,
+    height: 24,
+  },
+  otpFocusedPinCodeContainer: {
+    borderColor: theme.secondary,
+    borderWidth: 1.5,
   },
   passwordFields: {
     width: '100%',

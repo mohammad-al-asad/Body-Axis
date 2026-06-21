@@ -10,6 +10,8 @@ import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 
 function RootStack() {
   const firstTime = useSelector((state: RootState) => state.settings.firstTime);
+  const hasSeenIntroduction = useSelector((state: RootState) => state.settings.hasSeenIntroduction);
+  const localIsPremium = useSelector((state: RootState) => state.settings.localIsPremium);
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -28,7 +30,8 @@ function RootStack() {
     );
   }
 
-  const hasActiveSubscription = isEmailVerified && !!subscription?.active;
+  const hasActiveSubscription = isEmailVerified && (!!subscription?.active || localIsPremium);
+  const isFullyReady = hasActiveSubscription && hasSeenIntroduction;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -37,13 +40,13 @@ function RootStack() {
         <Stack.Screen name="onboarding" />
       </Stack.Protected>
 
-      {/* Auth route — accessible when not authenticated, or authenticated but not fully subscribed */}
-      <Stack.Protected guard={(!isAuthenticated && !firstTime) || (isAuthenticated && !hasActiveSubscription)}>
+      {/* Auth route — accessible when not authenticated, or authenticated but not fully ready for main app */}
+      <Stack.Protected guard={(!isAuthenticated && !firstTime) || (isAuthenticated && !isFullyReady)}>
         <Stack.Screen name="auth" />
       </Stack.Protected>
 
-      {/* Main app — authenticated with verified email and active subscription */}
-      <Stack.Protected guard={hasActiveSubscription}>
+      {/* Main app — authenticated with verified email, active subscription, and has seen introduction */}
+      <Stack.Protected guard={isFullyReady}>
         <Stack.Screen name="(tab)" />
       </Stack.Protected>
     </Stack>

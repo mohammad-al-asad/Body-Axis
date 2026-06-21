@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
   Modal,
   StyleSheet,
   Text,
@@ -32,12 +33,24 @@ export function CustomSheet<T>({
   onSelect,
 }: CustomSheetProps<T>) {
   const theme = useTheme();
+  const slideAnim = useRef(new Animated.Value(300)).current;
+
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(300);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
 
   return (
     <Modal
       visible={visible}
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <TouchableOpacity
@@ -45,12 +58,13 @@ export function CustomSheet<T>({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View
+        <Animated.View
           style={[
             styles.modalContent,
             {
               backgroundColor: theme.cardBackground,
               borderColor: theme.cardBorder,
+              transform: [{ translateY: slideAnim }],
             },
           ]}
         >
@@ -90,7 +104,7 @@ export function CustomSheet<T>({
               </TouchableOpacity>
             );
           })}
-        </View>
+        </Animated.View>
       </TouchableOpacity>
     </Modal>
   );
