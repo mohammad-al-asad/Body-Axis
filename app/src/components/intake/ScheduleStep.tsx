@@ -171,32 +171,6 @@ export function ScheduleStep({
               <Text style={styles.summaryText}>{sessionDuration} Min Session</Text>
             </View>
           </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.summaryFooter}>
-            <View>
-              <Text style={styles.efficiencyLabel}>EFFICIENCY</Text>
-              <Text style={styles.efficiencyValue}>{efficiency}% Efficiency</Text>
-            </View>
-            <View style={styles.ringWrapper}>
-              <Svg width={40} height={40} viewBox="0 0 40 40">
-                <Circle cx="20" cy="20" r="16" stroke={theme.inputBorder} strokeWidth="3.5" fill="none" />
-                <Circle
-                  cx="20"
-                  cy="20"
-                  r="16"
-                  stroke={theme.secondary}
-                  strokeWidth="3.5"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 16}`}
-                  strokeDashoffset={`${2 * Math.PI * 16 * (1 - efficiency / 100)}`}
-                  strokeLinecap="round"
-                  transform="rotate(-90 20 20)"
-                />
-              </Svg>
-            </View>
-          </View>
         </View>
 
         {/* Optimal Movement Pace Banner */}
