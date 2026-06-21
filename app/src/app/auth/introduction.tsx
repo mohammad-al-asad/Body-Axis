@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
-  Dimensions,
   Image,
   ScrollView,
   StyleSheet,
@@ -11,18 +10,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
+import { useEventListener } from 'expo';
 import { router } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useDispatch } from 'react-redux';
 
 import { useTheme, useThemeState } from '@/hooks/use-theme';
+import { AuthHeader } from '@/components/ui/AuthHeader';
+import { completeIntroduction } from '@/redux/slice/settings';
+import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
 
 export default function IntroductionScreen() {
   const theme = useTheme();
   const themeState = useThemeState();
   const styles = createStyles(theme, themeState);
-
-  const handleBack = () => {
-    router.replace('/');
-  };
+  const dispatch = useDispatch();
 
   const handleHelp = () => {
     Alert.alert(
@@ -31,61 +33,76 @@ export default function IntroductionScreen() {
     );
   };
 
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const videoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+
+  useEventListener(videoPlayer, 'playToEnd', () => {
+    videoPlayer.pause();
+    setIsVideoPlaying(false);
+  });
+
   const handleWatchIntroduction = () => {
-    // Play video simulation or navigate directly to home
-    router.replace('/');
+    videoPlayer.currentTime = 0;
+    videoPlayer.play();
+    setIsVideoPlaying(true);
   };
 
   const handleSkip = () => {
-    router.replace('/');
+    videoPlayer.pause();
+    dispatch(completeIntroduction());
+  };
+
+  const handleBack = () => {
+    videoPlayer.pause();
+    router.back();
   };
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="arrow-left" size={22} color={theme.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Body Axis™</Text>
-          <TouchableOpacity onPress={handleHelp} style={styles.headerBtn} activeOpacity={0.7}>
-            <Feather name="help-circle" size={22} color={theme.textSecondary} />
-          </TouchableOpacity>
-        </View>
+        <AuthHeader onHelpPress={handleHelp} onBackPress={handleBack} showShadow />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {/* Welcome Title & Subtitle */}
           <View style={styles.welcomeContainer}>
             <Text style={styles.welcomeTitle}>Welcome to Body Axis™</Text>
             <Text style={styles.welcomeSubtitle}>
-              Your transformation starts with understanding how your body moves. Let's begin.
+              Your transformation starts with understanding how your body moves. Let’s begin.
             </Text>
           </View>
 
-          {/* Video Preview Card */}
-          <TouchableOpacity
-            style={styles.videoCard}
-            activeOpacity={0.9}
-            onPress={handleWatchIntroduction}
-          >
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=600&q=80',
-              }}
-              style={styles.videoThumbnail}
-            />
-            {/* Play Button Overlay */}
-            <View style={styles.playButtonWrapper}>
-              <View style={styles.playButtonInner}>
-                <Feather name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
-              </View>
-            </View>
-            {/* Duration Badge */}
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>3:45</Text>
-            </View>
-          </TouchableOpacity>
+          {/* Inline Video Preview */}
+          <View style={styles.videoCard}>
+            {isVideoPlaying ? (
+              <VideoView
+                player={videoPlayer}
+                contentFit="cover"
+                nativeControls={false}
+                style={styles.inlineVideo}
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.videoThumbnailButton}
+                activeOpacity={0.9}
+                onPress={handleWatchIntroduction}
+              >
+                <Image
+                  source={{
+                    uri: DEMO_VIDEO_THUMBNAIL_URL,
+                  }}
+                  style={styles.videoThumbnail}
+                />
+                <View style={styles.playButtonWrapper}>
+                  <View style={styles.playButtonInner}>
+                    <Feather name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                  </View>
+                </View>
+                <View style={styles.durationBadge}>
+                  <Text style={styles.durationText}>1:13</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {/* Message Card from Christina */}
           <View style={styles.messageCard}>
@@ -95,7 +112,8 @@ export default function IntroductionScreen() {
             </View>
             <Text style={styles.messageTitle}>Precision in every movement.</Text>
             <Text style={styles.messageQuote}>
-              "I built Body Axis™ to bridge the gap between hard work and scientific mobility. We don't just track reps; we track how your joints interact with the world."
+              “I built Body Axis™ to bridge the gap between hard work and scientific mobility. We
+              don’t just track reps; we track how your joints interact with the world.”
             </Text>
           </View>
 
@@ -107,7 +125,7 @@ export default function IntroductionScreen() {
               onPress={handleWatchIntroduction}
             >
               <Text style={styles.watchBtnText}>Watch Introduction</Text>
-              <Feather name="arrow-right" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+              <Feather name="play" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -133,27 +151,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     safeArea: {
       flex: 1,
     },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 20,
-      height: 56,
-      borderBottomWidth: 1,
-      borderBottomColor: themeState === 'dark' ? '#111827' : 'rgba(0, 0, 0, 0.05)',
-    },
-    headerBtn: {
-      width: 40,
-      height: 40,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: theme.secondary,
-      letterSpacing: -0.5,
-    },
+
     scrollContent: {
       paddingHorizontal: 24,
       paddingTop: 24,
@@ -182,6 +180,10 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       position: 'relative',
       marginBottom: 24,
       backgroundColor: '#1E2633',
+    },
+    videoThumbnailButton: {
+      width: '100%',
+      height: '100%',
     },
     videoThumbnail: {
       width: '100%',
@@ -290,5 +292,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       color: theme.text,
       fontSize: 15,
       fontWeight: '700',
+    },
+    inlineVideo: {
+      width: '100%',
+      height: '100%',
     },
   });

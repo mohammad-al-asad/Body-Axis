@@ -5,6 +5,7 @@ import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 
 export default function AuthLayout() {
   const firstTime = useSelector((state: RootState) => state.settings.firstTime);
+  const hasSeenIntroduction = useSelector((state: RootState) => state.settings.hasSeenIntroduction);
   const isAuthenticated = useSelector(
     (state: RootState) => state.auth.isAuthenticated,
   );
@@ -14,7 +15,8 @@ export default function AuthLayout() {
     skip: !isAuthenticated,
   });
 
-  const hasActiveSubscription = isAuthenticated && !!subscription?.active;
+  const localIsPremium = useSelector((state: RootState) => state.settings.localIsPremium);
+  const hasActiveSubscription = isAuthenticated && (!!subscription?.active || localIsPremium);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -40,7 +42,15 @@ export default function AuthLayout() {
       >
         <Stack.Screen name="premium" />
       </Stack.Protected>
+
+      {/* Introduction screen for subscribed users who haven't seen it yet */}
+      <Stack.Protected
+        guard={
+          hasActiveSubscription && !hasSeenIntroduction
+        }
+      >
         <Stack.Screen name="introduction" />
+      </Stack.Protected>
     </Stack>
   );
 }

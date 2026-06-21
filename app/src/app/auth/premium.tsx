@@ -13,6 +13,7 @@ import { router } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import Purchases, { PurchasesOffering } from 'react-native-purchases';
 import { logout } from '@/redux/slice/auth';
+import { setLocalIsPremium } from '@/redux/slice/settings';
 
 import { useTheme } from '@/hooks/use-theme';
 import { CustomButton } from '@/components/ui/CustomButton';
@@ -95,6 +96,10 @@ export default function PremiumScreen() {
 
   const handleStartJourney = async () => {
     if (hasPremium) {
+      dispatch(setLocalIsPremium(true));
+      syncSubscriptionStatus().unwrap().catch((error) => {
+        console.warn('Backend subscription sync failed', error);
+      });
       router.replace('/auth/introduction');
       return;
     }
@@ -134,6 +139,7 @@ export default function PremiumScreen() {
       }
 
       setHasPremium(true);
+      dispatch(setLocalIsPremium(true));
       syncSubscriptionStatus().unwrap().catch((error) => {
         console.warn('Backend subscription sync failed', error);
       });
@@ -179,11 +185,12 @@ export default function PremiumScreen() {
       }
 
       setHasPremium(true);
+      dispatch(setLocalIsPremium(true));
       syncSubscriptionStatus().unwrap().catch((error) => {
         console.warn('Backend subscription sync failed', error);
       });
 
-      router.replace('/introduction');
+      router.replace('/auth/introduction');
     } catch (error) {
       const message = getRevenueCatErrorMessage(error);
       if (message) {

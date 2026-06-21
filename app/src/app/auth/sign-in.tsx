@@ -53,7 +53,7 @@ export default function SignInScreen() {
     );
 
     if (!response.user.email_verified) {
-      router.replace({
+      router.push({
         pathname: '/auth/otp-verify',
         params: {
           email: response.user.email,
@@ -63,7 +63,7 @@ export default function SignInScreen() {
       return;
     }
 
-    router.replace('/auth/premium');
+    router.navigate('/auth/premium');
   };
 
   const handleGoogleSignIn = async () => {
