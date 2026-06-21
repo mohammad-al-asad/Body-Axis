@@ -45,7 +45,7 @@ export function HomeOnboarding() {
 
         {/* Hero Centered Wording */}
         <View style={styles.heroTextContainer}>
-          <Text style={styles.heroTitle}>Welcome to Body Axis.</Text>
+          <Text style={styles.heroTitle}>Welcome to Body Axis™.</Text>
           <Text style={styles.heroSubtitle}>
             Let's build your personalized movement plan so you can move better, feel better, live better.
           </Text>
