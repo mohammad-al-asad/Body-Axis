@@ -17,6 +17,7 @@ class AdminResponse(BaseModel):
     id: str
     name: str
     email: EmailStr
+    avatar_url: str | None = None
     notification_settings: AdminNotificationSettings
     two_factor_authentication: bool
     active: bool

@@ -25,7 +25,9 @@ const parseResponse = async (response) => {
 
 const request = async (path, options = {}, authenticated = false) => {
   const headers = new Headers(options.headers || {});
-  headers.set("Content-Type", "application/json");
+  if (!(options.body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
   if (authenticated) {
     const token = localStorage.getItem("admin_access_token");
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -55,6 +57,15 @@ export const adminApi = {
       body: JSON.stringify({ email, password }),
     }),
   getProfile: () => request("/admin/me", {}, true),
+  getDashboard: ({ granularity, startDate, endDate }) => {
+    const params = new URLSearchParams({
+      granularity,
+      start_date: startDate,
+      end_date: endDate,
+    });
+    return request(`/admin/dashboard?${params}`, {}, true);
+  },
+  getSubscriptions: () => request("/admin/subscriptions", {}, true),
   updateProfile: (payload) =>
     request(
       "/admin/me",
@@ -73,6 +84,18 @@ export const adminApi = {
       },
       true,
     ),
+  updateAvatar: (file) => {
+    const body = new FormData();
+    body.append("avatar", file);
+    return request(
+      "/admin/avatar",
+      {
+        method: "PUT",
+        body,
+      },
+      true,
+    );
+  },
 };
 
 export const storeAdminSession = (authResponse) => {

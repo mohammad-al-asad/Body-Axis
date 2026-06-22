@@ -1,7 +1,9 @@
 import React from 'react';
-import { TrendingUp } from 'lucide-react';
+import { TrendingDown, TrendingUp } from 'lucide-react';
 
-const StatsCard = ({ title, value, change, icon: Icon, bgIcon: BgIcon }) => {
+const StatsCard = ({ title, value, change, changeValue, icon: Icon, bgIcon: BgIcon }) => {
+  const isNegative = Number(changeValue) < 0;
+  const TrendIcon = isNegative ? TrendingDown : TrendingUp;
   return (
     <div className="bg-[#131B2F] p-5 rounded-2xl shadow-sm border border-[#1E293B] flex flex-col justify-between h-[140px] relative overflow-hidden group hover:border-[#334155] transition-colors">
       {/* Background Watermark Icon */}
@@ -17,8 +19,12 @@ const StatsCard = ({ title, value, change, icon: Icon, bgIcon: BgIcon }) => {
           {React.isValidElement(Icon) ? Icon : Icon && <Icon size={20} strokeWidth={2} />}
         </div>
         {change && (
-          <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#10B981]/15 border border-[#10B981]/25 text-[#10B981]">
-            <TrendingUp size={12} strokeWidth={3} />
+          <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full border ${
+            isNegative
+              ? 'bg-[#EF4444]/15 border-[#EF4444]/25 text-[#F87171]'
+              : 'bg-[#10B981]/15 border-[#10B981]/25 text-[#10B981]'
+          }`}>
+            <TrendIcon size={12} strokeWidth={3} />
             <span className="text-[11px] font-bold">{change}</span>
           </div>
         )}

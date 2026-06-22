@@ -1,152 +1,184 @@
-import React, { useState } from 'react';
-import { Download } from 'lucide-react';
-import MetricCards from '../../Components/Subscription/MetricCards';
-import ActivePlans from '../../Components/Subscription/ActivePlans';
-import RecentActivity from '../../Components/Subscription/RecentActivity';
-import RevenueGrowth from '../../Components/Subscription/RevenueGrowth';
-import SubscriptionTable from '../../Components/Subscription/SubscriptionTable';
+import React, { useEffect, useState } from 'react';
+import { AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
-const mockSubscriptions = [
-  {
-    id: 1,
-    name: 'Sophia Roberts',
-    email: 'sophia.r@example.com',
-    plan: 'Yearly Elite',
-    date: 'Dec 12, 2024',
-    payment: '•••• 4242',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    name: 'Jordan Smith',
-    email: 'j.smith@corp.com',
-    plan: 'Monthly Basic',
-    date: 'Oct 18, 2024',
-    payment: 'PayPal',
-    status: 'Active'
-  },
-  {
-    id: 3,
-    name: 'Alice Thompson',
-    email: 'alice.t@wellness.org',
-    plan: 'Yearly Elite',
-    date: 'Sep 05, 2024',
-    payment: '•••• 9901',
-    status: 'Active'
-  },
-  {
-    id: 4,
-    name: 'Liam Carter',
-    email: 'liam@creativestudio.io',
-    plan: 'Monthly Elite',
-    date: 'Oct 02, 2024',
-    payment: '•••• 5112',
-    status: 'Cancelled'
-  }
-];
+import ActivePlans from '../../Components/Subscription/ActivePlans';
+import MetricCards from '../../Components/Subscription/MetricCards';
+import RecentActivity from '../../Components/Subscription/RecentActivity';
+import RevenueGrowth from '../../Components/Subscription/RevenueGrowth';
+import SubscriptionTable from '../../Components/Subscription/SubscriptionTable';
+import { adminApi } from '../../services/adminApi';
 
 const SubscriptionManagement = () => {
   const [filterStatus, setFilterStatus] = useState('All Subs');
   const [filterPlanType, setFilterPlanType] = useState('Plan Type');
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Apply filters
-  const filteredSubscriptions = mockSubscriptions.filter(sub => {
-    const statusMatch = filterStatus === 'All Subs' || sub.status.toLowerCase() === filterStatus.toLowerCase();
-    const planMatch = filterPlanType === 'Plan Type' || sub.plan === filterPlanType;
-    return statusMatch && planMatch;
+  const loadSubscriptions = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setAnalytics(await adminApi.getSubscriptions());
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubscriptions();
+  }, []);
+
+  const subscriptions = analytics?.subscriptions || [];
+  const planOptions = [
+    ...new Set(
+      subscriptions
+        .map((subscription) => subscription.plan_name)
+        .filter(Boolean),
+    ),
+  ];
+  const filteredSubscriptions = subscriptions.filter((subscription) => {
+    const statusMatches =
+      filterStatus === 'All Subs' ||
+      subscription.status.toLowerCase() === filterStatus.toLowerCase();
+    const planMatches =
+      filterPlanType === 'Plan Type' ||
+      subscription.plan_name === filterPlanType;
+    return statusMatches && planMatches;
   });
 
   const handleExportPDF = () => {
-    if (filteredSubscriptions.length === 0) {
-      alert("No data to export!");
+    if (!filteredSubscriptions.length) {
+      alert('No RevenueCat subscription data to export.');
       return;
     }
 
     const doc = new jsPDF();
-
-    // Add Title
     doc.setFontSize(18);
-    doc.text('Subscription Report', 14, 22);
-
-    // Add Date
+    doc.text('RevenueCat Subscription Report', 14, 22);
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
 
-    const tableColumn = ["User", "Email", "Plan Type", "Renewal Date", "Payment", "Status"];
-    const tableRows = [];
-
-    filteredSubscriptions.forEach(sub => {
-      const subData = [
-        sub.name,
-        sub.email,
-        sub.plan,
-        sub.date,
-        sub.payment,
-        sub.status,
-      ];
-      tableRows.push(subData);
-    });
+    const columns = [
+      'User',
+      'Email',
+      'Product',
+      'Expiration',
+      'Store',
+      'Environment',
+      'Status',
+    ];
+    const rows = filteredSubscriptions.map((subscription) => [
+      subscription.name,
+      subscription.email,
+      subscription.product_id || 'Unavailable',
+      subscription.expires_at
+        ? new Date(subscription.expires_at).toLocaleDateString()
+        : 'No expiration',
+      subscription.store || 'Unavailable',
+      subscription.environment || 'Unavailable',
+      subscription.status,
+    ]);
 
     doc.autoTable({
-      head: [tableColumn],
-      body: tableRows,
+      head: [columns],
+      body: rows,
       startY: 40,
       theme: 'grid',
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [59, 130, 246] }
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
     });
-
-    doc.save(`subscriptions_report_${new Date().getTime()}.pdf`);
+    doc.save(`revenuecat_subscriptions_${Date.now()}.pdf`);
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#0A0D14] text-white font-sans">
-      <div className="max-w-[1600px] mx-auto animate-in fade-in duration-500">
-
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-[#0A0D14] p-8 font-sans text-white">
+      <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="text-[28px] font-bold tracking-tight mb-1">Subscription Management</h1>
-            <p className="text-[#94A3B8] text-[13px] font-medium">Manage memberships, billing activity, and subscription performance.</p>
+            <h1 className="mb-1 text-[28px] font-bold tracking-tight">
+              Subscription Management
+            </h1>
+            <p className="text-[13px] font-medium text-[#94A3B8]">
+              Live customer status and billing events from RevenueCat.
+            </p>
           </div>
           <button
             onClick={handleExportPDF}
-            className="flex items-center gap-2 bg-[#131B2F] border border-[#1E293B] hover:bg-[#1E293B] transition-colors text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-sm whitespace-nowrap"
+            disabled={loading || !filteredSubscriptions.length}
+            className="flex items-center gap-2 whitespace-nowrap rounded-full border border-[#1E293B] bg-[#131B2F] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={16} />
             Export Report
           </button>
         </div>
 
-        {/* Metrics Row */}
-        <MetricCards />
+        {error && (
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={loadSubscriptions}
+              className="flex items-center gap-2 font-bold text-red-200 hover:text-white"
+            >
+              <RefreshCw size={15} />
+              Retry
+            </button>
+          </div>
+        )}
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {!!analytics?.missing_data?.length && (
+          <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5">
+            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-amber-200">
+              <AlertTriangle size={17} />
+              RevenueCat data availability
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              {analytics.missing_data.map((item) => (
+                <div key={item.code} className="rounded-xl bg-[#0A0D14]/70 p-3">
+                  <p className="text-xs font-bold text-white">{item.title}</p>
+                  <p className="mt-1 text-[11px] leading-5 text-[#94A3B8]">
+                    {item.message}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-          {/* Left Column */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <ActivePlans />
-            <RecentActivity />
+        <MetricCards metrics={analytics?.metrics} loading={loading} />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          <div className="flex flex-col gap-6 lg:col-span-4">
+            <ActivePlans plans={analytics?.plans || []} loading={loading} />
+            <RecentActivity
+              activities={analytics?.recent_activity || []}
+              loading={loading}
+            />
           </div>
 
-          {/* Right Column */}
-          <div className="lg:col-span-8 flex flex-col h-full">
-            <RevenueGrowth />
+          <div className="flex h-full flex-col lg:col-span-8">
+            <RevenueGrowth
+              data={analytics?.revenue_growth || []}
+              loading={loading}
+            />
             <SubscriptionTable
               subscriptions={filteredSubscriptions}
+              total={subscriptions.length}
+              loading={loading}
               filterStatus={filterStatus}
               setFilterStatus={setFilterStatus}
               filterPlanType={filterPlanType}
               setFilterPlanType={setFilterPlanType}
+              planOptions={planOptions}
             />
           </div>
-
         </div>
-
       </div>
     </div>
   );

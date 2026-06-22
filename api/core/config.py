@@ -34,6 +34,8 @@ class Settings:
         "REVENUECAT_REST_API_KEY",
         os.getenv("REVENUECAT_SECRET_API_KEY"),
     )
+    revenuecat_v2_api_key: str | None = os.getenv("REVENUECAT_V2_API_KEY")
+    revenuecat_project_id: str | None = os.getenv("REVENUECAT_PROJECT_ID")
     revenuecat_entitlement_id: str = os.getenv("REVENUECAT_ENTITLEMENT_ID", "premium")
 
     aws_access_key_id: str | None = os.getenv("AWS_ACCESS_KEY_ID")
