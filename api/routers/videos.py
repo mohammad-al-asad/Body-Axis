@@ -1,5 +1,6 @@
-from fastapi import APIRouter, File, Form, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 
+from core.dependencies import get_current_admin
 from database import db
 from schemas.management import VideoListResponse, VideoResponse
 from services.management_service import (
@@ -9,7 +10,11 @@ from services.management_service import (
     update_video,
 )
 
-router = APIRouter(prefix="/videos", tags=["Video Management"])
+router = APIRouter(
+    prefix="/videos",
+    tags=["Video Management"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 
 @router.post("", response_model=VideoResponse, status_code=status.HTTP_201_CREATED)

@@ -94,6 +94,27 @@ const UploadVideo = () => {
       else await createVideo(body);
       navigate("/video-manager");
     } catch (requestError) {
+      console.error("[Video Upload] Publish failed", {
+        mode: editing ? "update" : "create",
+        exerciseId: form.exerciseId.trim(),
+        video: videoFile
+          ? {
+              name: videoFile.name,
+              type: videoFile.type || "unknown",
+              sizeBytes: videoFile.size,
+            }
+          : null,
+        thumbnail: thumbnail
+          ? {
+              name: thumbnail.name,
+              type: thumbnail.type || "unknown",
+              sizeBytes: thumbnail.size,
+            }
+          : null,
+        errorName: requestError.name,
+        errorMessage: requestError.message,
+        error: requestError,
+      });
       setError(requestError.message);
     } finally {
       setSubmitting(false);

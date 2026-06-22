@@ -22,6 +22,10 @@ class Settings:
     otp_length: int = 4
     return_dev_otp: bool = os.getenv("RETURN_DEV_OTP", "true").lower() == "true"
 
+    admin_bootstrap_name: str | None = os.getenv("ADMIN_BOOTSTRAP_NAME")
+    admin_bootstrap_email: str | None = os.getenv("ADMIN_BOOTSTRAP_EMAIL")
+    admin_bootstrap_password: str | None = os.getenv("ADMIN_BOOTSTRAP_PASSWORD")
+
     google_client_id: str | None = os.getenv("GOOGLE_CLIENT_ID")
     apple_client_id: str | None = os.getenv("APPLE_CLIENT_ID")
 

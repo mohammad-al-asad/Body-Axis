@@ -1,10 +1,23 @@
 import React, { useState } from "react";
 import { Bell, Menu } from "lucide-react";
 import adminImage from "../../assets/image/adminkickclick.jpg";
+import { getStoredAdmin } from "../../services/adminApi";
 
 const Header = ({ showDrawer }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsCount] = useState(5);
+  const [adminName, setAdminName] = useState(() => {
+    return getStoredAdmin()?.name || "Body Axis Admin";
+  });
+
+  React.useEffect(() => {
+    const updateAdminName = (event) => {
+      if (event.detail?.name) setAdminName(event.detail.name);
+    };
+    window.addEventListener("admin-profile-updated", updateAdminName);
+    return () =>
+      window.removeEventListener("admin-profile-updated", updateAdminName);
+  }, []);
 
   const notifications = [
     { message: "A new user joined your app.", time: "Fri, 12:30pm" },
@@ -42,7 +55,7 @@ const Header = ({ showDrawer }) => {
         {/* User Profile */}
         <div className="flex items-center gap-4 cursor-pointer group">
           <div className="hidden md:flex flex-col items-end">
-            <span className="text-[14px] font-bold text-white group-hover:text-gray-200 transition-colors">Alex Sterling</span>
+            <span className="text-[14px] font-bold text-white group-hover:text-gray-200 transition-colors">{adminName}</span>
             <span className="text-[10px] font-bold text-[#94A3B8] tracking-wider uppercase">ADMIN</span>
           </div>
           <div className="w-11 h-11 rounded-full border border-gray-600 overflow-hidden shadow-lg p-0.5">

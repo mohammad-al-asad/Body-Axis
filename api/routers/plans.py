@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from core.dependencies import get_current_admin
 from database import db
 from schemas.management import PlanCreate, PlanListResponse, PlanResponse, PlanUpdate
 from services.management_service import (
@@ -9,7 +10,11 @@ from services.management_service import (
     update_plan,
 )
 
-router = APIRouter(prefix="/plans", tags=["Plan Management"])
+router = APIRouter(
+    prefix="/plans",
+    tags=["Plan Management"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 
 @router.post("", response_model=PlanResponse, status_code=status.HTTP_201_CREATED)

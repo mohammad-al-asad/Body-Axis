@@ -26,12 +26,17 @@ def verify_password(password: str, stored_hash: str | None) -> bool:
         return False
 
 
-def create_access_token(user_id: str, email: str) -> str:
+def create_access_token(
+    user_id: str,
+    email: str,
+    subject_type: str = "user",
+) -> str:
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(minutes=settings.access_token_expire_minutes)
     payload = {
         "sub": user_id,
         "email": email,
+        "type": subject_type,
         "iat": now,
         "exp": expires_at,
     }
