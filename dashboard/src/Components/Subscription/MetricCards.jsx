@@ -1,66 +1,97 @@
 import React from 'react';
-import { Users, Banknote, CalendarCheck, RefreshCcw, TrendingUp } from 'lucide-react';
+import { Banknote, CalendarCheck, RefreshCcw, Users } from 'lucide-react';
 
-const MetricCards = () => {
+const MetricCards = ({ metrics, loading }) => {
+  const formatMetric = (metric, formatter) => {
+    if (loading && !metrics) return '—';
+    if (!metric?.available || metric.value === null || metric.value === undefined) {
+      return 'Not available';
+    }
+    return formatter(metric.value);
+  };
+
+  const cards = [
+    {
+      title: 'Active Subscribers',
+      value: formatMetric(
+        metrics?.active_subscribers,
+        (value) => Number(value).toLocaleString(),
+      ),
+      note: 'Production',
+      icon: Users,
+      iconClass: 'bg-[#1E293B] text-[#94A3B8]',
+      hoverClass: 'hover:border-[#1E3A8A]',
+    },
+    {
+      title: 'Monthly Revenue',
+      value: formatMetric(metrics?.monthly_revenue_usd, (value) =>
+        Number(value).toLocaleString('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        })),
+      note: 'Production USD',
+      icon: Banknote,
+      iconClass: 'bg-[#0D9488]/20 text-[#2DD4BF]',
+      hoverClass: 'hover:border-[#0D9488]/50',
+    },
+    {
+      title: 'Yearly Members',
+      value: formatMetric(
+        metrics?.yearly_members_percent,
+        (value) => `${value}%`,
+      ),
+      note: 'Active plans',
+      icon: CalendarCheck,
+      iconClass: 'bg-[#0284C7]/20 text-[#38BDF8]',
+      hoverClass: 'hover:border-[#0284C7]/50',
+    },
+    {
+      title: 'Renewal Rate',
+      value: formatMetric(
+        metrics?.renewal_rate_percent,
+        (value) => `${value}%`,
+      ),
+      note: metrics?.renewal_rate_percent?.available
+        ? 'Current intent'
+        : 'No recurring production data',
+      icon: RefreshCcw,
+      iconClass: 'bg-[#9F1239]/20 text-[#FB7185]',
+      hoverClass: 'hover:border-[#9F1239]/50',
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      {/* Card 1: Total Subscribers */}
-      <div className="bg-[#131B2F] rounded-2xl p-6 border border-[#1E293B] shadow-sm relative overflow-hidden group hover:border-[#1E3A8A] transition-colors">
-        <div className="flex justify-between items-start mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#1E293B] flex items-center justify-center text-[#94A3B8]">
-            <Users size={20} />
+    <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {cards.map((card) => {
+        const Icon = card.icon;
+        return (
+          <div
+            key={card.title}
+            className={`relative overflow-hidden rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6 shadow-sm transition-colors ${card.hoverClass}`}
+          >
+            <div className="mb-4 flex items-start justify-between">
+              <div
+                className={`flex h-10 w-10 items-center justify-center rounded-xl ${card.iconClass}`}
+              >
+                <Icon size={20} />
+              </div>
+              <div className="max-w-[140px] text-right text-[10px] font-bold uppercase tracking-wide text-[#64748B]">
+                {card.note}
+              </div>
+            </div>
+            <p className="mb-1 text-[12px] font-bold text-[#94A3B8]">
+              {card.title}
+            </p>
+            <h3
+              className={`font-bold text-white ${
+                card.value === 'Not available' ? 'mt-2 text-lg' : 'text-[28px]'
+              }`}
+            >
+              {card.value}
+            </h3>
           </div>
-          <div className="flex items-center gap-1 text-[#34D399] text-[13px] font-bold">
-            <TrendingUp size={14} strokeWidth={3} />
-            <span>+12%</span>
-          </div>
-        </div>
-        <p className="text-[#94A3B8] text-[12px] font-bold mb-1">Total Subscribers</p>
-        <h3 className="text-white text-[28px] font-bold">12,458</h3>
-      </div>
-
-      {/* Card 2: Monthly Revenue */}
-      <div className="bg-[#131B2F] rounded-2xl p-6 border border-[#1E293B] shadow-sm relative overflow-hidden group hover:border-[#0D9488]/50 transition-colors">
-        <div className="flex justify-between items-start mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#0D9488]/20 flex items-center justify-center text-[#2DD4BF]">
-            <Banknote size={20} />
-          </div>
-          <div className="flex items-center gap-1 text-[#34D399] text-[13px] font-bold">
-            <TrendingUp size={14} strokeWidth={3} />
-            <span>+8.4%</span>
-          </div>
-        </div>
-        <p className="text-[#94A3B8] text-[12px] font-bold mb-1">Monthly Revenue</p>
-        <h3 className="text-white text-[28px] font-bold">$48,290</h3>
-      </div>
-
-      {/* Card 3: Yearly Members */}
-      <div className="bg-[#131B2F] rounded-2xl p-6 border border-[#1E293B] shadow-sm relative overflow-hidden group hover:border-[#0284C7]/50 transition-colors">
-        <div className="flex justify-between items-start mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#0284C7]/20 flex items-center justify-center text-[#38BDF8]">
-            <CalendarCheck size={20} />
-          </div>
-          <div className="text-[#94A3B8] text-[13px] font-bold">
-            74% Target
-          </div>
-        </div>
-        <p className="text-[#94A3B8] text-[12px] font-bold mb-1">Yearly Members</p>
-        <h3 className="text-white text-[28px] font-bold">74%</h3>
-      </div>
-
-      {/* Card 4: Renewal Rate */}
-      <div className="bg-[#131B2F] rounded-2xl p-6 border border-[#1E293B] shadow-sm relative overflow-hidden group hover:border-[#9F1239]/50 transition-colors">
-        <div className="flex justify-between items-start mb-4">
-          <div className="w-10 h-10 rounded-xl bg-[#9F1239]/20 flex items-center justify-center text-[#FB7185]">
-            <RefreshCcw size={20} />
-          </div>
-          <div className="text-[#2DD4BF] text-[13px] font-bold">
-            Optimal
-          </div>
-        </div>
-        <p className="text-[#94A3B8] text-[12px] font-bold mb-1">Renewal Rate</p>
-        <h3 className="text-white text-[28px] font-bold">91%</h3>
-      </div>
+        );
+      })}
     </div>
   );
 };

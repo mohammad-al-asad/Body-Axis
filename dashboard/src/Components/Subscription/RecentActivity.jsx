@@ -1,50 +1,79 @@
 import React from 'react';
-import { CheckCircle2, RefreshCw, AlertCircle } from 'lucide-react';
+import { AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 
-const RecentActivity = () => {
-  const activities = [
-    {
-      id: 1,
-      type: 'success',
-      title: 'Payment Successful',
-      desc: 'Elena G. • $249.00',
-      icon: <CheckCircle2 size={16} className="text-[#34D399]" />
-    },
-    {
-      id: 2,
-      type: 'renewed',
-      title: 'Plan Renewed',
-      desc: 'David K. • Monthly Elite',
-      icon: <RefreshCw size={16} className="text-[#60A5FA]" />
-    },
-    {
-      id: 3,
-      type: 'failed',
-      title: 'Failed Attempt',
-      desc: 'Sarah M. • Expired Card',
-      icon: <AlertCircle size={16} className="text-[#FB7185]" />
+const RecentActivity = ({ activities, loading }) => {
+  const getAppearance = (eventType) => {
+    if (['INITIAL_PURCHASE', 'NON_RENEWING_PURCHASE'].includes(eventType)) {
+      return {
+        Icon: CheckCircle2,
+        iconClass: 'text-[#34D399]',
+        bgClass: 'bg-[#112730]',
+      };
     }
-  ];
+    if (['RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'].includes(eventType)) {
+      return {
+        Icon: RefreshCw,
+        iconClass: 'text-[#60A5FA]',
+        bgClass: 'bg-[#1c223c]',
+      };
+    }
+    return {
+      Icon: AlertCircle,
+      iconClass: 'text-[#FB7185]',
+      bgClass: 'bg-[#271b2a]',
+    };
+  };
 
   return (
-    <div className="bg-[#131B2F] rounded-2xl p-6 border border-[#1E293B] shadow-sm">
-      <h3 className="text-white text-[15px] font-bold mb-6">Recent Activity</h3>
+    <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6 shadow-sm">
+      <h3 className="mb-6 text-[15px] font-bold text-white">Recent Activity</h3>
 
       <div className="flex flex-col gap-6">
-        {activities.map(activity => (
-          <div key={activity.id} className="flex items-center gap-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${activity.type === 'success' ? 'bg-[#112730]' :
-              activity.type === 'renewed' ? 'bg-[#1c223c]' :
-                'bg-[#271b2a]'
-              }`}>
-              {activity.icon}
+        {loading && !activities.length && (
+          <p className="text-sm text-[#64748B]">Loading RevenueCat events…</p>
+        )}
+        {!loading && !activities.length && (
+          <p className="text-sm text-[#64748B]">
+            No RevenueCat events received yet.
+          </p>
+        )}
+        {activities.map((activity) => {
+          const { Icon, iconClass, bgClass } = getAppearance(activity.event_type);
+          return (
+            <div key={activity.id} className="flex items-center gap-4">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${bgClass}`}
+              >
+                <Icon size={16} className={iconClass} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[13px] font-bold text-white">
+                    {activity.title}
+                  </p>
+                  <span
+                    className={`rounded px-1.5 py-0.5 text-[8px] font-bold ${
+                      activity.environment === 'PRODUCTION'
+                        ? 'bg-emerald-500/15 text-emerald-300'
+                        : 'bg-amber-500/15 text-amber-300'
+                    }`}
+                  >
+                    {activity.environment || 'UNKNOWN'}
+                  </span>
+                </div>
+                <p className="truncate text-[11px] font-medium text-[#64748B]">
+                  {activity.description}
+                  {activity.amount_usd
+                    ? ` · $${activity.amount_usd.toFixed(2)}`
+                    : ''}
+                </p>
+                <p className="mt-0.5 text-[10px] text-[#475569]">
+                  {new Date(activity.occurred_at).toLocaleString()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-white text-[13px] font-bold mb-0.5">{activity.title}</p>
-              <p className="text-[#64748B] text-[11px] font-medium">{activity.desc}</p>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

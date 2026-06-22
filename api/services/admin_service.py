@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from pymongo.errors import DuplicateKeyError
+from starlette.concurrency import run_in_threadpool
 
 from core.config import settings
 from core.security import (
@@ -18,6 +19,9 @@ from schemas.admin import (
     AdminResponse,
     AdminUpdateRequest,
 )
+from services.s3_service import delete_file, upload_file
+
+ADMIN_AVATAR_CONTENT_TYPES = {"image/png", "image/jpeg", "image/webp"}
 
 
 def _normalize_email(email: str) -> str:
@@ -29,6 +33,7 @@ def serialize_admin(admin: dict[str, Any]) -> dict[str, Any]:
         "id": str(admin["_id"]),
         "name": admin["name"],
         "email": admin["email"],
+        "avatar_url": admin.get("avatar_url"),
         "notification_settings": admin.get(
             "notification_settings",
             {
@@ -72,6 +77,8 @@ async def ensure_admin_indexes() -> None:
             "name": (settings.admin_bootstrap_name or "Body Axis Admin").strip(),
             "email": normalized_email,
             "password_hash": hash_password(password),
+            "avatar_url": None,
+            "avatar_key": None,
             "notification_settings": {
                 "user_alerts": True,
                 "subscription_alerts": True,
@@ -167,3 +174,40 @@ async def update_admin_password(
             }
         },
     )
+
+
+async def update_admin_avatar(
+    current_admin: dict[str, Any],
+    avatar: UploadFile,
+) -> AdminResponse:
+    if avatar.content_type not in ADMIN_AVATAR_CONTENT_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Avatar must be a PNG, JPG, or WEBP image",
+        )
+    avatar_url, avatar_key = await run_in_threadpool(
+        upload_file,
+        avatar.file,
+        avatar.filename,
+        avatar.content_type,
+        "admin-avatars",
+    )
+    previous_key = current_admin.get("avatar_key")
+    try:
+        await db.admins.update_one(
+            {"_id": current_admin["_id"]},
+            {
+                "$set": {
+                    "avatar_url": avatar_url,
+                    "avatar_key": avatar_key,
+                    "updated_at": datetime.now(timezone.utc),
+                }
+            },
+        )
+    except Exception:
+        await run_in_threadpool(delete_file, avatar_key)
+        raise
+
+    await run_in_threadpool(delete_file, previous_key)
+    updated = await db.admins.find_one({"_id": current_admin["_id"]})
+    return AdminResponse(**serialize_admin(updated))
