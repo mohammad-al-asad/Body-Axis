@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { FileText, Download, ChevronDown, MoreHorizontal, MapPin, Calendar, ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Download, ChevronDown, MoreHorizontal, MapPin, Calendar } from 'lucide-react';
 
 const UserDetails = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
   const [activeTab, setActiveTab] = useState('Profile');
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
 

@@ -1,9 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Filter, Calendar, ChevronDown } from 'lucide-react';
 
 const UserManagement = ({ globalSearch = '' }) => {
-  const navigate = useNavigate();
   // Filter states
   const [nameFilter, setNameFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -14,17 +12,17 @@ const UserManagement = ({ globalSearch = '' }) => {
   const itemsPerPage = 10;
 
   const userData = useMemo(() => [
-    { id: 1, name: 'Olivia Katherine Montgo', dob: '14 May 1990', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentProtocol: 'The Lower Back Ache Full...', total: 4, status: 'Active', sessions: 42 },
-    { id: 2, name: 'Olivia Katherine Mont...', dob: '22 Aug 1992', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentProtocol: 'The Lower Back Ache Full...', total: 4, status: 'Expiring Soon', sessions: 42 },
-    { id: 3, name: 'Olivia Katherine Mont...', dob: '05 Nov 1988', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentProtocol: 'The Lower Back Ache Full...', total: 4, status: 'Expired', sessions: 42 },
-    { id: 4, name: 'Ethan Alexander Broo...', dob: '30 Jan 1995', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentProtocol: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 36 },
-    { id: 5, name: 'Ethan Alexander Broo...', dob: '12 Mar 1993', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentProtocol: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 38 },
-    { id: 6, name: 'Ethan Alexander Broo...', dob: '19 Jul 1991', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentProtocol: 'The QL Deep Reset', total: 2, status: 'Expired', sessions: 36 },
-    { id: 7, name: 'Sophia Elizabeth Harri...', dob: '27 Sep 1989', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentProtocol: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 8, name: 'Sophia Elizabeth Harri...', dob: '03 Feb 1994', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentProtocol: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 9, name: 'Liam Jonathan Wellin...', dob: '11 Oct 1996', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentProtocol: 'The Hip Flexor Strength F...', total: 4, status: 'Expired', sessions: 42 },
-    { id: 10, name: 'Liam Jonathan Wellin...', dob: '08 Dec 1990', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentProtocol: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 11, name: 'Test User', dob: '01 Jan 2000', email: 'test@example.com', joinDate: '26 Jan 2026', currentProtocol: 'Test Protocol', total: 1, status: 'Active', sessions: 10 },
+    { id: 1, name: 'Olivia Katherine Montgo', dob: '14 May 1990', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Active', sessions: 42 },
+    { id: 2, name: 'Olivia Katherine Mont...', dob: '22 Aug 1992', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Expiring Soon', sessions: 42 },
+    { id: 3, name: 'Olivia Katherine Mont...', dob: '05 Nov 1988', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Expired', sessions: 42 },
+    { id: 4, name: 'Ethan Alexander Broo...', dob: '30 Jan 1995', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 36 },
+    { id: 5, name: 'Ethan Alexander Broo...', dob: '12 Mar 1993', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 38 },
+    { id: 6, name: 'Ethan Alexander Broo...', dob: '19 Jul 1991', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expired', sessions: 36 },
+    { id: 7, name: 'Sophia Elizabeth Harri...', dob: '27 Sep 1989', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
+    { id: 8, name: 'Sophia Elizabeth Harri...', dob: '03 Feb 1994', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
+    { id: 9, name: 'Liam Jonathan Wellin...', dob: '11 Oct 1996', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Expired', sessions: 42 },
+    { id: 10, name: 'Liam Jonathan Wellin...', dob: '08 Dec 1990', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
+    { id: 11, name: 'Test User', dob: '01 Jan 2000', email: 'test@example.com', joinDate: '26 Jan 2026', currentPlan: 'Test Plan', total: 1, status: 'Active', sessions: 10 },
   ], []);
 
   // Filter and Paginate logic
@@ -157,7 +155,7 @@ const UserManagement = ({ globalSearch = '' }) => {
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Date of Birth</th>
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Email</th>
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Join Date</th>
-                <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Current Protocol</th>
+                <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Current Plan</th>
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Total</th>
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Status</th>
                 <th className="px-8 py-6 text-[10px] font-bold text-[#94A3B8] uppercase tracking-[0.1em] whitespace-nowrap">Sessions</th>
@@ -179,7 +177,7 @@ const UserManagement = ({ globalSearch = '' }) => {
                     <span className="text-[#94A3B8] text-[13px]">{user.joinDate}</span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-[#94A3B8] text-[13px]">{user.currentProtocol}</span>
+                    <span className="text-[#94A3B8] text-[13px]">{user.currentPlan}</span>
                   </td>
                   <td className="px-8 py-5 text-center sm:text-left">
                     <span className="font-bold text-white text-[13px] ml-1">{user.total}</span>

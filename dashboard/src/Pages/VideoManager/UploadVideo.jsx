@@ -1,311 +1,256 @@
-import React, { useState, useContext, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { VideoContext } from '../../context/VideoContext';
-import { Sparkles, CloudUpload, ChevronDown, Info, FileVideo, X, Image as ImageIcon, FileCheck, FileText } from 'lucide-react';
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  CloudUpload,
+  FileVideo,
+  Image as ImageIcon,
+  Save,
+} from "lucide-react";
+import { VideoContext } from "../../context/VideoContext";
+
+const FileDrop = ({ accept, file, existingUrl, icon: Icon, label, onSelect }) => {
+  const inputRef = useRef(null);
+  const name = file?.name || (existingUrl ? "Current file" : "");
+
+  return (
+    <button
+      type="button"
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        if (event.dataTransfer.files[0]) onSelect(event.dataTransfer.files[0]);
+      }}
+      className="flex min-h-[220px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#334155] bg-[#0A0D14]/60 p-5 text-center hover:border-[#38BDF8]"
+    >
+      <input
+        ref={inputRef}
+        type="file"
+        accept={accept}
+        className="hidden"
+        onChange={(event) => onSelect(event.target.files[0] || null)}
+      />
+      <div className="mb-4 rounded-full bg-[#1E293B] p-4">
+        {React.createElement(Icon, {
+          size: 24,
+          className: name ? "text-[#34D399]" : "text-[#94A3B8]",
+        })}
+      </div>
+      <div className="text-sm font-bold">{name || label}</div>
+      <div className="mt-2 text-xs text-[#64748B]">
+        {name ? "Click or drop to replace" : "Click or drag and drop"}
+      </div>
+    </button>
+  );
+};
 
 const UploadVideo = () => {
+  const { videoId } = useParams();
+  const editing = Boolean(videoId);
+  const { videos, createVideo, updateVideo } = useContext(VideoContext);
   const navigate = useNavigate();
-  const { addVideo, videos } = useContext(VideoContext);
-
-  const [formData, setFormData] = useState({
-    name: '',
-    cues: ''
+  const existing = useMemo(
+    () => videos.find((video) => video.id === videoId),
+    [videoId, videos],
+  );
+  const [form, setForm] = useState({
+    exerciseId: "",
+    videoName: "",
+    videoDescription: "",
   });
+  const [thumbnail, setThumbnail] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedThumb, setSelectedThumb] = useState(null);
-  const [isDraggingVideo, setIsDraggingVideo] = useState(false);
-  const [isDraggingThumb, setIsDraggingThumb] = useState(false);
-  
-  const videoInputRef = useRef(null);
-  const thumbInputRef = useRef(null);
-
-  const nextId = `EX-26${(videos.length + 1).toString().padStart(4, '0')}`;
-
-  const formatFileSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const handlePublish = () => {
-    if (!selectedFile) return;
-    addVideo({ 
-      name: formData.name || 'Untitled Dynamic Asset',
-      fileSize: formatFileSize(selectedFile.size)
+  useEffect(() => {
+    if (!existing) return;
+    setForm({
+      exerciseId: existing.exercise_id,
+      videoName: existing.video_name,
+      videoDescription: existing.video_description,
     });
-    navigate('/video-manager');
-  };
+  }, [existing]);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+    if (!editing && (!thumbnail || !videoFile)) {
+      setError("A thumbnail and video file are required.");
+      return;
+    }
+
+    const body = new FormData();
+    body.append("exercise_id", form.exerciseId.trim());
+    body.append("video_name", form.videoName.trim());
+    body.append("video_description", form.videoDescription.trim());
+    if (thumbnail) body.append("thumbnail", thumbnail);
+    if (videoFile) body.append("video_file", videoFile);
+
+    setSubmitting(true);
+    try {
+      if (editing) await updateVideo(videoId, body);
+      else await createVideo(body);
+      navigate("/video-manager");
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#0A0D14] text-white">
-      <div className="max-w-[1600px] mx-auto animate-in fade-in duration-500">
-        
-        {/* Header */}
-        <div className="mb-8">
-          <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest mb-2 flex items-center gap-2">
-            <span 
-              className="cursor-pointer hover:text-white transition-colors flex items-center gap-1"
-              onClick={() => navigate('/video-manager')}
+    <div className="min-h-screen bg-[#0A0D14] p-8 text-white">
+      <form onSubmit={handleSubmit} className="mx-auto max-w-[1450px]">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <button
+              type="button"
+              onClick={() => navigate("/video-manager")}
+              className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#64748B] hover:text-white"
             >
-              &larr; VIDEO MANAGER
-            </span> 
-            <span className="text-[#1E293B]">&gt;</span> 
-            <span className="text-white">UPLOAD NEW VIDEO</span>
-          </p>
-          <h1 className="text-[28px] font-bold tracking-tight flex items-center gap-2 mb-2">
-            Upload Video Asset <Sparkles className="text-[#38BDF8]" size={24} />
-          </h1>
-          <p className="text-[#94A3B8] text-[13px] font-medium">Configure and index biomechanical video assets for performance protocols.</p>
+              <ArrowLeft size={14} /> Video Manager
+            </button>
+            <h1 className="text-[28px] font-bold">
+              {editing ? "Edit Video Asset" : "Upload Video Asset"}
+            </h1>
+            <p className="mt-1 text-[13px] text-[#94A3B8]">
+              Video files and thumbnails are uploaded directly to AWS S3.
+            </p>
+          </div>
+          <button
+            disabled={submitting}
+            className="flex items-center justify-center gap-2 rounded-xl bg-[#3B82F6] px-6 py-3 text-sm font-bold hover:bg-blue-600 disabled:opacity-50"
+          >
+            <Save size={17} />
+            {submitting ? "Saving…" : editing ? "Update Video" : "Publish Video"}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-          
-          {/* Left Column (8 cols) */}
-          <div className="xl:col-span-8 flex flex-col gap-6">
-            
-            {/* Top Row: Video & Thumbnail Uploads */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Drag & Drop Video */}
-              <div className="bg-[#131B2F] border border-[#1E293B] rounded-2xl p-6 flex flex-col">
-                <div className="flex items-center gap-2 mb-6">
-                  <CloudUpload className="text-[#38BDF8]" size={18} />
-                  <h2 className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.15em]">DRAG & DROP VIDEO</h2>
-                </div>
-                
-                <div 
-                  className={`border border-dashed rounded-2xl flex-1 min-h-[220px] flex flex-col items-center justify-center transition-all group ${
-                    isDraggingVideo ? 'border-[#38BDF8] bg-[#38BDF8]/10' : 'border-[#1E293B] bg-[#0A0D14]/50 hover:border-[#38BDF8]/50 hover:bg-[#0A0D14]'
-                  } ${selectedFile ? 'cursor-default' : 'cursor-pointer'}`}
-                  onDragOver={(e) => { e.preventDefault(); setIsDraggingVideo(true); }}
-                  onDragLeave={(e) => { e.preventDefault(); setIsDraggingVideo(false); }}
-                  onDrop={(e) => {
-                    e.preventDefault(); setIsDraggingVideo(false);
-                    if (e.dataTransfer.files && e.dataTransfer.files[0]) setSelectedFile(e.dataTransfer.files[0]);
-                  }}
-                  onClick={() => !selectedFile && videoInputRef.current.click()}
-                >
-                  <input 
-                    type="file" className="hidden" ref={videoInputRef} accept="video/*"
-                    onChange={(e) => { if (e.target.files[0]) setSelectedFile(e.target.files[0]); }}
-                  />
-                  
-                  {selectedFile ? (
-                    <div className="flex flex-col items-center justify-center animate-in zoom-in-95 duration-300">
-                      <div className="w-12 h-12 rounded-full bg-[#34D399]/20 flex items-center justify-center mb-3">
-                        <FileVideo className="text-[#34D399]" size={24} />
-                      </div>
-                      <h3 className="text-white font-bold text-[13px] mb-1">{selectedFile.name}</h3>
-                      <p className="text-[#34D399] text-[11px] font-bold mb-4">{formatFileSize(selectedFile.size)}</p>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
-                        className="text-[10px] font-bold text-[#EF4444] hover:bg-[#EF4444]/10 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-widest"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 rounded-full bg-[#1E293B] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <CloudUpload className="text-[#94A3B8]" size={20} />
-                      </div>
-                      <h3 className="text-white font-bold text-[13px] mb-1">Drag & drop video file</h3>
-                      <p className="text-[#64748B] text-[11px] font-medium mb-4">Or click to browse</p>
-                      
-                      <div className="flex items-center gap-2 text-[9px] font-bold text-[#475569] uppercase tracking-widest">
-                        <span>MP4, MOV, WEBM • MAX 500MB</span>
-                      </div>
-                    </>
-                  )}
-                </div>
+        {error && (
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
-                <p className="text-center text-[#475569] text-[9px] font-bold uppercase tracking-[0.1em] mt-6">
-                  MOVEMENT SCANNING IS AUTOMATED
-                </p>
+        <div className="grid gap-6 xl:grid-cols-12">
+          <div className="grid gap-6 md:grid-cols-2 xl:col-span-8">
+            <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6">
+              <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#94A3B8]">
+                <CloudUpload size={17} className="text-[#38BDF8]" /> Video File
               </div>
-
-              {/* Drag & Drop Thumbnail */}
-              <div className="bg-[#131B2F] border border-[#1E293B] rounded-2xl p-6 flex flex-col">
-                <div className="flex items-center gap-2 mb-6">
-                  <FileText className="text-[#38BDF8]" size={18} />
-                  <h2 className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.15em]">DRAG & DROP THUMBNAIL</h2>
-                </div>
-                
-                <div 
-                  className={`border border-dashed rounded-2xl flex-1 min-h-[220px] flex flex-col items-center justify-center transition-all group ${
-                    isDraggingThumb ? 'border-[#38BDF8] bg-[#38BDF8]/10' : 'border-[#1E293B] bg-[#0A0D14]/50 hover:border-[#38BDF8]/50 hover:bg-[#0A0D14]'
-                  } ${selectedThumb ? 'cursor-default' : 'cursor-pointer'}`}
-                  onDragOver={(e) => { e.preventDefault(); setIsDraggingThumb(true); }}
-                  onDragLeave={(e) => { e.preventDefault(); setIsDraggingThumb(false); }}
-                  onDrop={(e) => {
-                    e.preventDefault(); setIsDraggingThumb(false);
-                    if (e.dataTransfer.files && e.dataTransfer.files[0]) setSelectedThumb(e.dataTransfer.files[0]);
-                  }}
-                  onClick={() => !selectedThumb && thumbInputRef.current.click()}
-                >
-                  <input 
-                    type="file" className="hidden" ref={thumbInputRef} accept="image/*"
-                    onChange={(e) => { if (e.target.files[0]) setSelectedThumb(e.target.files[0]); }}
-                  />
-                  
-                  {selectedThumb ? (
-                    <div className="flex flex-col items-center justify-center animate-in zoom-in-95 duration-300">
-                      <div className="w-12 h-12 rounded-full bg-[#34D399]/20 flex items-center justify-center mb-3">
-                        <ImageIcon className="text-[#34D399]" size={24} />
-                      </div>
-                      <h3 className="text-white font-bold text-[13px] mb-1">{selectedThumb.name}</h3>
-                      <p className="text-[#34D399] text-[11px] font-bold mb-4">{formatFileSize(selectedThumb.size)}</p>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setSelectedThumb(null); }}
-                        className="text-[10px] font-bold text-[#EF4444] hover:bg-[#EF4444]/10 px-3 py-1.5 rounded-lg transition-colors uppercase tracking-widest"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-12 h-12 rounded-full bg-[#1E293B] flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <ImageIcon className="text-[#94A3B8]" size={20} />
-                      </div>
-                      <h3 className="text-white font-bold text-[13px] mb-1">Drag & drop thumbnail image</h3>
-                      <p className="text-[#64748B] text-[11px] font-medium mb-4">Or click to browse</p>
-                      
-                      <div className="flex items-center gap-2 text-[9px] font-bold text-[#475569] uppercase tracking-widest">
-                        <span>PNG, JPG, WEBP • MAX 10MB</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <p className="text-center text-[#475569] text-[9px] font-bold uppercase tracking-[0.1em] mt-6">
-                  16:9 ASPECT RATIO RECOMMENDED
-                </p>
+              <FileDrop
+                accept="video/mp4,video/quicktime,video/webm"
+                file={videoFile}
+                existingUrl={existing?.video_url}
+                icon={FileVideo}
+                label="Choose MP4, MOV, or WEBM"
+                onSelect={setVideoFile}
+              />
+            </div>
+            <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6">
+              <div className="mb-5 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-[#94A3B8]">
+                <ImageIcon size={17} className="text-[#38BDF8]" /> Thumbnail
               </div>
-
+              <FileDrop
+                accept="image/png,image/jpeg,image/webp"
+                file={thumbnail}
+                existingUrl={existing?.thumbnail_url}
+                icon={ImageIcon}
+                label="Choose PNG, JPG, or WEBP"
+                onSelect={setThumbnail}
+              />
             </div>
 
-            {/* Live Player Preview */}
-            <div className="bg-[#131B2F] border border-[#1E293B] rounded-2xl p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Sparkles className="text-[#38BDF8]" size={18} />
-                <h2 className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.15em]">LIVE PLAYER PREVIEW</h2>
-              </div>
-              
-              <div className="flex flex-col items-center">
-                <div className="w-full max-w-[500px] aspect-video bg-[#0A0D14] rounded-xl border border-[#1E293B] flex flex-col items-center justify-center mb-6">
-                  <FileVideo size={32} className="text-[#1E293B] mb-4" />
-                  <p className="text-[#475569] text-[10px] font-bold uppercase tracking-widest">AWAITING MEDIA UPLOAD...</p>
-                </div>
-                
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="bg-[#1E3A8A] text-[#60A5FA] px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                    LOWER BACK
+            <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6 md:col-span-2">
+              <div className="mx-auto max-w-[640px]">
+                {videoFile ? (
+                  <video
+                    controls
+                    src={URL.createObjectURL(videoFile)}
+                    className="aspect-video w-full rounded-xl bg-black object-contain"
+                  />
+                ) : existing?.video_url ? (
+                  <video
+                    controls
+                    src={existing.video_url}
+                    className="aspect-video w-full rounded-xl bg-black object-contain"
+                  />
+                ) : (
+                  <div className="flex aspect-video items-center justify-center rounded-xl border border-[#1E293B] bg-[#0A0D14] text-[#475569]">
+                    Video preview
                   </div>
-                  <div className="text-[#64748B] text-[11px] font-bold uppercase tracking-widest">
-                    {nextId}
-                  </div>
-                </div>
-                
-                <h3 className="text-white text-xl font-bold mb-2">
-                  {formData.name || 'Untitled Dynamic Asset'}
-                </h3>
-                <p className="text-[#64748B] text-[13px] text-center max-w-[400px]">
-                  {formData.cues || 'No cues provided yet. Type cues below to see them here...'}
-                </p>
+                )}
               </div>
             </div>
-
           </div>
 
-          {/* Right Column: Asset Specifications (4 cols) */}
-          <div className="xl:col-span-4 bg-[#131B2F] border border-[#1E293B] rounded-2xl p-6 h-fit">
-            <div className="flex items-center gap-2 mb-6">
-              <Sparkles className="text-[#38BDF8]" size={18} />
-              <h2 className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-[0.15em]">ASSET SPECIFICATIONS</h2>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest mb-2">EXERCISE ID</label>
-                <input 
-                  type="text" 
-                  value={nextId}
-                  readOnly
-                  className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[13px] text-[#64748B] outline-none"
+          <div className="h-fit rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6 xl:col-span-4">
+            <h2 className="mb-6 text-xs font-bold uppercase tracking-widest text-[#94A3B8]">
+              Video Details
+            </h2>
+            <div className="space-y-5">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                  Exercise ID
+                </span>
+                <input
+                  required
+                  value={form.exerciseId}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      exerciseId: event.target.value,
+                    }))
+                  }
+                  placeholder="EX-260001"
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-sm outline-none focus:border-[#38BDF8]"
                 />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest mb-2">EXERCISE NAME</label>
-                <input 
-                  type="text" 
-                  name="name"
-                  placeholder="e.g. Supine Pelvic Clocks"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[13px] text-white outline-none focus:border-[#38BDF8] transition-colors"
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                  Video Name
+                </span>
+                <input
+                  required
+                  value={form.videoName}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      videoName: event.target.value,
+                    }))
+                  }
+                  placeholder="Supine Pelvic Clocks Tutorial"
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-sm outline-none focus:border-[#38BDF8]"
                 />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest mb-2">TARGET AREA</label>
-                <div className="relative">
-                  <select className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[13px] text-white outline-none appearance-none cursor-pointer focus:border-[#38BDF8] transition-colors">
-                    <option>Lower Back</option>
-                  </select>
-                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#475569] pointer-events-none" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest mb-2">COACHING CUES / DESCRIPTION</label>
-                <textarea 
-                  name="cues"
-                  placeholder="Provide biomechanical cues for patients executing this movement. These cues will display inside the patient tracker app..."
-                  value={formData.cues}
-                  onChange={handleChange}
-                  className="w-full h-[120px] bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[13px] text-[#475569] outline-none focus:border-[#38BDF8] transition-colors resize-none leading-relaxed placeholder-[#475569]/70"
-                ></textarea>
-              </div>
-
-              <div className="flex items-start gap-3 bg-[#0A0D14] border border-[#1E3A8A]/30 rounded-xl p-4 mt-2">
-                <Info size={16} className="text-[#3B82F6] shrink-0 mt-0.5" />
-                <p className="text-[11px] font-medium text-[#64748B] leading-relaxed">
-                  <span className="text-[#3B82F6]">You must select or drop a valid video asset and wait for processing to finish before publishing is unlocked.</span>
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-3 mt-8">
-                <button 
-                  onClick={handlePublish}
-                  className={`w-full py-3.5 transition-colors rounded-xl text-[12px] font-bold uppercase tracking-widest ${
-                    selectedFile 
-                      ? 'bg-[#3B82F6] hover:bg-blue-600 text-white cursor-pointer shadow-[0_0_15px_rgba(59,130,246,0.2)]' 
-                      : 'bg-[#1E3A8A] text-[#94A3B8] cursor-pointer'
-                  }`}
-                >
-                  PUBLISH ASSET CATALOG
-                </button>
-                <button 
-                  onClick={() => navigate('/video-manager')}
-                  className="w-full py-3.5 bg-transparent border border-[#1E293B] hover:bg-[#1E293B] transition-colors text-white rounded-xl text-[12px] font-bold uppercase tracking-widest"
-                >
-                  CANCEL
-                </button>
-              </div>
-
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                  Video Description
+                </span>
+                <textarea
+                  required
+                  rows="8"
+                  value={form.videoDescription}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      videoDescription: event.target.value,
+                    }))
+                  }
+                  placeholder="Describe the movement and coaching cues."
+                  className="w-full resize-none rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-sm outline-none focus:border-[#38BDF8]"
+                />
+              </label>
+              <p className="rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-xs leading-5 text-[#93C5FD]">
+                Target Area has been removed from video assets. Exercise associations
+                are validated using Exercise ID.
+              </p>
             </div>
           </div>
         </div>
-
-      </div>
+      </form>
     </div>
   );
 };

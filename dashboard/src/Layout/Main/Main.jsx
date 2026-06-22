@@ -1,15 +1,12 @@
 import React, { useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import Sidebar from "../../Components/Sidebar/Sidebar";
 import { Drawer } from "antd";
 import Header from "../../Components/Sidebar/Header";
 const MainLayout = () => {
   const onClose = () => setOpen(false);
   const [open, setOpen] = useState(false);
-  const location = useLocation();
   const showDrawer = () => setOpen(true);
-  const toggleNotificationDropdown = () =>
-    setShowNotifications(!showNotifications);
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
@@ -27,7 +24,6 @@ const MainLayout = () => {
         {/* Header Section */}
         <Header
           showDrawer={showDrawer}
-          toggleNotificationDropdown={toggleNotificationDropdown}
         />
 
         {/* Scrollable Content Section */}

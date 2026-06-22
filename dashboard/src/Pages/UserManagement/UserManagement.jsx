@@ -13,7 +13,7 @@ const UserManagementPage = () => {
           <div>
             <h1 className="text-[28px] font-bold text-white mb-2">User Management</h1>
             <p className="text-[14px] text-[#94A3B8]">
-              Manage clients, monitor protocols, and track performance metrics.
+              Manage clients, monitor plans, and track performance metrics.
             </p>
           </div>
           <div className="relative w-full max-w-[320px]">

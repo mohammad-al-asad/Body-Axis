@@ -32,5 +32,21 @@ class Settings:
     )
     revenuecat_entitlement_id: str = os.getenv("REVENUECAT_ENTITLEMENT_ID", "premium")
 
+    aws_access_key_id: str | None = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_session_token: str | None = os.getenv("AWS_SESSION_TOKEN")
+    aws_region: str = os.getenv("AWS_REGION", "us-east-1")
+    s3_bucket_name: str | None = os.getenv("S3_BUCKET_NAME")
+    s3_public_base_url: str | None = os.getenv("S3_PUBLIC_BASE_URL")
+    s3_endpoint_url: str | None = os.getenv("S3_ENDPOINT_URL")
+    cors_origins: list[str] = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:5173,http://127.0.0.1:5173",
+        ).split(",")
+        if origin.strip()
+    ]
+
 
 settings = Settings()

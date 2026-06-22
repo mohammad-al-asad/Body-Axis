@@ -1,59 +1,60 @@
-import React, { createContext, useState } from 'react';
-
-const generateVideos = (count) => {
-  const names = [
-    'Supine Pelvic Clocks', 'Thoracic Extension', 'Long-Lever Hamstring Bridge',
-    'Dead Bug', 'Bird Dog', 'McGill Curl-Up', 'B-Stance Glute Bridge',
-    'Romanian Deadlift', 'Bulgarian Split Squat', 'Front Rack Carry'
-  ];
-  
-  return Array.from({ length: count }, (_, i) => {
-    let status;
-    if (i % 4 === 0) status = 'Error';
-    else if (i % 3 === 0) status = 'Processing';
-    else status = 'Uploaded';
-
-    return {
-      id: `EX-26${(i + 1).toString().padStart(4, '0')}`,
-      name: names[i % names.length],
-      fileSize: '248.5 MB',
-      uploadDate: '10/30/2025',
-      status: status
-    };
-  });
-};
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useCallback, useEffect, useState } from "react";
+import { managementApi } from "../services/managementApi";
 
 export const VideoContext = createContext();
 
 export const VideoProvider = ({ children }) => {
-  const [videos, setVideos] = useState(generateVideos(30));
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const addVideo = (newVideo) => {
-    const today = new Date().toLocaleDateString('en-US', {
-      month: '2-digit',
-      day: '2-digit',
-      year: 'numeric'
-    });
-    
-    setVideos([
-      {
-        id: `EX-26${(videos.length + 1).toString().padStart(4, '0')}`,
-        name: newVideo.name,
-        fileSize: '0.0 MB',
-        uploadDate: today,
-        status: 'Processing',
-        ...newVideo
-      },
-      ...videos
-    ]);
+  const refreshVideos = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await managementApi.listVideos();
+      setVideos(result.items);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshVideos();
+  }, [refreshVideos]);
+
+  const createVideo = async (payload) => {
+    const created = await managementApi.createVideo(payload);
+    setVideos((items) => [created, ...items]);
+    return created;
   };
 
-  const deleteVideo = (id) => {
-    setVideos(videos.filter(v => v.id !== id));
+  const updateVideo = async (id, payload) => {
+    const updated = await managementApi.updateVideo(id, payload);
+    setVideos((items) => items.map((item) => (item.id === id ? updated : item)));
+    return updated;
+  };
+
+  const deleteVideo = async (id) => {
+    await managementApi.deleteVideo(id);
+    setVideos((items) => items.filter((item) => item.id !== id));
   };
 
   return (
-    <VideoContext.Provider value={{ videos, addVideo, deleteVideo }}>
+    <VideoContext.Provider
+      value={{
+        videos,
+        loading,
+        error,
+        refreshVideos,
+        createVideo,
+        updateVideo,
+        deleteVideo,
+      }}
+    >
       {children}
     </VideoContext.Provider>
   );
