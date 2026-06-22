@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import BinaryIO
 from urllib.parse import quote
@@ -8,6 +9,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import HTTPException, status
 
 from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def _client():
@@ -62,6 +65,12 @@ def upload_file(
             ExtraArgs=extra_args,
         )
     except (BotoCoreError, ClientError) as exc:
+        logger.exception(
+            "S3 upload failed: bucket=%s key=%s content_type=%s",
+            settings.s3_bucket_name,
+            key,
+            extra_args["ContentType"],
+        )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Unable to upload file to S3",
@@ -76,5 +85,10 @@ def delete_file(key: str | None) -> None:
     try:
         _client().delete_object(Bucket=settings.s3_bucket_name, Key=key)
     except (BotoCoreError, ClientError):
+        logger.exception(
+            "S3 delete failed: bucket=%s key=%s",
+            settings.s3_bucket_name,
+            key,
+        )
         # Database deletion should not be blocked by an orphaned S3 object.
         return

@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from core.dependencies import get_current_admin
 from database import db
 from schemas.management import (
     ExerciseCreate,
@@ -15,7 +16,11 @@ from services.management_service import (
     update_exercise,
 )
 
-router = APIRouter(prefix="/exercises", tags=["Exercise Management"])
+router = APIRouter(
+    prefix="/exercises",
+    tags=["Exercise Management"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 
 @router.post("", response_model=ExerciseResponse, status_code=status.HTTP_201_CREATED)

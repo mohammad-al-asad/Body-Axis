@@ -1,71 +1,219 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User, Camera, Bell, Shield, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Bell,
+  Camera,
+  CheckCircle2,
+  LogOut,
+  Save,
+  Shield,
+  User,
+} from "lucide-react";
+import {
+  adminApi,
+  clearAdminSession,
+  getStoredAdmin,
+} from "../../services/adminApi";
+
+const DEFAULT_PROFILE = {
+  id: "",
+  name: "",
+  email: "",
+  notification_settings: {
+    user_alerts: true,
+    subscription_alerts: true,
+  },
+  two_factor_authentication: false,
+  last_login_at: null,
+};
+
+const getStoredProfile = () => {
+  const stored = getStoredAdmin();
+  return stored ? { ...DEFAULT_PROFILE, ...stored } : DEFAULT_PROFILE;
+};
+
+const ToggleSwitch = ({ checked, onChange, label }) => (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={checked}
+    aria-label={label}
+    onClick={onChange}
+    className={`flex h-5 w-10 items-center rounded-full p-1 transition-colors ${
+      checked ? "bg-[#0F766E]" : "bg-[#1E293B]"
+    }`}
+  >
+    <span
+      className={`h-3.5 w-3.5 rounded-full shadow-sm transition-transform duration-300 ${
+        checked
+          ? "translate-x-[18px] bg-[#2DD4BF]"
+          : "translate-x-0 bg-[#94A3B8]"
+      }`}
+    />
+  </button>
+);
 
 const Settings = () => {
   const navigate = useNavigate();
-  // Account Profile State
+  const initialProfile = useMemo(getStoredProfile, []);
+  const [savedProfile, setSavedProfile] = useState(initialProfile);
+  const [fullName, setFullName] = useState(initialProfile.name);
+  const [email, setEmail] = useState(initialProfile.email);
   const [profileImage, setProfileImage] = useState(null);
-  const [fullName, setFullName] = useState('Alex Rivera');
-  const [email, setEmail] = useState('alex.rivera@bodyaxis.io');
+  const [userAlerts, setUserAlerts] = useState(
+    initialProfile.notification_settings.user_alerts,
+  );
+  const [subAlerts, setSubAlerts] = useState(
+    initialProfile.notification_settings.subscription_alerts,
+  );
+  const [twoFactor, setTwoFactor] = useState(
+    initialProfile.two_factor_authentication,
+  );
+  const [savedMessage, setSavedMessage] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Notifications State
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [subAlerts, setSubAlerts] = useState(true);
+  const normalizedName = fullName.trim();
+  const normalizedEmail = email.trim();
+  const hasProfileChanges =
+    normalizedName !== savedProfile.name ||
+    normalizedEmail !== savedProfile.email ||
+    userAlerts !== savedProfile.notification_settings.user_alerts ||
+    subAlerts !== savedProfile.notification_settings.subscription_alerts ||
+    twoFactor !== savedProfile.two_factor_authentication;
+  const canUpdate =
+    hasProfileChanges &&
+    !saving &&
+    normalizedName.length > 0 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
-  // Security State
-  const [twoFactor, setTwoFactor] = useState(true);
-  const [recentLogin, setRecentLogin] = useState(true);
+  useEffect(() => {
+    const loadProfile = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const admin = await adminApi.getProfile();
+        localStorage.setItem("admin", JSON.stringify(admin));
+        setSavedProfile(admin);
+        setFullName(admin.name);
+        setEmail(admin.email);
+        setUserAlerts(admin.notification_settings.user_alerts);
+        setSubAlerts(admin.notification_settings.subscription_alerts);
+        setTwoFactor(admin.two_factor_authentication);
+      } catch (requestError) {
+        setError(requestError.message);
+        if (requestError.message.includes("401")) {
+          clearAdminSession();
+          navigate("/sign-in", { replace: true });
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadProfile();
+  }, [navigate]);
 
-  const handleImageUpload = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const imgUrl = URL.createObjectURL(e.target.files[0]);
-      setProfileImage(imgUrl);
+  const handleImageUpload = (event) => {
+    const selectedImage = event.target.files?.[0];
+    if (!selectedImage) return;
+    setProfileImage(URL.createObjectURL(selectedImage));
+  };
+
+  const handleUpdate = async () => {
+    if (!canUpdate) return;
+    setSaving(true);
+    setError("");
+    try {
+      const updatedAdmin = await adminApi.updateProfile({
+        name: normalizedName,
+        email: normalizedEmail,
+        notification_settings: {
+          user_alerts: userAlerts,
+          subscription_alerts: subAlerts,
+        },
+        two_factor_authentication: twoFactor,
+      });
+      localStorage.setItem("admin", JSON.stringify(updatedAdmin));
+      setSavedProfile(updatedAdmin);
+      setFullName(updatedAdmin.name);
+      setEmail(updatedAdmin.email);
+      setUserAlerts(updatedAdmin.notification_settings.user_alerts);
+      setSubAlerts(updatedAdmin.notification_settings.subscription_alerts);
+      setTwoFactor(updatedAdmin.two_factor_authentication);
+      setSavedMessage("Account profile updated.");
+      window.dispatchEvent(
+        new CustomEvent("admin-profile-updated", { detail: updatedAdmin }),
+      );
+      window.setTimeout(() => setSavedMessage(""), 2500);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Toggle Component
-  const ToggleSwitch = ({ checked, onChange }) => (
-    <div
-      className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${checked ? 'bg-[#0F766E]' : 'bg-[#1E293B]'}`}
-      onClick={onChange}
-    >
-      <div
-        className={`w-3.5 h-3.5 rounded-full shadow-sm transform transition-transform duration-300 ${checked ? 'translate-x-4.5 bg-[#2DD4BF]' : 'translate-x-0 bg-[#94A3B8]'}`}
-        style={{ transform: checked ? 'translateX(18px)' : 'translateX(0)' }}
-      ></div>
-    </div>
-  );
+  const handleSignOut = () => {
+    clearAdminSession();
+    navigate("/sign-in", { replace: true });
+  };
 
   return (
-    <div className="min-h-screen p-8 bg-[#0A0D14] text-white font-sans">
-      <div className="max-w-[1200px] mx-auto animate-in fade-in duration-500">
+    <div className="min-h-screen bg-[#0A0D14] p-8 font-sans text-white">
+      <div className="mx-auto max-w-[1200px] animate-in fade-in duration-500">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[28px] font-bold tracking-tight">Settings</h1>
+            {savedMessage && (
+              <p className="mt-1 text-[12px] font-medium text-[#2DD4BF]">
+                {savedMessage}
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            disabled={!canUpdate}
+            onClick={handleUpdate}
+            className="flex items-center gap-2 rounded-xl bg-[#3B82F6] px-6 py-3 text-[13px] font-bold text-white transition-colors hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-[#1E293B] disabled:text-[#64748B]"
+          >
+            <Save size={17} />
+            {saving ? "Updating…" : "Update"}
+          </button>
+        </div>
 
-        <h1 className="text-[28px] font-bold tracking-tight mb-8">Settings</h1>
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
 
-        {/* Account Profile Card */}
-        <div className="bg-[#131B2F] rounded-2xl p-8 border border-[#1E293B] shadow-sm mb-6">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-xl bg-[#1E293B] flex items-center justify-center text-[#94A3B8]">
+        <div className="mb-6 rounded-2xl border border-[#1E293B] bg-[#131B2F] p-8 shadow-sm">
+          <div className="mb-8 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#1E293B] text-[#94A3B8]">
               <User size={20} />
             </div>
-            <h2 className="text-white text-xl font-medium">Account Profile</h2>
+            <h2 className="text-xl font-medium text-white">Account Profile</h2>
           </div>
 
-          <div className="flex flex-col md:flex-row gap-10">
-            {/* Avatar Section */}
+          <div className="flex flex-col gap-10 md:flex-row">
             <div className="relative shrink-0">
-              <div className="w-32 h-32 rounded-3xl bg-[#0A0D14] border border-[#1E293B] overflow-hidden flex items-center justify-center">
+              <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-3xl border border-[#1E293B] bg-[#0A0D14]">
                 {profileImage ? (
-                  <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
+                  <img
+                    src={profileImage}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <User size={48} className="text-[#334155]" />
                 )}
               </div>
               <button
-                onClick={() => fileInputRef.current.click()}
-                className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-[#2DD4BF] flex items-center justify-center text-[#042F2E] hover:scale-110 transition-transform shadow-lg border-[4px] border-[#131B2F]"
+                type="button"
+                aria-label="Choose profile image"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full border-[4px] border-[#131B2F] bg-[#2DD4BF] text-[#042F2E] shadow-lg transition-transform hover:scale-110"
               >
                 <Camera size={18} strokeWidth={2.5} />
               </button>
@@ -78,101 +226,129 @@ const Settings = () => {
               />
             </div>
 
-            {/* Form Fields */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-[#94A3B8] text-[13px] font-medium mb-2">Full Name</label>
+            <div className="grid flex-1 grid-cols-1 gap-6 md:grid-cols-2">
+              <label>
+                <span className="mb-2 block text-[13px] font-medium text-[#94A3B8]">
+                  Full Name
+                </span>
                 <input
                   type="text"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[14px] text-white outline-none focus:border-[#38BDF8] transition-colors"
+                  disabled={loading}
+                  onChange={(event) => setFullName(event.target.value)}
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-[14px] text-white outline-none transition-colors focus:border-[#38BDF8]"
                 />
-              </div>
-              <div>
-                <label className="block text-[#94A3B8] text-[13px] font-medium mb-2">Email Address</label>
+              </label>
+              <label>
+                <span className="mb-2 block text-[13px] font-medium text-[#94A3B8]">
+                  Email Address
+                </span>
                 <input
                   type="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0A0D14] border border-[#1E293B] rounded-xl px-4 py-3 text-[14px] text-white outline-none focus:border-[#38BDF8] transition-colors"
+                  disabled={loading}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-[14px] text-white outline-none transition-colors focus:border-[#38BDF8]"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-8 shadow-sm">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0F766E]/20 text-[#2DD4BF]">
+                <Bell size={20} />
+              </div>
+              <h2 className="text-xl font-medium text-white">Notifications</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-center justify-between gap-5">
+                <div>
+                  <p className="mb-1 text-[15px] font-medium text-white">
+                    User Alerts
+                  </p>
+                  <p className="text-[12px] text-[#64748B]">
+                    Alerts for new users and important user activity
+                  </p>
+                </div>
+                <ToggleSwitch
+                  label="User alerts"
+                  checked={userAlerts}
+                  onChange={() => !loading && setUserAlerts((current) => !current)}
+                />
+              </div>
+              <div className="h-px w-full bg-[#1E293B]" />
+              <div className="flex items-center justify-between gap-5">
+                <div>
+                  <p className="mb-1 text-[15px] font-medium text-white">
+                    Subscription Alerts
+                  </p>
+                  <p className="text-[12px] text-[#64748B]">
+                    Alerts for plan renewals and changes
+                  </p>
+                </div>
+                <ToggleSwitch
+                  label="Subscription alerts"
+                  checked={subAlerts}
+                  onChange={() => !loading && setSubAlerts((current) => !current)}
                 />
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Bottom Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* Notifications Card */}
-          <div className="bg-[#131B2F] rounded-2xl p-8 border border-[#1E293B] shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-[#0F766E]/20 flex items-center justify-center text-[#2DD4BF]">
-                <Bell size={20} />
-              </div>
-              <h2 className="text-white text-xl font-medium">Notifications</h2>
-            </div>
-
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white text-[15px] font-medium mb-1">Email Notifications</p>
-                  <p className="text-[#64748B] text-[12px]">Receive weekly summary reports</p>
-                </div>
-                <ToggleSwitch checked={emailNotif} onChange={() => setEmailNotif(!emailNotif)} />
-              </div>
-              <div className="h-[1px] w-full bg-[#1E293B]"></div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-white text-[15px] font-medium mb-1">Subscription Alerts</p>
-                  <p className="text-[#64748B] text-[12px]">Alerts for plan renewals & changes</p>
-                </div>
-                <ToggleSwitch checked={subAlerts} onChange={() => setSubAlerts(!subAlerts)} />
-              </div>
-            </div>
-          </div>
-
-          {/* Security Card */}
-          <div className="bg-[#131B2F] rounded-2xl p-8 border border-[#1E293B] shadow-sm">
-            <div className="flex items-center gap-3 mb-8">
-              <div className="w-10 h-10 rounded-xl bg-[#9F1239]/20 flex items-center justify-center text-[#FB7185]">
+          <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-8 shadow-sm">
+            <div className="mb-8 flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#9F1239]/20 text-[#FB7185]">
                 <Shield size={20} />
               </div>
-              <h2 className="text-white text-xl font-medium">Security</h2>
+              <h2 className="text-xl font-medium text-white">Security</h2>
             </div>
 
-            <div className="bg-[#042F2E]/30 border border-[#0F766E]/50 rounded-xl p-4 flex items-center justify-between mb-8">
+            <div className="mb-8 flex items-center justify-between rounded-xl border border-[#0F766E]/50 bg-[#042F2E]/30 p-4">
               <div className="flex items-center gap-3">
                 <CheckCircle2 size={18} className="text-[#2DD4BF]" />
-                <p className="text-white text-[14px] font-medium">Two-Factor Authentication</p>
+                <p className="text-[14px] font-medium text-white">
+                  Two-Factor Authentication
+                </p>
               </div>
-              <ToggleSwitch checked={twoFactor} onChange={() => setTwoFactor(!twoFactor)} />
+              <ToggleSwitch
+                label="Two-factor authentication"
+                checked={twoFactor}
+                onChange={() => !loading && setTwoFactor((current) => !current)}
+              />
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white text-[13px] font-medium">Recent Login Activity</h3>
-                <ToggleSwitch checked={recentLogin} onChange={() => {
-                  setRecentLogin(!recentLogin);
-                  navigate("/sign-in");
-                }} />
-              </div>
+              <h3 className="mb-4 text-[13px] font-medium text-white">
+                Recent Login Activity
+              </h3>
               <div className="space-y-4">
-                <div className="flex items-center justify-between relative pl-4">
-                  <p className="text-[#94A3B8] text-[12px]">Chrome on MacOS</p>
-                  <p className="text-[#94A3B8] text-[11px]">Today, 10:45 AM</p>
-                </div>
-                <div className="flex items-center justify-between relative pl-4">
-                  <p className="text-[#64748B] text-[12px]">iPhone 15 Pro</p>
-                  <p className="text-[#64748B] text-[11px]">Yesterday, 08:22 PM</p>
+                <div className="flex items-center justify-between pl-4">
+                  <p className="text-[12px] text-[#94A3B8]">Current admin session</p>
+                  <p className="text-[11px] text-[#94A3B8]">
+                    {savedProfile.last_login_at
+                      ? new Date(savedProfile.last_login_at).toLocaleString()
+                      : "No recorded login"}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
 
+        <div className="mt-6 flex justify-end border-t border-[#1E293B] pt-6">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-2 rounded-xl border border-[#EF4444]/50 bg-[#EF4444]/10 px-6 py-3 text-[13px] font-bold text-[#F87171] transition-colors hover:bg-[#EF4444] hover:text-white"
+          >
+            <LogOut size={17} />
+            Sign Out
+          </button>
+        </div>
       </div>
     </div>
   );

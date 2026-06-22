@@ -3,6 +3,9 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "../../Components/Sidebar/Sidebar";
 import { Drawer } from "antd";
 import Header from "../../Components/Sidebar/Header";
+import { ExerciseProvider } from "../../context/ExerciseContext";
+import { PlanProvider } from "../../context/PlanContext";
+import { VideoProvider } from "../../context/VideoContext";
 const MainLayout = () => {
   const onClose = () => setOpen(false);
   const [open, setOpen] = useState(false);
@@ -28,8 +31,13 @@ const MainLayout = () => {
 
         {/* Scrollable Content Section */}
         <div className="flex-1 overflow-y-auto bg-[#13131F]">
-
-          <Outlet />
+          <PlanProvider>
+            <ExerciseProvider>
+              <VideoProvider>
+                <Outlet />
+              </VideoProvider>
+            </ExerciseProvider>
+          </PlanProvider>
         </div>
       </div>
     </div>

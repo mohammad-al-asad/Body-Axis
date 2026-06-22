@@ -5,7 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from database import client, db
-from routers import auth, exercises, plans, revenuecat, subscription, users, videos
+from routers import admin, auth, exercises, plans, revenuecat, subscription, users, videos
+from services.admin_service import ensure_admin_indexes
 from services.auth_service import ensure_auth_indexes
 from services.management_service import ensure_management_indexes
 from services.subscription_service import ensure_subscription_indexes
@@ -15,6 +16,7 @@ from services.subscription_service import ensure_subscription_indexes
 async def lifespan(app: FastAPI):
     await client.admin.command("ping")
     await ensure_auth_indexes()
+    await ensure_admin_indexes()
     await ensure_subscription_indexes()
     await ensure_management_indexes()
     print("Connected to MongoDB")
@@ -33,6 +35,7 @@ app.add_middleware(
 
 api_router = APIRouter(prefix=settings.api_prefix)
 api_router.include_router(auth.router)
+api_router.include_router(admin.router)
 api_router.include_router(subscription.router)
 api_router.include_router(revenuecat.router)
 api_router.include_router(users.router)
