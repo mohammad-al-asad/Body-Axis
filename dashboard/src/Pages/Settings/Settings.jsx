@@ -19,6 +19,7 @@ const DEFAULT_PROFILE = {
   id: "",
   name: "",
   email: "",
+  avatar_url: null,
   notification_settings: {
     user_alerts: true,
     subscription_alerts: true,
@@ -59,7 +60,8 @@ const Settings = () => {
   const [savedProfile, setSavedProfile] = useState(initialProfile);
   const [fullName, setFullName] = useState(initialProfile.name);
   const [email, setEmail] = useState(initialProfile.email);
-  const [profileImage, setProfileImage] = useState(null);
+  const [profileImage, setProfileImage] = useState(initialProfile.avatar_url);
+  const [profileImageFile, setProfileImageFile] = useState(null);
   const [userAlerts, setUserAlerts] = useState(
     initialProfile.notification_settings.user_alerts,
   );
@@ -80,6 +82,7 @@ const Settings = () => {
   const hasProfileChanges =
     normalizedName !== savedProfile.name ||
     normalizedEmail !== savedProfile.email ||
+    Boolean(profileImageFile) ||
     userAlerts !== savedProfile.notification_settings.user_alerts ||
     subAlerts !== savedProfile.notification_settings.subscription_alerts ||
     twoFactor !== savedProfile.two_factor_authentication;
@@ -99,6 +102,8 @@ const Settings = () => {
         setSavedProfile(admin);
         setFullName(admin.name);
         setEmail(admin.email);
+        setProfileImage(admin.avatar_url);
+        setProfileImageFile(null);
         setUserAlerts(admin.notification_settings.user_alerts);
         setSubAlerts(admin.notification_settings.subscription_alerts);
         setTwoFactor(admin.two_factor_authentication);
@@ -118,6 +123,13 @@ const Settings = () => {
   const handleImageUpload = (event) => {
     const selectedImage = event.target.files?.[0];
     if (!selectedImage) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(selectedImage.type)) {
+      setError("Profile image must be a PNG, JPG, or WEBP file.");
+      event.target.value = "";
+      return;
+    }
+    setError("");
+    setProfileImageFile(selectedImage);
     setProfileImage(URL.createObjectURL(selectedImage));
   };
 
@@ -126,19 +138,34 @@ const Settings = () => {
     setSaving(true);
     setError("");
     try {
-      const updatedAdmin = await adminApi.updateProfile({
-        name: normalizedName,
-        email: normalizedEmail,
-        notification_settings: {
-          user_alerts: userAlerts,
-          subscription_alerts: subAlerts,
-        },
-        two_factor_authentication: twoFactor,
-      });
+      const settingsChanged =
+        normalizedName !== savedProfile.name ||
+        normalizedEmail !== savedProfile.email ||
+        userAlerts !== savedProfile.notification_settings.user_alerts ||
+        subAlerts !== savedProfile.notification_settings.subscription_alerts ||
+        twoFactor !== savedProfile.two_factor_authentication;
+
+      let updatedAdmin = savedProfile;
+      if (settingsChanged) {
+        updatedAdmin = await adminApi.updateProfile({
+          name: normalizedName,
+          email: normalizedEmail,
+          notification_settings: {
+            user_alerts: userAlerts,
+            subscription_alerts: subAlerts,
+          },
+          two_factor_authentication: twoFactor,
+        });
+      }
+      if (profileImageFile) {
+        updatedAdmin = await adminApi.updateAvatar(profileImageFile);
+      }
       localStorage.setItem("admin", JSON.stringify(updatedAdmin));
       setSavedProfile(updatedAdmin);
       setFullName(updatedAdmin.name);
       setEmail(updatedAdmin.email);
+      setProfileImage(updatedAdmin.avatar_url);
+      setProfileImageFile(null);
       setUserAlerts(updatedAdmin.notification_settings.user_alerts);
       setSubAlerts(updatedAdmin.notification_settings.subscription_alerts);
       setTwoFactor(updatedAdmin.two_factor_authentication);
@@ -197,8 +224,8 @@ const Settings = () => {
           </div>
 
           <div className="flex flex-col gap-10 md:flex-row">
-            <div className="relative shrink-0">
-              <div className="flex h-32 w-32 items-center justify-center overflow-hidden rounded-3xl border border-[#1E293B] bg-[#0A0D14]">
+            <div className="shrink-0">
+              <div className="relative flex h-32 w-32 items-center justify-center overflow-hidden rounded-3xl border border-[#1E293B] bg-[#0A0D14]">
                 {profileImage ? (
                   <img
                     src={profileImage}
@@ -208,22 +235,25 @@ const Settings = () => {
                 ) : (
                   <User size={48} className="text-[#334155]" />
                 )}
+                <button
+                  type="button"
+                  aria-label="Choose profile image"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#131B2F] bg-[#2DD4BF] text-[#042F2E] shadow-lg transition-transform hover:scale-105"
+                >
+                  <Camera size={16} strokeWidth={2.5} />
+                </button>
               </div>
-              <button
-                type="button"
-                aria-label="Choose profile image"
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full border-[4px] border-[#131B2F] bg-[#2DD4BF] text-[#042F2E] shadow-lg transition-transform hover:scale-110"
-              >
-                <Camera size={18} strokeWidth={2.5} />
-              </button>
               <input
                 type="file"
                 ref={fileInputRef}
                 onChange={handleImageUpload}
-                accept="image/*"
+                accept="image/png,image/jpeg,image/webp"
                 className="hidden"
               />
+              <p className="mt-4 max-w-32 text-center text-[10px] leading-4 text-[#64748B]">
+                PNG, JPG or WEBP
+              </p>
             </div>
 
             <div className="grid flex-1 grid-cols-1 gap-6 md:grid-cols-2">

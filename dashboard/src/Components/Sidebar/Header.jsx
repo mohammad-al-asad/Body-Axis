@@ -6,13 +6,16 @@ import { getStoredAdmin } from "../../services/adminApi";
 const Header = ({ showDrawer }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsCount] = useState(5);
-  const [adminName, setAdminName] = useState(() => {
-    return getStoredAdmin()?.name || "Body Axis Admin";
-  });
+  const storedAdmin = getStoredAdmin();
+  const [adminName, setAdminName] = useState(
+    storedAdmin?.name || "Body Axis Admin",
+  );
+  const [adminAvatar, setAdminAvatar] = useState(storedAdmin?.avatar_url || null);
 
   React.useEffect(() => {
     const updateAdminName = (event) => {
       if (event.detail?.name) setAdminName(event.detail.name);
+      setAdminAvatar(event.detail?.avatar_url || null);
     };
     window.addEventListener("admin-profile-updated", updateAdminName);
     return () =>
@@ -59,7 +62,7 @@ const Header = ({ showDrawer }) => {
             <span className="text-[10px] font-bold text-[#94A3B8] tracking-wider uppercase">ADMIN</span>
           </div>
           <div className="w-11 h-11 rounded-full border border-gray-600 overflow-hidden shadow-lg p-0.5">
-            <img src={adminImage} alt="User" className="w-full h-full rounded-full object-cover" />
+            <img src={adminAvatar || adminImage} alt="User" className="w-full h-full rounded-full object-cover" />
           </div>
         </div>
       </div>

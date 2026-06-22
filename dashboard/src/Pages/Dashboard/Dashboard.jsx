@@ -1,8 +1,9 @@
-import React from 'react';
-import { Eye, User, Flame, Activity } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import { User, Flame } from 'lucide-react';
 import StatsCard from '../../Components/Dashboard/StatsCard';
 import EngagementVelocity from '../../Components/Dashboard/EngagementVelocity';
 import LiveActivity from '../../Components/Dashboard/LiveActivity';
+import { adminApi } from '../../services/adminApi';
 
 const CustomEyeIcon = ({ size = 25, className, color = "#22D3EE", ...props }) => (
   <svg width={size} height={size} viewBox="0 0 25 25" fill="none" xmlns="http://www.w3.org/2000/svg" className={className} {...props}>
@@ -42,32 +43,63 @@ const CustomExerciseIcon = ({ size = 25, className, color = "#3B82F6", ...props 
 
 
 export default function Dashboard() {
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadAnalytics = useCallback(async (query) => {
+    setLoading(true);
+    setError("");
+    try {
+      setAnalytics(await adminApi.getDashboard(query));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const formatValue = (value) =>
+    loading && !analytics ? "—" : Number(value || 0).toLocaleString();
+  const formatChange = (metric) => {
+    if (metric?.change_percent === null || metric?.change_percent === undefined) {
+      return null;
+    }
+    const value = metric.change_percent;
+    return `${value >= 0 ? "↗" : "↘"} ${Math.abs(value)}%`;
+  };
+
+  const backendStats = analytics?.stats;
   const stats = [
     {
       title: 'Total Users',
-      value: '14,285',
-      change: '↗ 12%',
+      value: formatValue(backendStats?.total_users.value),
+      change: formatChange(backendStats?.total_users),
+      changeValue: backendStats?.total_users.change_percent,
       icon: CustomEyeIcon,
       bgIcon: CustomEyeIcon,
     },
     {
       title: 'Active Users',
-      value: '8,912',
-      change: '↗ 12%',
+      value: formatValue(backendStats?.active_users.value),
+      change: formatChange(backendStats?.active_users),
+      changeValue: backendStats?.active_users.change_percent,
       icon: User,
       bgIcon: User,
     },
     {
       title: 'Total Plans',
-      value: '412',
-      change: '↗ 12%',
+      value: formatValue(backendStats?.total_plans.value),
+      change: formatChange(backendStats?.total_plans),
+      changeValue: backendStats?.total_plans.change_percent,
       icon: Flame,
       bgIcon: Flame,
     },
     {
       title: 'Total Exercises',
-      value: '2,854',
-      change: '↗ 12%',
+      value: formatValue(backendStats?.total_exercises.value),
+      change: formatChange(backendStats?.total_exercises),
+      changeValue: backendStats?.total_exercises.change_percent,
       icon: CustomExerciseIcon,
       bgIcon: CustomExerciseIcon,
     }
@@ -85,6 +117,12 @@ export default function Dashboard() {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 mb-8 md:grid-cols-2 xl:grid-cols-4">
           {stats.map((stat, index) => (
@@ -94,12 +132,16 @@ export default function Dashboard() {
 
         {/* Engagement section */}
         <div className="w-full mb-8">
-          <EngagementVelocity />
+          <EngagementVelocity
+            data={analytics?.user_growth || []}
+            loading={loading}
+            onQueryChange={loadAnalytics}
+          />
         </div>
 
         {/* Live Activity section */}
         <div className="w-full mb-8">
-          <LiveActivity />
+          <LiveActivity users={analytics?.recent_users || []} loading={loading} />
         </div>
 
       </div>
