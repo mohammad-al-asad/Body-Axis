@@ -7,7 +7,7 @@ const SignIn = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   const handleSignIn = (e) => {
     e.preventDefault();

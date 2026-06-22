@@ -18,8 +18,8 @@ const Sidebar = ({ closeDrawer }) => {
 
   const menuItems = [
     { icon: <LayoutGrid size={22} />, label: "Dashboard", Link: "/" },
-    { icon: <Activity size={22} />, label: "Protocol Manager", Link: "/protocol-manager" },
-    { icon: <Dumbbell size={22} />, label: "Exercise Library", Link: "/exercise-library" },
+    { icon: <Activity size={22} />, label: "Plan Manager", Link: "/plan-manager" },
+    { icon: <Dumbbell size={22} />, label: "Exercise Management", Link: "/exercise-library" },
     { icon: <Video size={22} />, label: "Video Manager", Link: "/video-manager" },
     { icon: <Users size={22} />, label: "Users Management", Link: "/user-management" },
     { icon: <CreditCard size={22} />, label: "Subscription", Link: "/subscription" },

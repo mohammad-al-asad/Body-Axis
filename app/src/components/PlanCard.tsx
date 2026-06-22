@@ -36,16 +36,13 @@ interface PlanCardProps {
 
 const EQUIPMENT_IMAGES: Record<string, any> = {
   'Yoga Mat': require('@/assets/images/equipments/YogaMat.png'),
-  'Mat': require('@/assets/images/equipments/YogaMat.png'),
   'Resistance Band': require('@/assets/images/equipments/ResistanceBand.png'),
-  'Mini Band': require('@/assets/images/equipments/MiniBand.png'),
   'Dumbbell': require('@/assets/images/equipments/Dumbbell.png'),
-  'Light Dumbbell': require('@/assets/images/equipments/Dumbbell.png'),
   'Foam Roller': require('@/assets/images/equipments/FoamRoller.png'),
   'Lacrosse Ball': require('@/assets/images/equipments/LacrosseBall.png'),
-  'Massage Ball': require('@/assets/images/equipments/LacrosseBall.png'),
   'Yoga Block': require('@/assets/images/equipments/YogaBlock.png'),
   'Bench': require('@/assets/images/equipments/Bench.png'),
+  'Mini Band': require('@/assets/images/equipments/MiniBand.png'),
 };
 
 export function PlanCard({ plan, isSaved, onToggleSave, onSeeDetails }: PlanCardProps) {

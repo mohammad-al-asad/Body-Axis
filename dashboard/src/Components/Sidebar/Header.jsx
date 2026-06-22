@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import adminImage from "../../assets/image/adminkickclick.jpg";
 
 const Header = ({ showDrawer }) => {
@@ -14,10 +14,17 @@ const Header = ({ showDrawer }) => {
   ];
 
   return (
-    <div className="relative bg-[#0A0D14] h-[88px] flex items-center justify-end px-8 shadow-sm">
+    <div className="relative bg-[#0A0D14] h-[88px] flex items-center justify-between px-8 shadow-sm">
+      <button
+        onClick={showDrawer}
+        className="rounded-lg p-2 text-[#94A3B8] hover:bg-[#1E293B] hover:text-white lg:hidden"
+        aria-label="Open navigation"
+      >
+        <Menu size={22} />
+      </button>
 
       {/* Right Side */}
-      <div className="flex items-center gap-8">
+      <div className="ml-auto flex items-center gap-8">
         {/* Notifications */}
         <button
           className="relative text-[#94A3B8] hover:text-white transition-colors"
