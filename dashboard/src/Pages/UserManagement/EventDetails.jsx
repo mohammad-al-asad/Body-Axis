@@ -1,10 +1,7 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import { MapPin, ChevronDown } from 'lucide-react';
 
 const EventDetails = () => {
-  const navigate = useNavigate();
-  const { id } = useParams();
   const [isActionOpen, setIsActionOpen] = React.useState(false);
 
   const event = {

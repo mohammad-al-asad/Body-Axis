@@ -1,267 +1,218 @@
-import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Search, Filter, Dumbbell, Flame, Activity, User, Edit3, Trash2, ArrowLeft, ArrowRight, ChevronDown, Package } from 'lucide-react';
-import StatsCard from '../../Components/Dashboard/StatsCard';
-import { ExerciseContext } from '../../context/ExerciseContext';
+import React, { useContext, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Dumbbell,
+  Edit3,
+  Package,
+  PlusCircle,
+  Search,
+  Trash2,
+} from "lucide-react";
+import { ExerciseContext } from "../../context/ExerciseContext";
 
-// Removed mock generator, moved to Context
-
-const getPhaseStyle = (phase) => {
-  switch (phase) {
-    case 'Reset': return 'bg-[#06B6D4]/10 text-[#06B6D4]';
-    case 'Control': return 'bg-[#10B981]/10 text-[#10B981]';
-    case 'Integrate': return 'bg-[#8B5CF6]/10 text-[#8B5CF6]';
-    default: return 'bg-gray-800 text-gray-300';
-  }
+const phaseStyles = {
+  reset: "bg-cyan-500/10 text-cyan-300",
+  control: "bg-emerald-500/10 text-emerald-300",
+  integrate: "bg-violet-500/10 text-violet-300",
 };
 
 const ExerciseLibrary = () => {
-  const { exercises, deleteExercise } = useContext(ExerciseContext);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const itemsPerPage = 4;
+  const { exercises, loading, error, deleteExercise } =
+    useContext(ExerciseContext);
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [phase, setPhase] = useState("");
+  const [actionError, setActionError] = useState("");
 
-  const stats = [
-    {
-      title: "TOTAL EXERCISES",
-      value: "2,854",
-      icon: <Dumbbell size={20} className="text-[#38BDF8]" />,
-      bgIcon: Dumbbell,
-    },
-    {
-      title: "PUBLISHED EXERCISE",
-      value: "412",
-      icon: <Flame size={20} className="text-[#34D399]" />,
-      bgIcon: Flame,
-    },
-    {
-      title: "AVERAGE DURATION",
-      value: "14,285",
-      icon: <Activity size={20} className="text-[#38BDF8]" />,
-      bgIcon: Activity,
-    },
-    {
-      title: "ACTIVE USERS",
-      value: "8,912",
-      icon: <User size={20} className="text-[#A855F7]" />,
-      bgIcon: User,
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return exercises.filter((exercise) => {
+      const matchesQuery =
+        !query ||
+        exercise.exercise_name.toLowerCase().includes(query) ||
+        exercise.exercise_id.toLowerCase().includes(query);
+      return matchesQuery && (!phase || exercise.phase === phase);
+    });
+  }, [exercises, phase, search]);
+
+  const handleDelete = async (exercise) => {
+    if (!window.confirm(`Delete "${exercise.exercise_name}"?`)) return;
+    setActionError("");
+    try {
+      await deleteExercise(exercise.exercise_id);
+    } catch (requestError) {
+      setActionError(requestError.message);
     }
-  ];
-
-  // Search filter
-  const filteredExercises = exercises.filter(ex => 
-    ex.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ex.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Pagination logic
-  const totalPages = Math.ceil(filteredExercises.length / itemsPerPage);
-  
-  // Ensure current page is valid when filtering reduces total pages
-  if (currentPage > totalPages && totalPages > 0) {
-    setCurrentPage(totalPages);
-  }
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredExercises.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(p => p + 1);
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) setCurrentPage(p => p - 1);
-  };
-
-  const handlePageClick = (num) => {
-    setCurrentPage(num);
-  };
-
-  const handleDelete = (id) => {
-    deleteExercise(id);
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
   };
 
   return (
-    <div className="min-h-screen p-8 bg-[#0A0D14] text-white">
-      <div className="max-w-[1600px] mx-auto animate-in fade-in duration-500">
-        
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-[#0A0D14] p-8 text-white">
+      <div className="mx-auto max-w-[1600px]">
+        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h1 className="text-[28px] font-bold tracking-tight mb-1">Exercise Library</h1>
-            <p className="text-[#94A3B8] text-[13px] font-medium">Manage the global database of biomechanical movements, protocols, and performance metrics.</p>
+            <h1 className="text-[28px] font-bold">Exercise Management</h1>
+            <p className="mt-1 text-[13px] text-[#94A3B8]">
+              Manage exercise prescriptions and their tutorial and short-clip videos.
+            </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#475569]" />
-              <input 
-                type="text" 
-                placeholder="Search exercises..." 
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset to first page on new search
-                }}
-                className="bg-[#131B2F] border border-[#1E293B] rounded-xl pl-10 pr-4 py-2.5 text-[13px] text-white outline-none focus:border-[#3B82F6] transition-colors w-[240px]"
-              />
+          <button
+            onClick={() => navigate("/add-exercise")}
+            className="flex items-center gap-2 self-start rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold hover:bg-blue-600"
+          >
+            Add New Exercise <PlusCircle size={18} />
+          </button>
+        </div>
+
+        <div className="mb-6 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-5">
+            <Dumbbell className="mb-4 text-[#38BDF8]" size={22} />
+            <div className="text-2xl font-bold">{exercises.length}</div>
+            <div className="mt-1 text-xs uppercase tracking-widest text-[#64748B]">
+              Total Exercises
             </div>
-            <button 
-              onClick={() => navigate('/add-exercise')}
-              className="flex items-center gap-2 bg-[#3B82F6] hover:bg-blue-600 transition-colors text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-[0_0_15px_rgba(59,130,246,0.3)] whitespace-nowrap"
-            >
-              Add New Exercise
-              <PlusCircle size={18} />
-            </button>
+          </div>
+          <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-5">
+            <Package className="mb-4 text-[#34D399]" size={22} />
+            <div className="text-2xl font-bold">
+              {
+                exercises.filter((exercise) => exercise.status === "published")
+                  .length
+              }
+            </div>
+            <div className="mt-1 text-xs uppercase tracking-widest text-[#64748B]">
+              Published
+            </div>
+          </div>
+          <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-5">
+            <div className="mb-4 text-xl font-bold text-violet-300">3</div>
+            <div className="text-2xl font-bold">Reset · Control · Integrate</div>
+            <div className="mt-1 text-xs uppercase tracking-widest text-[#64748B]">
+              Available Phases
+            </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
-          {stats.map((stat, idx) => (
-            <StatsCard key={idx} {...stat} />
-          ))}
+        <div className="mb-5 flex flex-wrap gap-3 rounded-2xl border border-[#1E293B] bg-[#131B2F] p-4">
+          <div className="relative min-w-[240px] flex-1">
+            <Search
+              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[#475569]"
+            />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search by name or Exercise ID"
+              className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] py-2.5 pl-10 pr-4 text-sm outline-none focus:border-[#38BDF8]"
+            />
+          </div>
+          <select
+            value={phase}
+            onChange={(event) => setPhase(event.target.value)}
+            className="rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-2.5 text-sm outline-none"
+          >
+            <option value="">All phases</option>
+            <option value="reset">Reset</option>
+            <option value="control">Control</option>
+            <option value="integrate">Integrate</option>
+          </select>
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-[#131B2F] rounded-2xl border border-[#1E293B] p-4 mb-6 flex flex-wrap items-center justify-between gap-6">
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-2 text-[#94A3B8] text-[11px] font-bold uppercase tracking-widest px-2">
-              <Filter size={16} />
-              FILTERS
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">BODY AREA</label>
-              <div className="relative">
-                <select className="bg-[#0A0D14] border border-[#1E293B] rounded-xl pl-4 pr-8 py-2 text-[12px] font-medium text-[#94A3B8] outline-none appearance-none cursor-pointer hover:border-[#38BDF8] transition-colors">
-                  <option>Shoulder</option>
-                  <option>Lower Back</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">PHASE</label>
-              <div className="relative">
-                <select className="bg-[#0A0D14] border border-[#1E293B] rounded-xl pl-4 pr-8 py-2 text-[12px] font-medium text-[#94A3B8] outline-none appearance-none cursor-pointer hover:border-[#38BDF8] transition-colors">
-                  <option>Reset</option>
-                  <option>Control</option>
-                  <option>Integrate</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">EQUIPMENT</label>
-              <div className="relative">
-                <select className="bg-[#0A0D14] border border-[#1E293B] rounded-xl pl-4 pr-8 py-2 text-[12px] font-medium text-[#94A3B8] outline-none appearance-none cursor-pointer hover:border-[#38BDF8] transition-colors">
-                  <option>Bench</option>
-                  <option>Mini Band</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <label className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">STATUS</label>
-              <div className="relative">
-                <select className="bg-[#0A0D14] border border-[#1E293B] rounded-xl pl-4 pr-8 py-2 text-[12px] font-medium text-[#94A3B8] outline-none appearance-none cursor-pointer hover:border-[#38BDF8] transition-colors">
-                  <option>Published</option>
-                  <option>Drafted</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] pointer-events-none" />
-              </div>
-            </div>
+        {(error || actionError) && (
+          <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            {actionError || error}
           </div>
+        )}
 
-          <div className="text-[12px] font-medium text-[#64748B] px-2">
-            Showing {filteredExercises.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredExercises.length)} of {filteredExercises.length}
-          </div>
-        </div>
-
-        {/* Data Table */}
-        <div className="bg-[#131B2F] rounded-2xl border border-[#1E293B] overflow-hidden">
-          <div className="overflow-x-auto min-h-[400px]">
-            <table className="w-full text-left border-collapse">
+        <div className="overflow-hidden rounded-2xl border border-[#1E293B] bg-[#131B2F]">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
               <thead>
-                <tr className="bg-[#0A0D14]/50 text-[10px] font-bold text-[#64748B] uppercase tracking-[0.1em] border-b border-[#1E293B]">
-                  <th className="px-8 py-5 w-[140px]">EXERCISE ID</th>
-                  <th className="px-6 py-5 w-[250px]">EXERCISE NAME</th>
-                  <th className="px-6 py-5">BODY AREA</th>
-                  <th className="px-6 py-5 w-[180px]">PHASE</th>
-                  <th className="px-6 py-5 w-[140px]">EQUIPMENT</th>
-                  <th className="px-6 py-5 w-[140px]">STATUS</th>
-                  <th className="px-8 py-5 text-right w-[120px]">ACTIONS</th>
+                <tr className="border-b border-[#1E293B] bg-[#0A0D14]/50 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
+                  <th className="px-7 py-5">Exercise</th>
+                  <th className="px-6 py-5">Sets / Reps</th>
+                  <th className="px-6 py-5">Phase</th>
+                  <th className="px-6 py-5">Equipment</th>
+                  <th className="px-6 py-5">Videos</th>
+                  <th className="px-6 py-5">Status</th>
+                  <th className="px-7 py-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1E293B]">
-                {currentItems.length > 0 ? (
-                  currentItems.map((exercise, index) => (
-                    <tr key={exercise.id} className="hover:bg-[#1E293B]/40 transition-colors group">
-                      <td className="px-8 py-6 text-[#64748B] text-[12px] font-medium">{exercise.id}</td>
-                      <td className="px-6 py-6 text-[14px] font-bold text-white">{exercise.name}</td>
-                      
-                      {/* Body Area Pills */}
-                      <td className="px-6 py-6">
-                        <div className="flex flex-wrap gap-2 max-w-[280px]">
-                          {exercise.bodyAreas.map((area, i) => (
-                            <span key={i} className="bg-[#34D399] text-[#0A0D14] px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap">
-                              {area}
-                            </span>
-                          ))}
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" className="py-20 text-center text-[#64748B]">
+                      Loading exercises…
+                    </td>
+                  </tr>
+                ) : filtered.length ? (
+                  filtered.map((exercise) => (
+                    <tr key={exercise.id} className="hover:bg-[#1E293B]/30">
+                      <td className="px-7 py-5">
+                        <div className="font-bold">{exercise.exercise_name}</div>
+                        <div className="mt-1 text-xs text-[#64748B]">
+                          {exercise.exercise_id}
                         </div>
                       </td>
-
-                      {/* Phase Pills */}
-                      <td className="px-6 py-6">
-                        <div className="flex flex-wrap gap-2">
-                          {exercise.phases.map((phase, i) => (
-                            <span key={i} className={`px-4 py-1.5 rounded-full text-[10px] font-bold tracking-wider ${getPhaseStyle(phase)}`}>
-                              {phase}
-                            </span>
-                          ))}
+                      <td className="px-6 py-5 text-sm text-[#94A3B8]">
+                        {exercise.sets} × {exercise.reps}
+                      </td>
+                      <td className="px-6 py-5">
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${phaseStyles[exercise.phase]}`}
+                        >
+                          {exercise.phase}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className="flex max-w-[300px] flex-wrap gap-1.5">
+                          {exercise.equipment_needed.length ? (
+                            exercise.equipment_needed.map((item) => (
+                              <span
+                                key={item}
+                                className="rounded-full bg-[#1E293B] px-2.5 py-1 text-[10px] text-[#CBD5E1]"
+                              >
+                                {item}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-[#64748B]">None</span>
+                          )}
                         </div>
                       </td>
-
-                      {/* Equipment */}
-                      <td className="px-6 py-6">
-                        {exercise.equipment}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-6 py-6">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${exercise.status === 'Published' ? 'bg-[#34D399] shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-[#64748B]'}`}></div>
-                          <span className={`text-[12px] font-bold ${exercise.status === 'Published' ? 'text-[#34D399]' : 'text-[#64748B]'}`}>
-                            {exercise.status}
-                          </span>
+                      <td className="px-6 py-5 text-xs text-[#94A3B8]">
+                        <div>Tutorial: {exercise.tutorial_video.video_name}</div>
+                        <div className="mt-1">
+                          Clip: {exercise.short_clip_video.video_name}
                         </div>
                       </td>
-
-                      {/* Actions */}
-                      <td className="px-8 py-6">
-                        <div className="flex items-center justify-end gap-3 text-[#64748B]">
-                          <button className="p-2 hover:bg-[#1E293B] hover:text-white rounded-lg transition-colors">
-                            <Edit3 size={18} strokeWidth={1.5} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(exercise.id)}
-                            className="p-2 hover:bg-[#EF4444]/10 hover:text-[#EF4444] rounded-lg transition-colors"
+                      <td className="px-6 py-5">
+                        <span
+                          className={
+                            exercise.status === "published"
+                              ? "text-xs font-bold capitalize text-emerald-400"
+                              : "text-xs font-bold capitalize text-amber-400"
+                          }
+                        >
+                          {exercise.status}
+                        </span>
+                      </td>
+                      <td className="px-7 py-5">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() =>
+                              navigate(
+                                `/exercise-library/${encodeURIComponent(exercise.exercise_id)}/edit`,
+                              )
+                            }
+                            className="rounded-lg p-2 text-[#64748B] hover:bg-[#1E293B] hover:text-white"
                           >
-                            <Trash2 size={18} strokeWidth={1.5} />
+                            <Edit3 size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(exercise)}
+                            className="rounded-lg p-2 text-[#64748B] hover:bg-red-500/10 hover:text-red-400"
+                          >
+                            <Trash2 size={18} />
                           </button>
                         </div>
                       </td>
@@ -269,52 +220,13 @@ const ExerciseLibrary = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="text-center py-16 text-[#64748B] text-[14px]">
-                      No exercises found matching your search.
+                    <td colSpan="7" className="py-20 text-center text-[#64748B]">
+                      No exercises found.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* Footer Pagination */}
-          <div className="px-8 py-6 flex items-center justify-between border-t border-[#1E293B]">
-            <button 
-              onClick={handlePrevPage}
-              className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                currentPage === 1 ? 'text-[#475569] cursor-not-allowed' : 'text-[#64748B] hover:text-white'
-              }`}
-              disabled={currentPage === 1}
-            >
-              <ArrowLeft size={14} /> PREVIOUS
-            </button>
-            
-            <div className="flex items-center gap-2">
-              {getPageNumbers().map(num => (
-                <button 
-                  key={num}
-                  onClick={() => handlePageClick(num)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-[13px] font-bold transition-colors ${
-                    currentPage === num 
-                      ? 'bg-[#38BDF8] text-[#0A0D14]' 
-                      : 'text-[#94A3B8] hover:bg-[#1E293B] hover:text-white'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-            
-            <button 
-              onClick={handleNextPage}
-              className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest transition-colors ${
-                currentPage === totalPages || totalPages === 0 ? 'text-[#475569] cursor-not-allowed' : 'text-[#64748B] hover:text-white'
-              }`}
-              disabled={currentPage === totalPages || totalPages === 0}
-            >
-              NEXT <ArrowRight size={14} />
-            </button>
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ const activities = [
     id: 2,
     name: 'Marcus Chen',
     type: 'ACTIVITY LOG',
-    action: 'Completed "The Lumbar Deep Reset" Protocol',
+    action: 'Completed "The Lumbar Deep Reset" Plan',
     time: '15 minutes ago',
     badge: 'LEVEL UP',
     badgeColor: 'text-[#10B981]'

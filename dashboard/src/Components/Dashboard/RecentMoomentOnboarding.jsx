@@ -122,6 +122,11 @@ const RecentMoomentOnboarding = () => {
             >
               <X size={20} className="text-gray-300" />
             </button>
+            {selectedRow && (
+              <p className="mb-2 text-sm font-bold text-gray-400">
+                {selectedRow.name}
+              </p>
+            )}
             <div className="flex flex-col gap-8">
               <button className="text-[32px] font-bold text-[#4B4B4B] dark:text-gray-300 text-left hover:text-black dark:hover:text-white transition-colors">
 

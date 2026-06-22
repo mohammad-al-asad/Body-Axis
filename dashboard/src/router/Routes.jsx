@@ -9,8 +9,8 @@ import NewPass from "../Pages/Auth/NewPass/NewPass";
 import UserManagement from "../Pages/UserManagement/UserManagement";
 import UserDetails from "../Pages/UserManagement/UserDetails";
 import EventDetails from "../Pages/UserManagement/EventDetails";
-import ProtocolManager from "../Pages/ProtocolManager/ProtocolManager";
-import CreateProtocol from "../Pages/ProtocolManager/CreateProtocol";
+import PlanManager from "../Pages/PlanManager/PlanManager";
+import CreatePlan from "../Pages/PlanManager/CreatePlan";
 import ExerciseLibrary from "../Pages/ExerciseLibrary/ExerciseLibrary";
 import AddExercise from "../Pages/ExerciseLibrary/AddExercise";
 import VideoManager from "../Pages/VideoManager/VideoManager";
@@ -44,15 +44,21 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <Dashboard /> },
           { path: "/dashboard", element: <Dashboard /> },
-          { path: "/protocol-manager", element: <ProtocolManager /> },
+          { path: "/plan-manager", element: <PlanManager /> },
           { path: "/user-management", element: <UserManagement /> },
           { path: "/user-management/:id", element: <UserDetails /> },
           { path: "/event-details/:id", element: <EventDetails /> },
-          { path: "/create-protocol", element: <CreateProtocol /> },
+          { path: "/create-plan", element: <CreatePlan /> },
+          { path: "/plan-manager/:planId/edit", element: <CreatePlan /> },
           { path: "/exercise-library", element: <ExerciseLibrary /> },
           { path: "/add-exercise", element: <AddExercise /> },
+          {
+            path: "/exercise-library/:exerciseId/edit",
+            element: <AddExercise />,
+          },
           { path: "/video-manager", element: <VideoManager /> },
           { path: "/upload-video", element: <UploadVideo /> },
+          { path: "/video-manager/:videoId/edit", element: <UploadVideo /> },
           { path: "/subscription", element: <SubscriptionManagement /> },
           { path: "/settings", element: <Settings /> },
         ],

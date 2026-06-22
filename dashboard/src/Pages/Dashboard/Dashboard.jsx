@@ -58,7 +58,7 @@ export default function Dashboard() {
       bgIcon: User,
     },
     {
-      title: 'Total Protocols',
+      title: 'Total Plans',
       value: '412',
       change: '↗ 12%',
       icon: Flame,
