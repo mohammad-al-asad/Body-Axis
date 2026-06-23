@@ -12,7 +12,12 @@ from schemas.admin import (
     AdminUpdateRequest,
 )
 from schemas.dashboard import DashboardAnalyticsResponse
-from schemas.subscription_admin import SubscriptionAnalyticsResponse
+from schemas.subscription_admin import (
+    EntitlementActionResponse,
+    GrantEntitlementRequest,
+    RevokeEntitlementRequest,
+    SubscriptionAnalyticsResponse,
+)
 from services.admin_service import (
     login_admin,
     serialize_admin,
@@ -21,7 +26,11 @@ from services.admin_service import (
     update_admin_password,
 )
 from services.dashboard_service import get_dashboard_analytics
-from services.subscription_admin_service import get_subscription_analytics
+from services.subscription_admin_service import (
+    get_subscription_analytics,
+    grant_customer_entitlement,
+    revoke_customer_entitlement,
+)
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -65,6 +74,34 @@ async def get_admin_subscriptions(
 ) -> SubscriptionAnalyticsResponse:
     del current_admin
     return await get_subscription_analytics()
+
+
+@router.post(
+    "/subscriptions/entitlements/grant",
+    response_model=EntitlementActionResponse,
+)
+async def grant_admin_customer_entitlement(
+    payload: GrantEntitlementRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> EntitlementActionResponse:
+    return await grant_customer_entitlement(
+        payload,
+        str(current_admin["_id"]),
+    )
+
+
+@router.post(
+    "/subscriptions/entitlements/revoke",
+    response_model=EntitlementActionResponse,
+)
+async def revoke_admin_customer_entitlement(
+    payload: RevokeEntitlementRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> EntitlementActionResponse:
+    return await revoke_customer_entitlement(
+        payload,
+        str(current_admin["_id"]),
+    )
 
 
 @router.put("/me", response_model=AdminResponse)
