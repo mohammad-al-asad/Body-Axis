@@ -1,8 +1,15 @@
 import React from 'react';
-import { ChevronDown, KeyRound, Store } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  KeyRound,
+  Store,
+} from 'lucide-react';
 
 const SubscriptionTable = ({
   subscriptions,
+  filteredTotal,
   total,
   loading,
   filterStatus,
@@ -11,6 +18,9 @@ const SubscriptionTable = ({
   setFilterPlanType,
   planOptions,
   onManageAccess,
+  currentPage,
+  pageCount,
+  onPageChange,
 }) => {
   const tabs = [
     'All Subs',
@@ -20,18 +30,33 @@ const SubscriptionTable = ({
     'Expired',
     'Billing Retry',
   ];
-  const statusClass = {
-    Active: 'border-[#064E3B] bg-[#022C22] text-[#34D399]',
-    Trialing: 'border-sky-700/60 bg-sky-950/60 text-sky-300',
-    'Grace Period': 'border-amber-700/60 bg-amber-950/60 text-amber-300',
-    'Billing Retry': 'border-red-700/60 bg-red-950/60 text-red-300',
-    Cancelled: 'border-orange-800 bg-orange-950/60 text-orange-300',
-    Expired: 'border-[#7F1D1D] bg-[#450A0A] text-[#FCA5A5]',
-    Paused: 'border-violet-700/60 bg-violet-950/60 text-violet-300',
-    Incomplete: 'border-slate-600 bg-slate-900 text-slate-300',
-    Unknown: 'border-slate-600 bg-slate-900 text-slate-300',
-    Inactive: 'border-slate-700 bg-slate-900 text-slate-300',
+
+  const statusConfig = {
+    Active: { badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', dot: 'bg-emerald-400 animate-pulse' },
+    Trialing: { badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20', dot: 'bg-sky-400' },
+    'Grace Period': { badge: 'bg-amber-500/10 text-amber-400 border-amber-500/20', dot: 'bg-amber-400' },
+    'Billing Retry': { badge: 'bg-rose-500/10 text-rose-400 border-rose-500/20', dot: 'bg-rose-400' },
+    Cancelled: { badge: 'bg-orange-500/10 text-orange-400 border-orange-500/20', dot: 'bg-orange-400' },
+    Expired: { badge: 'bg-slate-500/10 text-slate-400 border-slate-500/20', dot: 'bg-slate-400' },
+    Paused: { badge: 'bg-violet-500/10 text-violet-400 border-violet-500/20', dot: 'bg-violet-400' },
+    Incomplete: { badge: 'bg-slate-500/10 text-slate-400 border-slate-500/20', dot: 'bg-slate-400' },
+    Unknown: { badge: 'bg-slate-500/10 text-slate-400 border-slate-500/20', dot: 'bg-slate-400' },
+    Inactive: { badge: 'bg-slate-500/10 text-slate-400 border-slate-500/20', dot: 'bg-slate-400' },
   };
+
+  const getAvatarStyle = (name) => {
+    const charCode = name ? name.charCodeAt(0) : 65;
+    const index = charCode % 5;
+    const styles = [
+      'bg-blue-500/10 text-blue-400 border-blue-500/25',
+      'bg-teal-500/10 text-teal-400 border-teal-500/25',
+      'bg-purple-500/10 text-purple-400 border-purple-500/25',
+      'bg-rose-500/10 text-rose-400 border-rose-500/25',
+      'bg-sky-500/10 text-sky-400 border-sky-500/25',
+    ];
+    return styles[index];
+  };
+
   const formatStore = (value) =>
     value
       ? value
@@ -42,15 +67,15 @@ const SubscriptionTable = ({
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="mb-4 flex flex-col items-center justify-between gap-4 md:flex-row">
-        <div className="flex h-[44px] max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[#1E293B] bg-[#131B2F] p-1">
+      <div className="mb-6 flex flex-col items-center justify-between gap-4 md:flex-row">
+        <div className="flex h-[44px] max-w-full items-center gap-1 overflow-x-auto rounded-full border border-[#1E293B]/60 bg-[#131b2f]/45 p-1 backdrop-blur-md">
           {tabs.map((tab) => (
             <button
               key={tab}
               onClick={() => setFilterStatus(tab)}
-              className={`h-full whitespace-nowrap rounded-full px-5 text-[13px] font-bold transition-all ${
+              className={`h-full whitespace-nowrap rounded-full px-5 text-[13px] font-bold transition-all duration-200 ${
                 filterStatus === tab
-                  ? 'bg-[#E2E8F0] text-[#0F172A] shadow-sm'
+                  ? 'bg-white text-[#0f172a] shadow-sm'
                   : 'text-[#94A3B8] hover:text-white'
               }`}
             >
@@ -63,7 +88,7 @@ const SubscriptionTable = ({
           <select
             value={filterPlanType}
             onChange={(event) => setFilterPlanType(event.target.value)}
-            className="h-full cursor-pointer appearance-none rounded-full border border-[#1E293B] bg-[#131B2F] pl-5 pr-10 text-[13px] font-medium text-[#94A3B8] outline-none transition-colors hover:border-[#38BDF8]"
+            className="h-full cursor-pointer appearance-none rounded-full border border-[#1E293B]/60 bg-[#131b2f]/45 pl-5 pr-10 text-[13px] font-bold text-[#94A3B8] outline-none backdrop-blur-md transition-colors hover:border-blue-500/40 hover:text-white"
           >
             <option>Plan Type</option>
             {planOptions.map((plan) => (
@@ -77,126 +102,128 @@ const SubscriptionTable = ({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#1E293B] bg-[#131B2F]">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#1E293B]/60 bg-[#131b2f]/45 shadow-sm backdrop-blur-md">
         <div className="flex-1 overflow-x-auto">
           <table className="min-w-[930px] w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-[#1E293B]">
-                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+              <tr className="border-b border-[#1E293B]/60 bg-[#07090e]/20">
+                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   User
                 </th>
-                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   Plan
                 </th>
-                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   Expiration
                 </th>
-                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   Store
                 </th>
-                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   Status
                 </th>
-                <th className="px-6 py-5 text-right text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                <th className="px-6 py-5 text-right text-[11px] font-bold uppercase tracking-widest text-[#64748b]">
                   Access
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1E293B]">
+            <tbody className="divide-y divide-[#1E293B]/40">
               {subscriptions.length ? (
-                subscriptions.map((subscription) => (
-                  <tr
-                    key={subscription.id}
-                    className="group transition-colors hover:bg-[#1E293B]/40"
-                  >
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#334155] bg-[#1E293B] text-sm font-bold text-[#94A3B8]">
-                          {subscription.name.slice(0, 1).toUpperCase()}
+                subscriptions.map((subscription) => {
+                  const avatarClass = getAvatarStyle(subscription.name);
+                  const statusInfo = statusConfig[subscription.status] || statusConfig.Inactive;
+                  return (
+                    <tr
+                      key={subscription.id}
+                      className="group transition-all duration-200 hover:bg-[#1E293B]/20"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-extrabold shadow-inner ${avatarClass}`}>
+                            {subscription.name.slice(0, 1).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-[14px] font-extrabold text-white leading-tight">
+                              {subscription.name}
+                            </p>
+                            <p className="text-[11px] text-[#64748B] mt-0.5">
+                              {subscription.email}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[14px] font-bold text-white">
-                            {subscription.name}
-                          </p>
-                          <p className="text-[12px] text-[#64748B]">
-                            {subscription.email}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-[13px] font-medium text-white">
-                        {subscription.plan_name}
-                      </p>
-                      <p
-                        className="max-w-[180px] truncate text-[11px] text-[#64748B]"
-                        title={subscription.product_id || ''}
-                      >
-                        {subscription.product_id || 'Product unavailable'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="text-[13px] font-medium text-white">
-                        {subscription.expires_at
-                          ? new Date(subscription.expires_at).toLocaleDateString()
-                          : 'No expiration'}
-                      </p>
-                      <p className="text-[11px] text-[#94A3B8]">
-                        {subscription.auto_renewal_status
-                          ? formatStore(subscription.auto_renewal_status)
-                          : 'Renewal unavailable'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-[13px] font-medium text-[#94A3B8]">
-                        <Store size={18} />
-                        <div>
-                          <p>{formatStore(subscription.store)}</p>
-                          <p
-                            className={`text-[9px] font-bold ${
-                              subscription.environment === 'PRODUCTION'
-                                ? 'text-emerald-400'
-                                : 'text-amber-400'
-                            }`}
-                          >
-                            {subscription.environment || 'UNKNOWN'}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-2">
-                        <div
-                          className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-                            statusClass[subscription.status] ||
-                            statusClass.Inactive
-                          }`}
-                        >
-                          {subscription.status}
-                        </div>
-                        <p className="text-[10px] text-[#64748B]">
-                          ${Number(subscription.total_revenue_usd || 0).toFixed(2)}
-                          {' lifetime'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-[13px] font-bold text-white leading-tight">
+                          {subscription.plan_name}
                         </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => onManageAccess(subscription)}
-                        className="inline-flex items-center gap-2 rounded-lg border border-[#2563EB]/40 bg-[#2563EB]/10 px-3 py-2 text-xs font-bold text-[#93C5FD] hover:bg-[#2563EB]/20"
-                      >
-                        <KeyRound size={14} />
-                        Manage
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                        <p
+                          className="max-w-[180px] truncate text-[11px] text-[#64748b] mt-0.5 font-mono"
+                          title={subscription.product_id || ''}
+                        >
+                          {subscription.product_id || 'Product unavailable'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-[13px] font-bold text-white leading-tight">
+                          {subscription.expires_at
+                            ? new Date(subscription.expires_at).toLocaleDateString()
+                            : 'No expiration'}
+                        </p>
+                        <p className="text-[11px] text-[#64748b] mt-0.5">
+                          {subscription.auto_renewal_status
+                            ? formatStore(subscription.auto_renewal_status)
+                            : 'Renewal unavailable'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2.5 text-[13px] font-medium text-[#94A3B8]">
+                          <Store size={16} className="text-[#64748b]" />
+                          <div>
+                            <p className="font-bold text-white/90 leading-tight">{formatStore(subscription.store)}</p>
+                            <p
+                              className={`text-[9px] font-extrabold mt-0.5 ${
+                                subscription.environment === 'PRODUCTION'
+                                  ? 'text-emerald-400'
+                                  : 'text-amber-400'
+                              }`}
+                            >
+                              {subscription.environment || 'UNKNOWN'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1.5">
+                          <div
+                            className={`inline-flex items-center gap-1.5 justify-center rounded-full border px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest ${statusInfo.badge}`}
+                          >
+                            <span className={`h-1.5 w-1.5 rounded-full ${statusInfo.dot}`} />
+                            {subscription.status}
+                          </div>
+                          <p className="text-[10px] text-[#64748B] font-medium pl-1">
+                            ${Number(subscription.total_revenue_usd || 0).toFixed(2)}
+                            {' LTV'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => onManageAccess(subscription)}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-800/40 px-3.5 py-2 text-xs font-bold text-[#cbd5e1] shadow-sm transition-all hover:bg-blue-600/10 hover:border-blue-500/30 hover:text-blue-400 active:scale-[0.97]"
+                        >
+                          <KeyRound size={13} className="text-[#64748b] group-hover:text-blue-400" />
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td
                     colSpan="6"
-                    className="px-6 py-12 text-center text-[13px] text-[#64748B]"
+                    className="px-6 py-12 text-center text-xs text-[#64748B]"
                   >
                     {loading
                       ? 'Loading RevenueCat subscriptions…'
@@ -208,10 +235,45 @@ const SubscriptionTable = ({
           </table>
         </div>
 
-        <div className="mt-auto border-t border-[#1E293B] px-6 py-4">
-          <p className="text-[12px] font-bold text-[#64748B]">
-            Showing {subscriptions.length} of {total} RevenueCat customers
+        <div className="mt-auto flex items-center justify-between gap-4 border-t border-[#1E293B]/60 bg-[#07090e]/10 px-6 py-4">
+          <p className="text-xs font-bold text-[#64748B]">
+            Showing {subscriptions.length} of {filteredTotal} filtered subscribers
+            {filteredTotal !== total ? ` (${total} total)` : ''}
           </p>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#1E293B]/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            {Array.from({ length: pageCount }, (_, index) => index + 1).map(
+              (page) => (
+                <button
+                  key={page}
+                  type="button"
+                  onClick={() => onPageChange(page)}
+                  className={`flex h-8 min-w-8 items-center justify-center rounded-lg px-2 text-[12px] font-extrabold transition-all duration-200 ${
+                    currentPage === page
+                      ? 'bg-blue-600 text-white shadow-sm ring-1 ring-blue-500/50'
+                      : 'text-[#94A3B8] hover:bg-[#1E293B]/60 hover:text-white'
+                  }`}
+                >
+                  {page}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))}
+              disabled={currentPage === pageCount}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#64748B] transition-colors hover:bg-[#1E293B]/60 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
