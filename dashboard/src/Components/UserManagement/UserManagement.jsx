@@ -1,57 +1,97 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Filter, Calendar, ChevronDown } from 'lucide-react';
+import { adminApi } from '../../services/adminApi';
 
 const UserManagement = ({ globalSearch = '' }) => {
-  // Filter states
   const [nameFilter, setNameFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  
   const [currentPage, setCurrentPage] = useState(1);
+  const [users, setUsers] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    total_pages: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
   const itemsPerPage = 10;
+  const totalPages = pagination.total_pages || 0;
 
-  const userData = useMemo(() => [
-    { id: 1, name: 'Olivia Katherine Montgo', dob: '14 May 1990', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Active', sessions: 42 },
-    { id: 2, name: 'Olivia Katherine Mont...', dob: '22 Aug 1992', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Expiring Soon', sessions: 42 },
-    { id: 3, name: 'Olivia Katherine Mont...', dob: '05 Nov 1988', email: 'olivia.katherine.montgomery', joinDate: '12 Jan 2026', currentPlan: 'The Lower Back Ache Full...', total: 4, status: 'Expired', sessions: 42 },
-    { id: 4, name: 'Ethan Alexander Broo...', dob: '30 Jan 1995', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 36 },
-    { id: 5, name: 'Ethan Alexander Broo...', dob: '12 Mar 1993', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expiring Soon', sessions: 38 },
-    { id: 6, name: 'Ethan Alexander Broo...', dob: '19 Jul 1991', email: 'ethan.alexander.brookshire...', joinDate: '18 Jan 2026', currentPlan: 'The QL Deep Reset', total: 2, status: 'Expired', sessions: 36 },
-    { id: 7, name: 'Sophia Elizabeth Harri...', dob: '27 Sep 1989', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 8, name: 'Sophia Elizabeth Harri...', dob: '03 Feb 1994', email: 'sophia.elizabeth.harrington...', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 9, name: 'Liam Jonathan Wellin...', dob: '11 Oct 1996', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Expired', sessions: 42 },
-    { id: 10, name: 'Liam Jonathan Wellin...', dob: '08 Dec 1990', email: 'liam.jonathan.wellington@ex', joinDate: '25 Jan 2026', currentPlan: 'The Hip Flexor Strength F...', total: 4, status: 'Active', sessions: 42 },
-    { id: 11, name: 'Test User', dob: '01 Jan 2000', email: 'test@example.com', joinDate: '26 Jan 2026', currentPlan: 'Test Plan', total: 1, status: 'Active', sessions: 10 },
-  ], []);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [globalSearch]);
 
-  // Filter and Paginate logic
-  const filteredData = useMemo(() => {
-    return userData.filter(user => {
-      // Global search (top right)
-      const matchesGlobal = globalSearch === '' || 
-        user.name.toLowerCase().includes(globalSearch.toLowerCase()) ||
-        user.email.toLowerCase().includes(globalSearch.toLowerCase());
-        
-      // Local name/email filter
-      const matchesName = nameFilter === '' || 
-        user.name.toLowerCase().includes(nameFilter.toLowerCase()) ||
-        user.email.toLowerCase().includes(nameFilter.toLowerCase());
-        
-      // Status filter
-      const matchesStatus = statusFilter === '' || user.status === statusFilter;
-      
-      return matchesGlobal && matchesName && matchesStatus;
-    });
-  }, [globalSearch, nameFilter, statusFilter, userData]);
+  useEffect(() => {
+    let ignore = false;
 
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const fetchUsers = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const data = await adminApi.getUsers({
+          page: currentPage,
+          page_size: itemsPerPage,
+          search: nameFilter.trim(),
+          global_search: globalSearch.trim(),
+          start_date: startDate,
+          end_date: endDate,
+          status: statusFilter,
+        });
 
-  const currentItems = useMemo(() => {
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    return filteredData.slice(indexOfFirstItem, indexOfLastItem);
-  }, [currentPage, filteredData]);
+        if (ignore) return;
+
+        setUsers(data.items || []);
+        setPagination({
+          total: data.total || 0,
+          page: data.page || 1,
+          page_size: data.page_size || itemsPerPage,
+          total_pages: data.total_pages || 0,
+        });
+
+        if (data.page && data.page !== currentPage) {
+          setCurrentPage(data.page);
+        }
+      } catch (fetchError) {
+        if (ignore) return;
+        setUsers([]);
+        setPagination({
+          total: 0,
+          page: 1,
+          page_size: itemsPerPage,
+          total_pages: 0,
+        });
+        setError(fetchError.message || 'Failed to load users.');
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    };
+
+    fetchUsers();
+
+    return () => {
+      ignore = true;
+    };
+  }, [currentPage, endDate, globalSearch, nameFilter, startDate, statusFilter]);
+
+  const visiblePages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const start = Math.max(1, Math.min(currentPage - 2, totalPages - 4));
+    return Array.from({ length: 5 }, (_, index) => start + index);
+  }, [currentPage, totalPages]);
+
+  const showingStart = pagination.total
+    ? (pagination.page - 1) * pagination.page_size + 1
+    : 0;
+  const showingEnd = pagination.total
+    ? showingStart + users.length - 1
+    : 0;
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
@@ -64,8 +104,35 @@ const UserManagement = ({ globalSearch = '' }) => {
       case 'Active': return 'text-[#10B981]';
       case 'Expiring Soon': return 'text-[#F59E0B]';
       case 'Expired': return 'text-[#EF4444]';
+      case 'No Plan': return 'text-[#94A3B8]';
       default: return 'text-[#94A3B8]';
     }
+  };
+
+  const formatDate = (value) => {
+    if (!value) return 'Not provided';
+
+    const date =
+      typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+        ? new Date(
+            Number(value.slice(0, 4)),
+            Number(value.slice(5, 7)) - 1,
+            Number(value.slice(8, 10)),
+          )
+        : new Date(value);
+
+    if (Number.isNaN(date.getTime())) return 'Not provided';
+
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).format(date);
+  };
+
+  const truncate = (value, max = 30) => {
+    const text = value || 'Not provided';
+    return text.length > max ? `${text.slice(0, max - 3)}...` : text;
   };
 
   return (
@@ -82,7 +149,7 @@ const UserManagement = ({ globalSearch = '' }) => {
             <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">Email ID/Name</span>
             <input
               type="text"
-              placeholder="olivia.katherine.montgomery"
+              placeholder="Search name or email"
               value={nameFilter}
               onChange={(e) => {
                 setNameFilter(e.target.value);
@@ -97,10 +164,12 @@ const UserManagement = ({ globalSearch = '' }) => {
             <div className="flex items-center gap-2">
               <div className="relative">
                 <input 
-                  type="text" 
-                  placeholder="10/14/25" 
+                  type="date" 
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] placeholder-[#94A3B8] rounded-xl pl-4 pr-10 py-2 w-[120px] focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
                 />
                 <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
@@ -108,10 +177,12 @@ const UserManagement = ({ globalSearch = '' }) => {
               <span className="text-[#94A3B8] text-[12px]">to</span>
               <div className="relative">
                 <input 
-                  type="text" 
-                  placeholder="10/14/25" 
+                  type="date" 
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] placeholder-[#94A3B8] rounded-xl pl-4 pr-10 py-2 w-[120px] focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
                 />
                 <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
@@ -130,10 +201,11 @@ const UserManagement = ({ globalSearch = '' }) => {
                 }}
                 className="appearance-none bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] rounded-xl pl-4 pr-10 py-2 focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30"
               >
-                <option value="">Expiring Soon</option>
+                <option value="">All Statuses</option>
                 <option value="Active">Active</option>
                 <option value="Expiring Soon">Expiring Soon</option>
                 <option value="Expired">Expired</option>
+                <option value="No Plan">No Plan</option>
               </select>
               <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" />
             </div>
@@ -141,9 +213,17 @@ const UserManagement = ({ globalSearch = '' }) => {
         </div>
 
         <div className="text-[12px] text-[#94A3B8] font-medium tracking-wide">
-          Showing {filteredData.length > 0 ? (currentPage - 1) * itemsPerPage + 1 : 0}-{Math.min(currentPage * itemsPerPage, filteredData.length)} of 9,548
+          {loading
+            ? 'Loading users...'
+            : `Showing ${showingStart}-${showingEnd} of ${pagination.total}`}
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-2xl border border-[#7F1D1D] bg-[#2A0F18] px-5 py-4 text-sm font-semibold text-[#FCA5A5]">
+          {error}
+        </div>
+      )}
 
       {/* Table Section */}
       <div className="bg-[#131B2F] border border-[#1E293B] rounded-2xl overflow-hidden flex flex-col">
@@ -162,22 +242,32 @@ const UserManagement = ({ globalSearch = '' }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1E293B]/50">
-              {currentItems.map((user) => (
+              {users.map((user) => (
                 <tr key={user.id} className="hover:bg-[#1E293B]/50 transition-colors">
                   <td className="px-8 py-5">
-                    <span className="font-bold text-white text-[13px]">{user.name}</span>
+                    <span className="font-bold text-white text-[13px]" title={user.name}>
+                      {truncate(user.name, 28)}
+                    </span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-[#94A3B8] text-[13px]">{user.dob}</span>
+                    <span className="text-[#94A3B8] text-[13px]">
+                      {formatDate(user.date_of_birth)}
+                    </span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-[#94A3B8] text-[13px]">{user.email}</span>
+                    <span className="text-[#94A3B8] text-[13px]" title={user.email}>
+                      {truncate(user.email, 34)}
+                    </span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-[#94A3B8] text-[13px]">{user.joinDate}</span>
+                    <span className="text-[#94A3B8] text-[13px]">
+                      {formatDate(user.join_date)}
+                    </span>
                   </td>
                   <td className="px-8 py-5">
-                    <span className="text-[#94A3B8] text-[13px]">{user.currentPlan}</span>
+                    <span className="text-[#94A3B8] text-[13px]" title={user.current_plan}>
+                      {truncate(user.current_plan, 28)}
+                    </span>
                   </td>
                   <td className="px-8 py-5 text-center sm:text-left">
                     <span className="font-bold text-white text-[13px] ml-1">{user.total}</span>
@@ -193,10 +283,10 @@ const UserManagement = ({ globalSearch = '' }) => {
                   </td>
                 </tr>
               ))}
-              {currentItems.length === 0 && (
+              {!users.length && (
                 <tr>
                   <td colSpan="8" className="px-8 py-10 text-center text-[#94A3B8] font-medium text-sm">
-                    No users found matching your search.
+                    {loading ? 'Loading users...' : 'No users found matching your filters.'}
                   </td>
                 </tr>
               )}
@@ -208,7 +298,7 @@ const UserManagement = ({ globalSearch = '' }) => {
         <div className="px-8 py-5 flex items-center justify-between border-t border-[#1E293B]">
           <button
             onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
+            disabled={currentPage === 1 || loading}
             className="flex items-center gap-2 text-[11px] font-bold text-[#94A3B8] uppercase tracking-widest hover:text-white disabled:opacity-30 transition-colors"
           >
             <ChevronLeft size={16} />
@@ -216,33 +306,50 @@ const UserManagement = ({ globalSearch = '' }) => {
           </button>
 
           <div className="flex items-center gap-3">
-            {[...Array(Math.min(totalPages, 3))].map((_, i) => (
+            {visiblePages[0] > 1 && (
+              <>
+                <button
+                  onClick={() => handlePageChange(1)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
+                >
+                  1
+                </button>
+                <span className="text-[#94A3B8] text-xs font-bold px-1">...</span>
+              </>
+            )}
+
+            {visiblePages.map((page) => (
               <button
-                key={i + 1}
-                onClick={() => handlePageChange(i + 1)}
+                key={page}
+                onClick={() => handlePageChange(page)}
+                disabled={loading}
                 className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all ${
-                  currentPage === i + 1
+                  currentPage === page
                     ? 'bg-[#22D3EE] text-[#0A0D14]'
                     : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'
                 }`}
               >
-                {i + 1}
+                {page}
               </button>
             ))}
-            {totalPages > 3 && <span className="text-[#94A3B8] text-xs font-bold px-1">..</span>}
-            {totalPages > 3 && (
-              <button
-                className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
-                onClick={() => handlePageChange(955)}
-              >
-                955
-              </button>
+
+            {visiblePages[visiblePages.length - 1] < totalPages && (
+              <>
+                <span className="text-[#94A3B8] text-xs font-bold px-1">...</span>
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={loading}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
+                >
+                  {totalPages}
+                </button>
+              </>
             )}
           </div>
 
           <button
             onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages || totalPages === 0}
+            disabled={currentPage === totalPages || totalPages === 0 || loading}
             className="flex items-center gap-2 text-[11px] font-bold text-[#94A3B8] uppercase tracking-widest hover:text-white disabled:opacity-30 transition-colors"
           >
             Next
