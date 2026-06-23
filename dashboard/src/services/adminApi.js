@@ -66,6 +66,24 @@ export const adminApi = {
     return request(`/admin/dashboard?${params}`, {}, true);
   },
   getSubscriptions: () => request("/admin/subscriptions", {}, true),
+  grantEntitlement: (payload) =>
+    request(
+      "/admin/subscriptions/entitlements/grant",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  revokeEntitlement: (payload) =>
+    request(
+      "/admin/subscriptions/entitlements/revoke",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
   updateProfile: (payload) =>
     request(
       "/admin/me",

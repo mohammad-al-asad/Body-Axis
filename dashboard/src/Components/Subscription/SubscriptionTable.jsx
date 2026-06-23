@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Store } from 'lucide-react';
+import { ChevronDown, KeyRound, Store } from 'lucide-react';
 
 const SubscriptionTable = ({
   subscriptions,
@@ -10,13 +10,26 @@ const SubscriptionTable = ({
   filterPlanType,
   setFilterPlanType,
   planOptions,
+  onManageAccess,
 }) => {
-  const tabs = ['All Subs', 'Active', 'Expiring', 'Cancelled', 'Expired'];
+  const tabs = [
+    'All Subs',
+    'Active',
+    'Trialing',
+    'Cancelled',
+    'Expired',
+    'Billing Retry',
+  ];
   const statusClass = {
     Active: 'border-[#064E3B] bg-[#022C22] text-[#34D399]',
-    Expiring: 'border-amber-700/60 bg-amber-950/60 text-amber-300',
+    Trialing: 'border-sky-700/60 bg-sky-950/60 text-sky-300',
+    'Grace Period': 'border-amber-700/60 bg-amber-950/60 text-amber-300',
+    'Billing Retry': 'border-red-700/60 bg-red-950/60 text-red-300',
     Cancelled: 'border-orange-800 bg-orange-950/60 text-orange-300',
     Expired: 'border-[#7F1D1D] bg-[#450A0A] text-[#FCA5A5]',
+    Paused: 'border-violet-700/60 bg-violet-950/60 text-violet-300',
+    Incomplete: 'border-slate-600 bg-slate-900 text-slate-300',
+    Unknown: 'border-slate-600 bg-slate-900 text-slate-300',
     Inactive: 'border-slate-700 bg-slate-900 text-slate-300',
   };
   const formatStore = (value) =>
@@ -66,7 +79,7 @@ const SubscriptionTable = ({
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-[#1E293B] bg-[#131B2F]">
         <div className="flex-1 overflow-x-auto">
-          <table className="min-w-[760px] w-full border-collapse text-left">
+          <table className="min-w-[930px] w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-[#1E293B]">
                 <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
@@ -83,6 +96,9 @@ const SubscriptionTable = ({
                 </th>
                 <th className="px-6 py-5 text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
                   Status
+                </th>
+                <th className="px-6 py-5 text-right text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                  Access
                 </th>
               </tr>
             </thead>
@@ -126,11 +142,9 @@ const SubscriptionTable = ({
                           : 'No expiration'}
                       </p>
                       <p className="text-[11px] text-[#94A3B8]">
-                        {subscription.will_renew === null
-                          ? 'Renewal unknown'
-                          : subscription.will_renew
-                            ? 'Will renew'
-                            : 'Will not renew'}
+                        {subscription.auto_renewal_status
+                          ? formatStore(subscription.auto_renewal_status)
+                          : 'Renewal unavailable'}
                       </p>
                     </td>
                     <td className="px-6 py-4">
@@ -151,21 +165,37 @@ const SubscriptionTable = ({
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div
-                        className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
-                          statusClass[subscription.status] ||
-                          statusClass.Inactive
-                        }`}
-                      >
-                        {subscription.status}
+                      <div className="space-y-2">
+                        <div
+                          className={`inline-flex items-center justify-center rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider ${
+                            statusClass[subscription.status] ||
+                            statusClass.Inactive
+                          }`}
+                        >
+                          {subscription.status}
+                        </div>
+                        <p className="text-[10px] text-[#64748B]">
+                          ${Number(subscription.total_revenue_usd || 0).toFixed(2)}
+                          {' lifetime'}
+                        </p>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={() => onManageAccess(subscription)}
+                        className="inline-flex items-center gap-2 rounded-lg border border-[#2563EB]/40 bg-[#2563EB]/10 px-3 py-2 text-xs font-bold text-[#93C5FD] hover:bg-[#2563EB]/20"
+                      >
+                        <KeyRound size={14} />
+                        Manage
+                      </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     className="px-6 py-12 text-center text-[13px] text-[#64748B]"
                   >
                     {loading
@@ -180,8 +210,7 @@ const SubscriptionTable = ({
 
         <div className="mt-auto border-t border-[#1E293B] px-6 py-4">
           <p className="text-[12px] font-bold text-[#64748B]">
-            Showing {subscriptions.length} of {total} RevenueCat-linked Body Axis
-            users
+            Showing {subscriptions.length} of {total} RevenueCat customers
           </p>
         </div>
       </div>
