@@ -66,6 +66,16 @@ export const adminApi = {
     return request(`/admin/dashboard?${params}`, {}, true);
   },
   getSubscriptions: () => request("/admin/subscriptions", {}, true),
+  getUsers: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.set(key, value);
+      }
+    });
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/admin/users${suffix}`, {}, true);
+  },
   grantEntitlement: (payload) =>
     request(
       "/admin/subscriptions/entitlements/grant",

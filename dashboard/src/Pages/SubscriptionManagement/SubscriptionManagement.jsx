@@ -11,6 +11,8 @@ import RevenueGrowth from '../../Components/Subscription/RevenueGrowth';
 import SubscriptionTable from '../../Components/Subscription/SubscriptionTable';
 import { adminApi } from '../../services/adminApi';
 
+const SUBSCRIBERS_PER_PAGE = 10;
+
 const SubscriptionManagement = () => {
   const [filterStatus, setFilterStatus] = useState('All Subs');
   const [filterPlanType, setFilterPlanType] = useState('Plan Type');
@@ -19,6 +21,7 @@ const SubscriptionManagement = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadSubscriptions = async () => {
     setLoading(true);
@@ -58,6 +61,18 @@ const SubscriptionManagement = () => {
       subscription.plan_name === filterPlanType;
     return statusMatches && planMatches;
   });
+  const pageCount = Math.max(
+    1,
+    Math.ceil(filteredSubscriptions.length / SUBSCRIBERS_PER_PAGE),
+  );
+  const paginatedSubscriptions = filteredSubscriptions.slice(
+    (currentPage - 1) * SUBSCRIBERS_PER_PAGE,
+    currentPage * SUBSCRIBERS_PER_PAGE,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterStatus, filterPlanType, subscriptions.length]);
 
   const handleExportPDF = () => {
     if (!filteredSubscriptions.length) {
@@ -111,56 +126,78 @@ const SubscriptionManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0D14] p-8 font-sans text-white">
-      <div className="mx-auto max-w-[1600px] animate-in fade-in duration-500">
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <h1 className="mb-1 text-[28px] font-bold tracking-tight">
-              Subscription Management
-            </h1>
-            <p className="text-[13px] font-medium text-[#94A3B8]">
+    <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#07090e] to-[#07090e] p-6 sm:p-8 font-sans text-white">
+      <div className="mx-auto max-w-[1600px] space-y-8 animate-in fade-in duration-700">
+        
+        {/* Header Section */}
+        <div className="relative flex flex-col justify-between gap-6 md:flex-row md:items-center border-b border-[#1e293b]/40 pb-6">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-r from-white via-[#cbd5e1] to-[#64748b] bg-clip-text text-transparent">
+                Subscription Management
+              </h1>
+              <span className="inline-flex items-center rounded-md bg-blue-500/10 px-2 py-1 text-xs font-medium text-blue-400 ring-1 ring-inset ring-blue-500/20">
+                Billing Admin
+              </span>
+            </div>
+            <p className="text-sm font-medium text-[#94A3B8]">
               Live customer status and billing events from RevenueCat.
             </p>
             {analytics?.source?.customer_status && (
-              <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#2DD4BF]">
-                Source: {analytics.source.customer_status}
-              </p>
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#2DD4BF] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#2DD4BF]"></span>
+                </span>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-[#2DD4BF]">
+                  Source: {analytics.source.customer_status}
+                </p>
+              </div>
             )}
           </div>
+          
           <button
             onClick={handleExportPDF}
             disabled={loading || !filteredSubscriptions.length}
-            className="flex items-center gap-2 whitespace-nowrap rounded-full border border-[#1E293B] bg-[#131B2F] px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1E293B] disabled:cursor-not-allowed disabled:opacity-50"
+            className="group flex items-center gap-2.5 whitespace-nowrap rounded-full border border-blue-500/30 bg-gradient-to-r from-blue-600/10 via-[#1e293b]/50 to-teal-500/10 px-6 py-3 text-sm font-bold text-white shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-blue-500/30"
           >
-            <Download size={16} />
+            <Download size={15} className="text-blue-400 group-hover:translate-y-[1px] transition-transform duration-200" />
             Export Report
           </button>
         </div>
 
+        {/* Feedback Alerts */}
         {error && (
-          <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-            <span>{error}</span>
+          <div className="flex items-center justify-between gap-4 rounded-2xl border border-rose-500/25 bg-rose-500/5 px-5 py-4 text-sm text-rose-300 shadow-[0_4px_20px_rgba(244,63,94,0.05)] animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+              <span>{error}</span>
+            </div>
             <button
               type="button"
               onClick={loadSubscriptions}
-              className="flex items-center gap-2 font-bold text-red-200 hover:text-white"
+              className="flex items-center gap-2 rounded-lg bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-200 transition-colors hover:bg-rose-500/25 hover:text-white"
             >
-              <RefreshCw size={15} />
+              <RefreshCw size={13} className="animate-spin-slow" />
               Retry
             </button>
           </div>
         )}
 
         {success && (
-          <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
-            {success}
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/25 bg-emerald-500/5 px-5 py-4 text-sm text-emerald-300 shadow-[0_4px_20px_rgba(16,185,129,0.05)] animate-in slide-in-from-top-2 duration-300">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500" />
+            <span>{success}</span>
           </div>
         )}
 
+        {/* Metrics Grid */}
         <MetricCards metrics={analytics?.metrics} loading={loading} />
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <div className="flex flex-col gap-6 lg:col-span-4">
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          {/* Sidebar Area */}
+          <div className="flex flex-col gap-8 lg:col-span-4">
             <ActivePlans plans={analytics?.plans || []} loading={loading} />
             <RecentActivity
               activities={analytics?.recent_activity || []}
@@ -168,13 +205,15 @@ const SubscriptionManagement = () => {
             />
           </div>
 
-          <div className="flex h-full flex-col lg:col-span-8">
+          {/* Main Area */}
+          <div className="flex flex-col gap-8 lg:col-span-8">
             <RevenueGrowth
               data={analytics?.revenue_growth || []}
               loading={loading}
             />
             <SubscriptionTable
-              subscriptions={filteredSubscriptions}
+              subscriptions={paginatedSubscriptions}
+              filteredTotal={filteredSubscriptions.length}
               total={subscriptions.length}
               loading={loading}
               filterStatus={filterStatus}
@@ -183,6 +222,9 @@ const SubscriptionManagement = () => {
               setFilterPlanType={setFilterPlanType}
               planOptions={planOptions}
               onManageAccess={setSelectedCustomer}
+              currentPage={currentPage}
+              pageCount={pageCount}
+              onPageChange={setCurrentPage}
             />
           </div>
         </div>
@@ -201,3 +243,4 @@ const SubscriptionManagement = () => {
 };
 
 export default SubscriptionManagement;
+
