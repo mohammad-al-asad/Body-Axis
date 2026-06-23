@@ -3,16 +3,12 @@ import { BadgeCheck, LayoutGrid } from 'lucide-react';
 
 const ActivePlans = ({ plans, loading }) => {
   const formatPrice = (plan) => {
-    if (
-      plan.observed_price_usd === null ||
-      plan.observed_price_usd === undefined
-    ) {
+    if (plan.price === null || plan.price === undefined) {
       return 'Price unavailable';
     }
-    if (plan.observed_price_usd === 0) return 'Promotional';
-    return Number(plan.observed_price_usd).toLocaleString('en-US', {
+    return Number(plan.price).toLocaleString('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency: plan.price_currency || 'USD',
     });
   };
 
@@ -39,7 +35,7 @@ const ActivePlans = ({ plans, loading }) => {
           >
             <div className="mb-4 flex items-start justify-between">
               <div className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-white">
-                {plan.environment}
+                {plan.state || 'unknown'}
               </div>
               <Icon className="text-white/40" size={24} />
             </div>
@@ -58,6 +54,11 @@ const ActivePlans = ({ plans, loading }) => {
                 </span>
               )}
             </div>
+            {plan.price_country && (
+              <p className="-mt-4 mb-5 text-[10px] text-white/45">
+                Indicative price for {plan.price_country}
+              </p>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-[#0E1736] p-3">
@@ -67,13 +68,9 @@ const ActivePlans = ({ plans, loading }) => {
                 <p className="text-sm font-bold text-white">{plan.subscribers}</p>
               </div>
               <div className="rounded-xl bg-[#0E1736] p-3">
-                <p className="mb-1 text-[10px] font-bold text-white/70">
-                  Conversion
-                </p>
+                <p className="mb-1 text-[10px] font-bold text-white/70">Duration</p>
                 <p className="text-sm font-bold text-white">
-                  {plan.conversion_percent === null
-                    ? 'Unavailable'
-                    : `${plan.conversion_percent}%`}
+                  {plan.duration || 'Unavailable'}
                 </p>
               </div>
             </div>

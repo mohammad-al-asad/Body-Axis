@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, Download, RefreshCw } from 'lucide-react';
+import { Download, RefreshCw } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
 import ActivePlans from '../../Components/Subscription/ActivePlans';
+import EntitlementManager from '../../Components/Subscription/EntitlementManager';
 import MetricCards from '../../Components/Subscription/MetricCards';
 import RecentActivity from '../../Components/Subscription/RecentActivity';
 import RevenueGrowth from '../../Components/Subscription/RevenueGrowth';
@@ -16,6 +17,8 @@ const SubscriptionManagement = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const loadSubscriptions = async () => {
     setLoading(true);
@@ -27,6 +30,11 @@ const SubscriptionManagement = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEntitlementChanged = async (message) => {
+    setSuccess(message);
+    await loadSubscriptions();
   };
 
   useEffect(() => {
@@ -72,6 +80,8 @@ const SubscriptionManagement = () => {
       'Store',
       'Environment',
       'Status',
+      'Lifetime Revenue',
+      'Entitlements',
     ];
     const rows = filteredSubscriptions.map((subscription) => [
       subscription.name,
@@ -83,6 +93,10 @@ const SubscriptionManagement = () => {
       subscription.store || 'Unavailable',
       subscription.environment || 'Unavailable',
       subscription.status,
+      `$${Number(subscription.total_revenue_usd || 0).toFixed(2)}`,
+      subscription.entitlements
+        .map((entitlement) => entitlement.display_name)
+        .join(', ') || 'None',
     ]);
 
     doc.autoTable({
@@ -107,6 +121,11 @@ const SubscriptionManagement = () => {
             <p className="text-[13px] font-medium text-[#94A3B8]">
               Live customer status and billing events from RevenueCat.
             </p>
+            {analytics?.source?.customer_status && (
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#2DD4BF]">
+                Source: {analytics.source.customer_status}
+              </p>
+            )}
           </div>
           <button
             onClick={handleExportPDF}
@@ -132,22 +151,9 @@ const SubscriptionManagement = () => {
           </div>
         )}
 
-        {!!analytics?.missing_data?.length && (
-          <div className="mb-6 rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-amber-200">
-              <AlertTriangle size={17} />
-              RevenueCat data availability
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {analytics.missing_data.map((item) => (
-                <div key={item.code} className="rounded-xl bg-[#0A0D14]/70 p-3">
-                  <p className="text-xs font-bold text-white">{item.title}</p>
-                  <p className="mt-1 text-[11px] leading-5 text-[#94A3B8]">
-                    {item.message}
-                  </p>
-                </div>
-              ))}
-            </div>
+        {success && (
+          <div className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-300">
+            {success}
           </div>
         )}
 
@@ -176,10 +182,20 @@ const SubscriptionManagement = () => {
               filterPlanType={filterPlanType}
               setFilterPlanType={setFilterPlanType}
               planOptions={planOptions}
+              onManageAccess={setSelectedCustomer}
             />
           </div>
         </div>
       </div>
+
+      {selectedCustomer && (
+        <EntitlementManager
+          customer={selectedCustomer}
+          entitlementOptions={analytics?.entitlements || []}
+          onClose={() => setSelectedCustomer(null)}
+          onChanged={handleEntitlementChanged}
+        />
+      )}
     </div>
   );
 };

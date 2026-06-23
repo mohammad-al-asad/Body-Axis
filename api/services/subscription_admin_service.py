@@ -1,13 +1,26 @@
 import asyncio
-from calendar import month_abbr
-from datetime import datetime, timedelta, timezone
+from calendar import month_abbr, monthrange
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from database import db
-from schemas.subscription_admin import SubscriptionAnalyticsResponse
-from services.subscription_service import (
-    refresh_user_subscription_from_revenuecat,
-    serialize_subscription,
+from schemas.subscription_admin import (
+    EntitlementActionResponse,
+    GrantEntitlementRequest,
+    RevokeEntitlementRequest,
+    SubscriptionAnalyticsResponse,
+)
+from services.revenuecat_v2_service import (
+    RevenueCatV2Error,
+    as_http_exception,
+    get_revenue,
+    grant_entitlement,
+    list_all_customer_subscriptions,
+    list_customers,
+    list_entitlements,
+    list_products,
+    revenuecat_v2_configured,
+    revoke_granted_entitlement,
 )
 
 REVENUE_EVENT_TYPES = {
@@ -17,6 +30,7 @@ REVENUE_EVENT_TYPES = {
 }
 REFUND_EVENT_TYPES = {"REFUND"}
 REFUND_REVERSED_EVENT_TYPES = {"REFUND_REVERSED"}
+RENEWING_STATUSES = {"will_renew", "has_already_renewed"}
 ACTIVITY_TITLES = {
     "INITIAL_PURCHASE": "Subscription started",
     "RENEWAL": "Subscription renewed",
@@ -31,17 +45,29 @@ ACTIVITY_TITLES = {
     "TRANSFER": "Subscription transferred",
 }
 
+_analytics_cache: tuple[datetime, SubscriptionAnalyticsResponse] | None = None
+_revenue_cache: tuple[datetime, list[dict[str, Any]]] | None = None
+_analytics_lock = asyncio.Lock()
+CACHE_TTL = timedelta(minutes=5)
+REVENUE_CACHE_TTL = timedelta(minutes=10)
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _as_utc(value: datetime | None) -> datetime | None:
-    if value is None:
+def _from_millis(value: Any) -> datetime | None:
+    if not isinstance(value, (int, float)) or value <= 0:
         return None
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+    return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+
+
+def _nested_items(value: Any) -> list[dict[str, Any]]:
+    if isinstance(value, dict) and isinstance(value.get("items"), list):
+        return [item for item in value["items"] if isinstance(item, dict)]
+    if isinstance(value, list):
+        return [item for item in value if isinstance(item, dict)]
+    return []
 
 
 def _event(document: dict[str, Any]) -> dict[str, Any]:
@@ -53,17 +79,9 @@ def _event(document: dict[str, Any]) -> dict[str, Any]:
 
 
 def _event_datetime(event: dict[str, Any]) -> datetime | None:
-    value = event.get("event_timestamp_ms") or event.get("purchased_at_ms")
-    if not isinstance(value, (int, float)) or value <= 0:
-        return None
-    return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
-
-
-def _revenue_datetime(event: dict[str, Any]) -> datetime | None:
-    value = event.get("purchased_at_ms") or event.get("event_timestamp_ms")
-    if not isinstance(value, (int, float)) or value <= 0:
-        return None
-    return datetime.fromtimestamp(value / 1000, tz=timezone.utc)
+    return _from_millis(
+        event.get("event_timestamp_ms") or event.get("purchased_at_ms")
+    )
 
 
 def _event_revenue_usd(event: dict[str, Any]) -> float:
@@ -92,105 +110,178 @@ def _shift_month(value: datetime, offset: int) -> datetime:
     return value.replace(year=year, month=zero_based_month + 1, day=1)
 
 
-def _humanize_product(product_id: str | None) -> str:
-    if not product_id:
-        return "No active plan"
-    value = product_id.split(":")[-1].replace("-", " ").replace("_", " ")
-    return " ".join(word.capitalize() for word in value.split())
+def _humanize(value: str | None, fallback: str) -> str:
+    if not value:
+        return fallback
+    normalized = value.split(":")[-1].replace("-", " ").replace("_", " ")
+    return " ".join(word.capitalize() for word in normalized.split())
 
 
-def _billing_interval(product_id: str | None, event_type: str | None = None) -> str:
-    value = (product_id or "").lower()
-    if "lifetime" in value or event_type == "NON_RENEWING_PURCHASE":
-        return "lifetime"
-    if any(part in value for part in ("annual", "yearly", "year")):
+def _duration_interval(duration: str | None, product_id: str | None) -> str:
+    normalized = (duration or "").upper()
+    if "Y" in normalized:
         return "yearly"
-    if any(part in value for part in ("monthly", "month")):
+    if "M" in normalized:
         return "monthly"
-    if any(part in value for part in ("weekly", "week")):
+    if "W" in normalized:
         return "weekly"
+    if "D" in normalized:
+        return "daily"
+    if "lifetime" in (product_id or "").lower():
+        return "lifetime"
     return "unknown"
 
 
-def _attribute_value(event: dict[str, Any], key: str) -> str | None:
-    attributes = event.get("subscriber_attributes")
-    if not isinstance(attributes, dict):
-        return None
-    attribute = attributes.get(key)
-    if isinstance(attribute, dict):
+def _product_price(product: dict[str, Any]) -> tuple[float | None, str | None, str | None]:
+    indicative = product.get("indicative_price")
+    if not isinstance(indicative, dict):
+        return None, None, None
+    raw_amount = indicative.get("amount_micros")
+    try:
+        amount = float(raw_amount) / 1_000_000
+    except (TypeError, ValueError):
+        amount = None
+    return amount, indicative.get("currency"), indicative.get("country")
+
+
+def _attributes(customer: dict[str, Any]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for attribute in _nested_items(customer.get("attributes")):
+        name = attribute.get("name")
         value = attribute.get("value")
-        return str(value) if value else None
-    return str(attribute) if attribute else None
+        if isinstance(name, str) and value is not None:
+            result[name] = str(value)
+    return result
 
 
-def _subscription_status(subscription: dict[str, Any], now: datetime) -> str:
-    expires_at = _as_utc(subscription.get("expires_at"))
-    if subscription.get("active"):
-        if expires_at and expires_at <= now + timedelta(days=30):
-            return "Expiring"
-        if subscription.get("will_renew") is False:
-            return "Cancelled"
-        return "Active"
-    if expires_at and expires_at <= now:
-        return "Expired"
-    return "Inactive"
+def _subscription_revenue(subscription: dict[str, Any]) -> float:
+    revenue = subscription.get("total_revenue_in_usd")
+    if not isinstance(revenue, dict):
+        return 0
+    try:
+        return float(revenue.get("gross") or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
-async def _refresh_revenuecat_customers(
-    users: list[dict[str, Any]],
-) -> tuple[int, int]:
-    candidates = [
-        user
-        for user in users
-        if (user.get("subscription") or {}).get("revenuecat_app_user_id")
-    ]
-    if not candidates:
-        return 0, 0
-
-    semaphore = asyncio.Semaphore(8)
-
-    async def refresh(user: dict[str, Any]) -> bool:
-        async with semaphore:
-            try:
-                await refresh_user_subscription_from_revenuecat(user)
-                return True
-            except Exception:
-                return False
-
-    results = await asyncio.gather(*(refresh(user) for user in candidates))
-    return sum(results), len(results) - sum(results)
+def _subscription_sort_key(subscription: dict[str, Any]) -> tuple[int, int]:
+    environment = str(subscription.get("environment") or "").lower()
+    gives_access = bool(subscription.get("gives_access"))
+    return (environment == "production", gives_access)
 
 
-async def get_subscription_analytics() -> SubscriptionAnalyticsResponse:
-    now = _now()
-    users = await db.users.find(
-        {"subscription": {"$exists": True}},
-        {
-            "full_name": 1,
-            "email": 1,
-            "subscription": 1,
-        },
-    ).to_list(length=None)
+def _will_renew(auto_renewal_status: str | None) -> bool | None:
+    if not auto_renewal_status:
+        return None
+    return auto_renewal_status in RENEWING_STATUSES
 
-    refreshed, refresh_failures = await _refresh_revenuecat_customers(users)
-    if refreshed:
-        users = await db.users.find(
-            {"subscription": {"$exists": True}},
+
+def _row_status(subscription: dict[str, Any] | None) -> str:
+    if not subscription:
+        return "Inactive"
+    status_value = str(subscription.get("status") or "unknown")
+    status_names = {
+        "trialing": "Trialing",
+        "active": "Active",
+        "expired": "Expired",
+        "in_grace_period": "Grace Period",
+        "in_billing_retry": "Billing Retry",
+        "paused": "Paused",
+        "incomplete": "Incomplete",
+        "unknown": "Unknown",
+    }
+    if (
+        subscription.get("gives_access")
+        and subscription.get("auto_renewal_status") == "will_not_renew"
+    ):
+        return "Cancelled"
+    return status_names.get(status_value, _humanize(status_value, "Unknown"))
+
+
+def _issue(error: RevenueCatV2Error) -> dict[str, str]:
+    permission_hint = (
+        " Check the V2 key permissions in RevenueCat."
+        if error.status_code in {401, 403}
+        else ""
+    )
+    return {
+        "code": error.capability,
+        "title": _humanize(error.capability, "RevenueCat data unavailable"),
+        "message": f"{error.message}.{permission_hint}".replace("..", "."),
+    }
+
+
+async def _revenue_growth(
+    now: datetime,
+) -> tuple[list[dict[str, Any]], RevenueCatV2Error | None]:
+    global _revenue_cache
+    if (
+        _revenue_cache
+        and now - _revenue_cache[0] < REVENUE_CACHE_TTL
+    ):
+        return _revenue_cache[1], None
+
+    periods = [_shift_month(_month_start(now), offset) for offset in range(-11, 1)]
+
+    async def fetch(period: datetime) -> tuple[datetime, float]:
+        last_day = monthrange(period.year, period.month)[1]
+        end = min(date(period.year, period.month, last_day), now.date())
+        amount = await get_revenue(period.date(), end)
+        return period, amount
+
+    try:
+        results = await asyncio.gather(*(fetch(period) for period in periods))
+        values = [
             {
-                "full_name": 1,
-                "email": 1,
-                "subscription": 1,
-            },
-        ).to_list(length=None)
+                "label": f"{month_abbr[period.month].upper()} {str(period.year)[2:]}",
+                "period_start": period,
+                "revenue_usd": round(amount, 2),
+            }
+            for period, amount in results
+        ]
+        _revenue_cache = (now, values)
+        return values, None
+    except RevenueCatV2Error as error:
+        return [], error
 
+
+async def _event_fallback_revenue(
+    now: datetime,
+    event_documents: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     chart_start = _shift_month(_month_start(now), -11)
-    event_documents = await db.revenuecat_events.find(
+    buckets = {
+        _shift_month(chart_start, offset): 0.0
+        for offset in range(12)
+    }
+    for document in event_documents:
+        event = _event(document)
+        if str(event.get("environment") or "").upper() != "PRODUCTION":
+            continue
+        occurred_at = _from_millis(
+            event.get("purchased_at_ms") or event.get("event_timestamp_ms")
+        )
+        if not occurred_at:
+            continue
+        bucket = _month_start(occurred_at)
+        if bucket in buckets:
+            buckets[bucket] += _event_revenue_usd(event)
+    return [
         {
-            "$or": [
-                {"payload.event.event_timestamp_ms": {"$gte": int(chart_start.timestamp() * 1000)}},
-                {"payload.event.purchased_at_ms": {"$gte": int(chart_start.timestamp() * 1000)}},
-            ]
-        },
+            "label": f"{month_abbr[period.month].upper()} {str(period.year)[2:]}",
+            "period_start": period,
+            "revenue_usd": round(amount, 2),
+        }
+        for period, amount in buckets.items()
+    ]
+
+
+async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
+    now = _now()
+    missing_data: list[dict[str, str]] = []
+
+    event_documents = await db.revenuecat_events.find(
+        {},
         {
             "event_id": 1,
             "event_type": 1,
@@ -198,154 +289,376 @@ async def get_subscription_analytics() -> SubscriptionAnalyticsResponse:
             "processed_user_id": 1,
             "created_at": 1,
         },
-    ).sort("created_at", -1).to_list(length=None)
-
-    production_events = [
-        document
+    ).sort("created_at", -1).to_list(length=1000)
+    production_event_count = sum(
+        str(_event(document).get("environment") or "").upper() == "PRODUCTION"
         for document in event_documents
-        if str(_event(document).get("environment") or "").upper() == "PRODUCTION"
-    ]
-    sandbox_event_count = await db.revenuecat_events.count_documents(
-        {"payload.event.environment": "SANDBOX"}
     )
-    production_event_count = await db.revenuecat_events.count_documents(
-        {"payload.event.environment": "PRODUCTION"}
+    sandbox_event_count = sum(
+        str(_event(document).get("environment") or "").upper() == "SANDBOX"
+        for document in event_documents
+    )
+    latest_event_at = next(
+        (
+            occurred_at
+            for document in event_documents
+            if (occurred_at := _event_datetime(_event(document)))
+        ),
+        None,
     )
 
-    latest_event_at = None
-    for document in event_documents:
-        occurred_at = _event_datetime(_event(document))
-        if occurred_at and (latest_event_at is None or occurred_at > latest_event_at):
-            latest_event_at = occurred_at
-
-    user_by_id = {str(user["_id"]): user for user in users}
-    rows = []
-    active_production = []
-    for user in users:
-        subscription = serialize_subscription(user)
-        environment = str(subscription.get("environment") or "").upper() or None
-        if subscription.get("active") and environment == "PRODUCTION":
-            active_production.append((user, subscription))
-        rows.append(
+    if not revenuecat_v2_configured():
+        missing_data.append(
             {
-                "id": str(user["_id"]),
-                "name": user.get("full_name") or user["email"].split("@")[0],
-                "email": user["email"],
-                "product_id": subscription.get("product_id"),
-                "plan_name": _humanize_product(subscription.get("product_id")),
-                "expires_at": subscription.get("expires_at"),
-                "store": subscription.get("store"),
-                "environment": environment,
-                "status": _subscription_status(subscription, now),
-                "will_renew": subscription.get("will_renew"),
+                "code": "v2_configuration",
+                "title": "RevenueCat V2 is not configured",
+                "message": (
+                    "Set REVENUECAT_V2_API_KEY and REVENUECAT_PROJECT_ID. "
+                    "The V1 key remains separate."
+                ),
             }
         )
+        customers: list[dict[str, Any]] = []
+        subscriptions_by_customer: dict[str, list[dict[str, Any]]] = {}
+        products: list[dict[str, Any]] = []
+        entitlements: list[dict[str, Any]] = []
+    else:
+        try:
+            customers = await list_customers()
+        except RevenueCatV2Error as error:
+            customers = []
+            missing_data.append(_issue(error))
+
+        if customers:
+            try:
+                subscriptions_by_customer = await list_all_customer_subscriptions(
+                    customers
+                )
+            except RevenueCatV2Error as error:
+                subscriptions_by_customer = {}
+                missing_data.append(_issue(error))
+        else:
+            subscriptions_by_customer = {}
+
+        try:
+            products = await list_products()
+        except RevenueCatV2Error as error:
+            products = []
+            missing_data.append(_issue(error))
+
+        try:
+            entitlements = await list_entitlements()
+        except RevenueCatV2Error as error:
+            entitlements = []
+            missing_data.append(_issue(error))
+
+    backend_users = await db.users.find(
+        {},
+        {
+            "full_name": 1,
+            "email": 1,
+            "subscription.revenuecat_app_user_id": 1,
+        },
+    ).to_list(length=None)
+    backend_by_revenuecat_id: dict[str, dict[str, Any]] = {}
+    for user in backend_users:
+        backend_by_revenuecat_id[str(user["_id"])] = user
+        revenuecat_id = (user.get("subscription") or {}).get(
+            "revenuecat_app_user_id"
+        )
+        if revenuecat_id:
+            backend_by_revenuecat_id[str(revenuecat_id)] = user
+
+    product_by_id = {
+        str(product.get("id")): product
+        for product in products
+        if product.get("id")
+    }
+    entitlement_by_id = {
+        str(entitlement.get("id")): entitlement
+        for entitlement in entitlements
+        if entitlement.get("id")
+    }
+
+    rows: list[dict[str, Any]] = []
+    production_active_subscriptions: list[dict[str, Any]] = []
+    subscriber_counts: dict[str, set[str]] = {}
+
+    for customer in customers:
+        customer_id = str(customer.get("id") or "")
+        customer_subscriptions = subscriptions_by_customer.get(customer_id, [])
+        production_subscriptions = [
+            subscription
+            for subscription in customer_subscriptions
+            if str(subscription.get("environment") or "").lower() == "production"
+        ]
+        production_subscriptions.sort(key=_subscription_sort_key, reverse=True)
+        selected = production_subscriptions[0] if production_subscriptions else None
+
+        for subscription in production_subscriptions:
+            if subscription.get("gives_access"):
+                production_active_subscriptions.append(subscription)
+                product_id = subscription.get("product_id")
+                if product_id:
+                    subscriber_counts.setdefault(str(product_id), set()).add(
+                        customer_id
+                    )
+
+        customer_attributes = _attributes(customer)
+        backend_user = backend_by_revenuecat_id.get(customer_id)
+        name = (
+            (backend_user or {}).get("full_name")
+            or customer_attributes.get("$displayName")
+            or customer_attributes.get("display_name")
+            or customer_id
+        )
+        email = (
+            (backend_user or {}).get("email")
+            or customer_attributes.get("$email")
+            or customer_attributes.get("email")
+            or "Not provided"
+        )
+
+        promotional_entitlement_ids: set[str] = set()
+        for subscription in production_subscriptions:
+            if str(subscription.get("store") or "").lower() != "promotional":
+                continue
+            for entitlement in _nested_items(subscription.get("entitlements")):
+                entitlement_id = entitlement.get("id")
+                if entitlement_id:
+                    promotional_entitlement_ids.add(str(entitlement_id))
+
+        active_entitlements = []
+        for active_entitlement in _nested_items(
+            customer.get("active_entitlements")
+        ):
+            entitlement_id = str(
+                active_entitlement.get("entitlement_id")
+                or active_entitlement.get("id")
+                or ""
+            )
+            if not entitlement_id:
+                continue
+            definition = entitlement_by_id.get(entitlement_id, {})
+            active_entitlements.append(
+                {
+                    "id": entitlement_id,
+                    "lookup_key": definition.get("lookup_key")
+                    or entitlement_id,
+                    "display_name": definition.get("display_name")
+                    or _humanize(
+                        definition.get("lookup_key"),
+                        "Entitlement",
+                    ),
+                    "expires_at": _from_millis(
+                        active_entitlement.get("expires_at")
+                    ),
+                    "promotional": entitlement_id
+                    in promotional_entitlement_ids,
+                }
+            )
+
+        product_id = str(selected.get("product_id")) if selected and selected.get("product_id") else None
+        product = product_by_id.get(product_id or "", {})
+        auto_renewal_status = (
+            str(selected.get("auto_renewal_status"))
+            if selected and selected.get("auto_renewal_status")
+            else None
+        )
+        rows.append(
+            {
+                "id": customer_id,
+                "customer_id": customer_id,
+                "name": name,
+                "email": email,
+                "product_id": product_id,
+                "plan_name": product.get("display_name")
+                or _humanize(
+                    product.get("store_identifier") or product_id,
+                    "No active plan",
+                ),
+                "subscription_id": selected.get("id") if selected else None,
+                "expires_at": _from_millis(
+                    (selected or {}).get("current_period_ends_at")
+                    or (selected or {}).get("ends_at")
+                ),
+                "store": (selected or {}).get("store"),
+                "environment": (
+                    str((selected or {}).get("environment")).upper()
+                    if (selected or {}).get("environment")
+                    else None
+                ),
+                "status": _row_status(selected),
+                "auto_renewal_status": auto_renewal_status,
+                "will_renew": _will_renew(auto_renewal_status),
+                "gives_access": bool((selected or {}).get("gives_access")),
+                "pending_payment": bool(
+                    (selected or {}).get("pending_payment")
+                ),
+                "total_revenue_usd": round(
+                    sum(
+                        _subscription_revenue(subscription)
+                        for subscription in production_subscriptions
+                    ),
+                    2,
+                ),
+                "first_seen_at": _from_millis(customer.get("first_seen_at")),
+                "last_seen_at": _from_millis(customer.get("last_seen_at")),
+                "country": customer.get("last_seen_country"),
+                "platform": customer.get("last_seen_platform"),
+                "entitlements": active_entitlements,
+            }
+        )
+
     rows.sort(
         key=lambda item: (
-            item["status"] != "Active",
+            not item["gives_access"],
             item["name"].lower(),
         )
     )
 
-    recurring_active = [
-        subscription
-        for _, subscription in active_production
-        if _billing_interval(
-            subscription.get("product_id"),
-            subscription.get("last_event_type"),
-        )
-        not in {"lifetime", "unknown"}
-        and subscription.get("will_renew") is not None
-    ]
-    yearly_members = [
-        subscription
-        for _, subscription in active_production
-        if _billing_interval(subscription.get("product_id")) == "yearly"
-    ]
-
-    month_buckets = {
-        _shift_month(chart_start, offset): 0.0
-        for offset in range(12)
-    }
-    for document in production_events:
-        event = _event(document)
-        occurred_at = _revenue_datetime(event)
-        if not occurred_at:
+    plan_summaries = []
+    for product in products:
+        product_id = str(product.get("id") or "")
+        if not product_id:
             continue
-        bucket = _month_start(occurred_at)
-        if bucket in month_buckets:
-            month_buckets[bucket] += _event_revenue_usd(event)
-
-    revenue_growth = [
-        {
-            "label": f"{month_abbr[period.month].upper()} {str(period.year)[2:]}",
-            "period_start": period,
-            "revenue_usd": round(amount, 2),
-        }
-        for period, amount in month_buckets.items()
-    ]
-    current_month_revenue = round(month_buckets.get(_month_start(now), 0.0), 2)
-
-    latest_product_events: dict[str, dict[str, Any]] = {}
-    for document in production_events:
-        event = _event(document)
-        product_id = event.get("product_id")
-        if product_id and product_id not in latest_product_events:
-            latest_product_events[product_id] = event
-
-    plan_counts: dict[str, int] = {}
-    for _, subscription in active_production:
-        product_id = subscription.get("product_id")
-        if product_id:
-            plan_counts[product_id] = plan_counts.get(product_id, 0) + 1
-
-    plans = []
-    for product_id, subscriber_count in plan_counts.items():
-        observed_event = latest_product_events.get(product_id, {})
-        observed_price = observed_event.get("price")
-        try:
-            observed_price = float(observed_price) if observed_price is not None else None
-        except (TypeError, ValueError):
-            observed_price = None
-        plans.append(
+        duration = (
+            product.get("subscription", {}).get("duration")
+            if isinstance(product.get("subscription"), dict)
+            else None
+        )
+        price, currency, country = _product_price(product)
+        plan_summaries.append(
             {
                 "product_id": product_id,
-                "name": _humanize_product(product_id),
-                "interval": _billing_interval(
-                    product_id,
-                    observed_event.get("type"),
+                "store_identifier": product.get("store_identifier"),
+                "name": product.get("display_name")
+                or _humanize(
+                    product.get("store_identifier"),
+                    "RevenueCat product",
                 ),
-                "subscribers": subscriber_count,
-                "observed_price_usd": observed_price,
-                "conversion_percent": None,
-                "environment": "PRODUCTION",
+                "duration": duration,
+                "interval": _duration_interval(
+                    duration,
+                    product.get("store_identifier"),
+                ),
+                "subscribers": len(subscriber_counts.get(product_id, set())),
+                "price": price,
+                "price_currency": currency,
+                "price_country": country,
+                "state": product.get("state"),
             }
         )
-    plans.sort(key=lambda item: (-item["subscribers"], item["name"]))
+    plan_summaries.sort(
+        key=lambda item: (
+            item["state"] != "active",
+            -item["subscribers"],
+            item["name"],
+        )
+    )
 
+    active_customer_ids = {
+        str(subscription.get("customer_id"))
+        for subscription in production_active_subscriptions
+        if subscription.get("customer_id")
+    }
+    recurring = [
+        subscription
+        for subscription in production_active_subscriptions
+        if str(subscription.get("store") or "").lower() != "promotional"
+        and subscription.get("auto_renewal_status")
+    ]
+    yearly_customers = {
+        str(subscription.get("customer_id"))
+        for subscription in production_active_subscriptions
+        if _duration_interval(
+            (
+                product_by_id.get(str(subscription.get("product_id")), {})
+                .get("subscription", {})
+                .get("duration")
+                if isinstance(
+                    product_by_id.get(
+                        str(subscription.get("product_id")),
+                        {},
+                    ).get("subscription"),
+                    dict,
+                )
+                else None
+            ),
+            str(subscription.get("product_id") or ""),
+        )
+        == "yearly"
+    }
+    yearly_percent = (
+        round((len(yearly_customers) / len(active_customer_ids)) * 100, 1)
+        if active_customer_ids
+        else None
+    )
+    renewal_rate = (
+        round(
+            (
+                sum(
+                    subscription.get("auto_renewal_status")
+                    in RENEWING_STATUSES
+                    for subscription in recurring
+                )
+                / len(recurring)
+            )
+            * 100,
+            1,
+        )
+        if recurring
+        else None
+    )
+
+    revenue_growth, revenue_error = (
+        await _revenue_growth(now)
+        if revenuecat_v2_configured()
+        else ([], None)
+    )
+    if revenue_error:
+        missing_data.append(_issue(revenue_error))
+    if not revenue_growth:
+        revenue_growth = await _event_fallback_revenue(now, event_documents)
+    current_month_revenue = (
+        revenue_growth[-1]["revenue_usd"] if revenue_growth else None
+    )
+
+    user_by_id = {str(user["_id"]): user for user in backend_users}
     recent_activity = []
-    for document in event_documents[:8]:
+    for document in event_documents:
         event = _event(document)
         occurred_at = _event_datetime(event)
         if not occurred_at:
             continue
         event_type = str(event.get("type") or "UNKNOWN")
         user = user_by_id.get(str(document.get("processed_user_id")))
+        attributes = event.get("subscriber_attributes")
+        display_name = None
+        if isinstance(attributes, dict):
+            attribute = attributes.get("$displayName")
+            display_name = (
+                attribute.get("value")
+                if isinstance(attribute, dict)
+                else attribute
+            )
         name = (
             (user or {}).get("full_name")
-            or _attribute_value(event, "$displayName")
+            or display_name
             or "RevenueCat customer"
         )
-        product_name = _humanize_product(event.get("product_id"))
         amount = _event_revenue_usd(event)
         recent_activity.append(
             {
                 "id": str(document.get("event_id") or document["_id"]),
                 "title": ACTIVITY_TITLES.get(
                     event_type,
-                    event_type.replace("_", " ").title(),
+                    _humanize(event_type, "RevenueCat event"),
                 ),
-                "description": f"{name} · {product_name}",
+                "description": (
+                    f"{name} · "
+                    f"{_humanize(event.get('product_id'), 'No product')}"
+                ),
                 "event_type": event_type,
                 "occurred_at": occurred_at,
                 "environment": event.get("environment"),
@@ -355,102 +668,51 @@ async def get_subscription_analytics() -> SubscriptionAnalyticsResponse:
         if len(recent_activity) == 5:
             break
 
-    missing_data = [
-        {
-            "code": "project_customer_list",
-            "title": "Project-wide customer list unavailable",
-            "message": (
-                "The configured RevenueCat key is a legacy v1 key. Add a "
-                "REVENUECAT_V2_API_KEY with customer read permission to list "
-                "customers that are not linked to Body Axis users."
-            ),
-        },
-        {
-            "code": "product_catalog",
-            "title": "Product catalog and configured prices unavailable",
-            "message": (
-                "The current key cannot read the RevenueCat v2 product catalog. "
-                "Plan cards use product IDs and prices observed in webhook events."
-            ),
-        },
-        {
-            "code": "conversion_rate",
-            "title": "Conversion rate unavailable",
-            "message": (
-                "Conversion metrics are not included in RevenueCat v1 customer "
-                "responses or webhook events."
-            ),
-        },
-        {
-            "code": "payment_method",
-            "title": "Payment method details unavailable",
-            "message": (
-                "RevenueCat does not provide card numbers or PayPal details in "
-                "these responses, so the table displays the purchase store."
-            ),
-        },
-    ]
     if sandbox_event_count:
         missing_data.append(
             {
                 "code": "sandbox_excluded",
-                "title": "Sandbox revenue excluded",
+                "title": "Sandbox data excluded",
                 "message": (
                     f"{sandbox_event_count} sandbox event"
-                    f"{'s were' if sandbox_event_count != 1 else ' was'} excluded "
-                    "from production revenue and subscriber metrics."
+                    f"{'s were' if sandbox_event_count != 1 else ' was'} "
+                    "excluded from production metrics."
                 ),
             }
         )
-    if not any(_event_revenue_usd(_event(document)) for document in production_events):
+    if current_month_revenue == 0:
         missing_data.append(
             {
                 "code": "no_paid_production_transactions",
-                "title": "No paid production revenue yet",
+                "title": "No paid production revenue this month",
                 "message": (
-                    "RevenueCat has no paid production transactions in the last "
-                    "12 months. The production revenue chart is therefore $0."
-                ),
-            }
-        )
-    if refresh_failures:
-        missing_data.append(
-            {
-                "code": "customer_refresh_failed",
-                "title": "Some customer statuses could not be refreshed",
-                "message": (
-                    f"{refresh_failures} RevenueCat customer request"
-                    f"{'s' if refresh_failures != 1 else ''} failed; stored "
-                    "webhook status is shown for those users."
+                    "RevenueCat returned $0 production revenue for the "
+                    "current calendar month."
                 ),
             }
         )
 
-    yearly_percent = (
-        round((len(yearly_members) / len(active_production)) * 100, 1)
-        if active_production
-        else None
-    )
-    renewal_rate = (
-        round(
-            (
-                sum(subscription.get("will_renew") is True for subscription in recurring_active)
-                / len(recurring_active)
-            )
-            * 100,
-            1,
-        )
-        if recurring_active
-        else None
-    )
+    entitlement_options = [
+        {
+            "id": str(entitlement.get("id")),
+            "lookup_key": entitlement.get("lookup_key")
+            or str(entitlement.get("id")),
+            "display_name": entitlement.get("display_name")
+            or _humanize(
+                entitlement.get("lookup_key"),
+                "Entitlement",
+            ),
+        }
+        for entitlement in entitlements
+        if entitlement.get("id") and entitlement.get("state") != "archived"
+    ]
 
     return SubscriptionAnalyticsResponse(
         source={
             "customer_status": (
-                f"live RevenueCat v1 ({refreshed} customer"
-                f"{'s' if refreshed != 1 else ''} refreshed)"
-                if refreshed
-                else "stored RevenueCat webhook status"
+                "live RevenueCat V2"
+                if revenuecat_v2_configured() and customers
+                else "RevenueCat webhook fallback"
             ),
             "event_history": "RevenueCat webhooks stored in MongoDB",
             "production_event_count": production_event_count,
@@ -460,12 +722,12 @@ async def get_subscription_analytics() -> SubscriptionAnalyticsResponse:
         },
         metrics={
             "active_subscribers": {
-                "value": len(active_production),
-                "available": True,
+                "value": len(active_customer_ids),
+                "available": bool(customers) or revenuecat_v2_configured(),
             },
             "monthly_revenue_usd": {
                 "value": current_month_revenue,
-                "available": True,
+                "available": current_month_revenue is not None,
             },
             "yearly_members_percent": {
                 "value": yearly_percent,
@@ -476,9 +738,99 @@ async def get_subscription_analytics() -> SubscriptionAnalyticsResponse:
                 "available": renewal_rate is not None,
             },
         },
-        plans=plans,
+        plans=plan_summaries,
+        entitlements=entitlement_options,
         revenue_growth=revenue_growth,
         subscriptions=rows,
         recent_activity=recent_activity,
         missing_data=missing_data,
     )
+
+
+async def get_subscription_analytics(
+    force_refresh: bool = False,
+) -> SubscriptionAnalyticsResponse:
+    global _analytics_cache
+    now = _now()
+    if (
+        not force_refresh
+        and _analytics_cache
+        and now - _analytics_cache[0] < CACHE_TTL
+    ):
+        return _analytics_cache[1]
+
+    async with _analytics_lock:
+        now = _now()
+        if (
+            not force_refresh
+            and _analytics_cache
+            and now - _analytics_cache[0] < CACHE_TTL
+        ):
+            return _analytics_cache[1]
+        analytics = await _build_subscription_analytics()
+        _analytics_cache = (now, analytics)
+        return analytics
+
+
+async def grant_customer_entitlement(
+    payload: GrantEntitlementRequest,
+    admin_id: str,
+) -> EntitlementActionResponse:
+    expires_at = payload.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    else:
+        expires_at = expires_at.astimezone(timezone.utc)
+    if expires_at <= _now():
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Entitlement expiration must be in the future",
+        )
+    try:
+        await grant_entitlement(
+            payload.customer_id,
+            payload.entitlement_id,
+            expires_at,
+        )
+    except RevenueCatV2Error as error:
+        raise as_http_exception(error) from error
+
+    await db.admin_subscription_actions.insert_one(
+        {
+            "action": "grant_entitlement",
+            "admin_id": admin_id,
+            "customer_id": payload.customer_id,
+            "entitlement_id": payload.entitlement_id,
+            "expires_at": expires_at,
+            "created_at": _now(),
+        }
+    )
+    await get_subscription_analytics(force_refresh=True)
+    return EntitlementActionResponse(message="Entitlement granted")
+
+
+async def revoke_customer_entitlement(
+    payload: RevokeEntitlementRequest,
+    admin_id: str,
+) -> EntitlementActionResponse:
+    try:
+        await revoke_granted_entitlement(
+            payload.customer_id,
+            payload.entitlement_id,
+        )
+    except RevenueCatV2Error as error:
+        raise as_http_exception(error) from error
+
+    await db.admin_subscription_actions.insert_one(
+        {
+            "action": "revoke_entitlement",
+            "admin_id": admin_id,
+            "customer_id": payload.customer_id,
+            "entitlement_id": payload.entitlement_id,
+            "created_at": _now(),
+        }
+    )
+    await get_subscription_analytics(force_refresh=True)
+    return EntitlementActionResponse(message="Entitlement revoked")
