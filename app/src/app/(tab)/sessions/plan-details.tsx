@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   View,
@@ -12,12 +12,13 @@ import { Feather } from '@expo/vector-icons';
 import { useEventListener } from 'expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { PLANS } from './session-details';
+import { PLANS, sessionPlanToResetPlan } from './session-details';
 import { Header } from '@/components/Header';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
+import { SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 
 const EXERCISE_DETAILS: Record<string, {
   benefits: string;
@@ -138,10 +139,36 @@ export default function PlanDetailsScreen() {
   const theme = useTheme();
   const themePreference = useSelector((state: RootState) => state.settings.theme);
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    sessionId?: string | string[];
+  }>();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const sessionId = Array.isArray(params.sessionId)
+    ? params.sessionId[0]
+    : params.sessionId;
+  const { data: session } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
 
-  // Fetch current plan
-  const plan = PLANS.find((r) => r.id === id) || PLANS[0];
+  const sessionPlan = useMemo(
+    () =>
+      session?.plans.find(
+        (item) => item.plan_id === id || item.id === id,
+      ),
+    [id, session],
+  );
+  const plan = sessionPlan
+    ? sessionPlanToResetPlan(
+        sessionPlan,
+        session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
+        session?.plans.length ?? 1,
+      )
+    : PLANS.find((r) => r.id === id) || PLANS[0];
+  const dynamicExercises = useMemo<SessionExercise[]>(() => {
+    if (!sessionPlan) return [];
+    return ['reset', 'control', 'integrate'].flatMap(
+      (phase) => sessionPlan.phases[phase as keyof typeof sessionPlan.phases],
+    );
+  }, [sessionPlan]);
 
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
@@ -170,7 +197,10 @@ export default function PlanDetailsScreen() {
     demoVideoPlayer.pause();
     router.push({
       pathname: '/sessions/exercise-tracker',
-      params: { id: plan.id },
+      params: {
+        id: plan.id,
+        ...(session?.id ? { sessionId: session.id } : {}),
+      },
     });
   };
 
@@ -213,7 +243,26 @@ export default function PlanDetailsScreen() {
           {/* Phases List */}
           {plan.phases.map((phase, index) => {
             const isExpanded = expandedIndex === index;
-            const details = EXERCISE_DETAILS[phase.name] || DEFAULT_DETAILS;
+            const dynamicExercise = dynamicExercises[index];
+            const details = dynamicExercise
+              ? {
+                  benefits:
+                    dynamicExercise.secondary_benefits ||
+                    dynamicExercise.primary_intent ||
+                    DEFAULT_DETAILS.benefits,
+                  targetRegions: sessionPlan ? [sessionPlan.target_area] : DEFAULT_DETAILS.targetRegions,
+                  equipment: dynamicExercise.equipment_needed.length
+                    ? dynamicExercise.equipment_needed
+                    : DEFAULT_DETAILS.equipment,
+                  avoidIf: DEFAULT_DETAILS.avoidIf,
+                  sets: String(dynamicExercise.sets),
+                  reps: dynamicExercise.reps,
+                }
+              : EXERCISE_DETAILS[phase.name] || DEFAULT_DETAILS;
+            const thumbnailUrl =
+              dynamicExercise?.tutorial_video?.thumbnail_url ||
+              dynamicExercise?.short_clip_video?.thumbnail_url ||
+              DEMO_VIDEO_THUMBNAIL_URL;
 
             return (
               <View key={index} style={styles.phaseCard}>
@@ -251,7 +300,7 @@ export default function PlanDetailsScreen() {
                           onPress={handlePlayDemo}
                         >
                           <Image
-                            source={{ uri: DEMO_VIDEO_THUMBNAIL_URL }}
+                            source={{ uri: thumbnailUrl }}
                             style={styles.videoThumbnail}
                           />
                           <View style={styles.videoOverlay}>

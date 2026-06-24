@@ -23,6 +23,6 @@ export const baseApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Auth', 'Subscription'],
+  tagTypes: ['Auth', 'Subscription', 'Sessions'],
   endpoints: () => ({}),
 });

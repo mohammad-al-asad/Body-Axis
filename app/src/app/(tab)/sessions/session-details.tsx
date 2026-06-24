@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Alert,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -9,12 +10,53 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
-import { PlanCard, ResetPlan } from '@/components/PlanCard';
+import { PlanCard, ResetPlan, RoutineEquipment, RoutinePhase } from '@/components/PlanCard';
+import { SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
+
+const EQUIPMENT_ICONS: Record<string, RoutineEquipment['icon']> = {
+  'Yoga Mat': 'square',
+  'Resistance Band': 'activity',
+  Dumbbell: 'target',
+  'Foam Roller': 'disc',
+  'Lacrosse Ball': 'circle',
+  'Yoga Block': 'box',
+  Bench: 'trello',
+  'Mini Band': 'activity',
+};
+
+const phaseOrder = ['reset', 'control', 'integrate'] as const;
+
+export const sessionPlanToResetPlan = (
+  plan: SessionPlan,
+  index = 0,
+  total = 1,
+): ResetPlan => {
+  const phases: RoutinePhase[] = phaseOrder.flatMap((phase) =>
+    plan.phases[phase].map((exercise) => ({
+      phase,
+      name: exercise.exercise_name,
+    })),
+  );
+
+  return {
+    id: plan.plan_id,
+    title: plan.plan_name,
+    duration: plan.duration,
+    isActive: index === 0,
+    progressPercent: total ? Math.round(((index + 1) / total) * 100) : 0,
+    progressLabel: total ? `Plan ${index + 1} of ${total}` : 'Plan 1 of 1',
+    equipment: plan.equipment_needed.map((name) => ({
+      name,
+      icon: EQUIPMENT_ICONS[name] ?? 'box',
+    })),
+    phases,
+  };
+};
 
 export const PLANS: ResetPlan[] = [
   {
@@ -107,8 +149,27 @@ export default function SessionDetailsScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
+  const params = useLocalSearchParams<{ sessionId?: string | string[] }>();
+  const sessionId = Array.isArray(params.sessionId)
+    ? params.sessionId[0]
+    : params.sessionId;
+  const {
+    data: session,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
 
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const plans = useMemo(
+    () =>
+      session
+        ? session.plans.map((plan, index) =>
+            sessionPlanToResetPlan(plan, index, session.plans.length),
+          )
+        : PLANS,
+    [session],
+  );
 
   const toggleSave = (plan: ResetPlan) => {
     const isSaved = savedIds.includes(plan.id);
@@ -124,7 +185,10 @@ export default function SessionDetailsScreen() {
   const handleSeeDetails = (plan: ResetPlan) => {
     router.push({
       pathname: '/sessions/plan-details',
-      params: { id: plan.id },
+      params: {
+        id: plan.id,
+        ...(session?.id ? { sessionId: session.id } : {}),
+      },
     });
   };
 
@@ -155,15 +219,41 @@ export default function SessionDetailsScreen() {
             {/* Movement Library Header Titles */}
             <View style={styles.titleContainer}>
               <Text style={styles.mainTitle}>
-                Hip Mobility + Core Stability
+                {session?.session_name || 'Hip Mobility + Core Stability'}
               </Text>
               <Text style={styles.subtitle}>
-                Based on your selections, here are your personalized movement plans to choose from.
+                {session
+                  ? `${session.plan_count} matching plan${session.plan_count === 1 ? '' : 's'} for ${session.target_areas.join(', ')} · ${session.user_case}`
+                  : 'Based on your selections, here are your personalized movement plans to choose from.'}
               </Text>
             </View>
 
-            {/* Curated Plan Cards List */}
-            {PLANS.map((plan) => {
+            {isLoading && (
+              <View style={styles.stateCard}>
+                <ActivityIndicator color={theme.secondary} />
+                <Text style={styles.stateText}>Loading plans…</Text>
+              </View>
+            )}
+
+            {isError && !isLoading && (
+              <View style={styles.stateCard}>
+                <Text style={styles.stateText}>Could not load this session.</Text>
+                <TouchableOpacity style={styles.retryButton} onPress={refetch}>
+                  <Text style={styles.retryButtonText}>Try Again</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!isLoading && !isError && plans.length === 0 && (
+              <View style={styles.stateCard}>
+                <Text style={styles.stateTitle}>No matching plans yet</Text>
+                <Text style={styles.stateText}>
+                  No published admin plan matches this target area and user case.
+                </Text>
+              </View>
+            )}
+
+            {!isLoading && !isError && plans.map((plan) => {
               const isSaved = savedIds.includes(plan.id);
               return (
                 <PlanCard
@@ -230,5 +320,37 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       color: theme.textSecondary,
       textAlign: 'left',
       lineHeight: 20,
+    },
+    stateCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 24,
+      alignItems: 'center',
+      gap: 12,
+    },
+    stateTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    stateText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    retryButton: {
+      borderWidth: 1,
+      borderColor: theme.secondary,
+      borderRadius: 12,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+    },
+    retryButtonText: {
+      color: theme.secondary,
+      fontWeight: '800',
     },
   });

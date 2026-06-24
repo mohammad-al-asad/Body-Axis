@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -17,7 +17,8 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { Header } from '@/components/Header';
 import { ISLAMIC_DEMO_VIDEO_URL, DEMO_VIDEO_THUMBNAIL_URL } from '@/constants/videos';
 import { useTheme } from '@/hooks/use-theme';
-import { PLANS as ROUTINES } from './session-details';
+import { PLANS as ROUTINES, sessionPlanToResetPlan } from './session-details';
+import { SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 
 const EXERCISE_METADATA: Record<string, {
   benefits: string;
@@ -106,14 +107,42 @@ export default function ExerciseTrackerScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
     id?: string | string[];
+    sessionId?: string | string[];
     initialPhaseIndex?: string | string[];
   }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const sessionId = Array.isArray(params.sessionId)
+    ? params.sessionId[0]
+    : params.sessionId;
   const initialPhaseIndex = Array.isArray(params.initialPhaseIndex)
     ? params.initialPhaseIndex[0]
     : params.initialPhaseIndex;
+  const { data: session } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
 
-  const routine = ROUTINES.find((item) => item.id === id) ?? ROUTINES[0];
+  const sessionPlan = useMemo(
+    () =>
+      session?.plans.find(
+        (item) => item.plan_id === id || item.id === id,
+      ),
+    [id, session],
+  );
+  const routine = useMemo(
+    () =>
+      sessionPlan
+        ? sessionPlanToResetPlan(
+            sessionPlan,
+            session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
+            session?.plans.length ?? 1,
+          )
+        : ROUTINES.find((item) => item.id === id) ?? ROUTINES[0],
+    [id, session, sessionPlan],
+  );
+  const dynamicExercises = useMemo<SessionExercise[]>(() => {
+    if (!sessionPlan) return [];
+    return ['reset', 'control', 'integrate'].flatMap(
+      (phase) => sessionPlan.phases[phase as keyof typeof sessionPlan.phases],
+    );
+  }, [sessionPlan]);
   const parsedInitialIndex = Number.parseInt(initialPhaseIndex ?? '0', 10);
   const safeInitialIndex = Number.isNaN(parsedInitialIndex)
     ? 0
@@ -187,9 +216,32 @@ export default function ExerciseTrackerScreen() {
       .padStart(2, '0')}`;
   };
 
-  const currentPhase = routine.phases[currentIdx] ?? routine.phases[0];
+  const currentPhase = routine.phases[currentIdx] ??
+    routine.phases[0] ?? {
+      phase: 'No Exercise',
+      name: 'No exercises available',
+    };
   const upcomingPhase = routine.phases[currentIdx + 1];
-  const exerciseMetadata = EXERCISE_METADATA[currentPhase.name] ?? EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+  const dynamicExercise = dynamicExercises[currentIdx];
+  const exerciseMetadata = dynamicExercise
+    ? {
+        benefits:
+          dynamicExercise.secondary_benefits ||
+          dynamicExercise.primary_intent ||
+          'Gently restores movement quality and control for the selected region.',
+        targetRegions: sessionPlan ? [sessionPlan.target_area] : ['Target Area'],
+        equipment: dynamicExercise.equipment_needed.length
+          ? dynamicExercise.equipment_needed
+          : ['None'],
+        sets: String(dynamicExercise.sets),
+        repsVal: dynamicExercise.reps,
+        repsLabel: 'REPS',
+      }
+    : EXERCISE_METADATA[currentPhase.name] ?? EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+  const thumbnailUrl =
+    dynamicExercise?.tutorial_video?.thumbnail_url ||
+    dynamicExercise?.short_clip_video?.thumbnail_url ||
+    DEMO_VIDEO_THUMBNAIL_URL;
 
   const handleLogSetPress = () => {
     if (currentSet > 2) return;
@@ -414,7 +466,7 @@ export default function ExerciseTrackerScreen() {
                 onPress={handleOpenVideo}
               >
                 <Image
-                  source={{ uri: DEMO_VIDEO_THUMBNAIL_URL }}
+                  source={{ uri: thumbnailUrl }}
                   style={styles.videoThumbnail}
                 />
                 <View style={styles.videoOverlay}>

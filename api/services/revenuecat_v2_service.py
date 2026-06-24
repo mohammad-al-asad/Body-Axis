@@ -162,6 +162,7 @@ async def list_products() -> list[dict[str, Any]]:
     return await _list_all(
         _project_path("/products"),
         capability="products",
+        params={"expand": "items.app"},
     )
 
 
@@ -170,6 +171,33 @@ async def list_entitlements() -> list[dict[str, Any]]:
         _project_path("/entitlements"),
         capability="entitlements",
     )
+
+
+async def list_customer_attributes(
+    customer_id: str,
+) -> list[dict[str, Any]]:
+    encoded_customer_id = quote(customer_id, safe="")
+    return await _list_all(
+        _project_path(f"/customers/{encoded_customer_id}/attributes"),
+        capability="customer_attributes",
+        maximum=100,
+    )
+
+
+async def list_all_customer_attributes(
+    customers: list[dict[str, Any]],
+) -> dict[str, list[dict[str, Any]]]:
+    semaphore = asyncio.Semaphore(8)
+
+    async def fetch(customer: dict[str, Any]):
+        customer_id = str(customer.get("id") or "")
+        if not customer_id:
+            return customer_id, []
+        async with semaphore:
+            return customer_id, await list_customer_attributes(customer_id)
+
+    results = await asyncio.gather(*(fetch(customer) for customer in customers))
+    return dict(results)
 
 
 async def get_overview_metrics() -> dict[str, Any]:
