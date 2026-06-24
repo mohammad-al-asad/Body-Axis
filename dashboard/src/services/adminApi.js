@@ -56,6 +56,11 @@ export const adminApi = {
       method: "POST",
       body: JSON.stringify({ email, password }),
     }),
+  verifyLogin2fa: (payload) =>
+    request("/admin/auth/2fa/verify", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getProfile: () => request("/admin/me", {}, true),
   getDashboard: ({ granularity, startDate, endDate }) => {
     const params = new URLSearchParams({
@@ -76,6 +81,79 @@ export const adminApi = {
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/admin/users${suffix}`, {}, true);
   },
+  getContent: (slug) => request(`/admin/content/${slug}`, {}, true),
+  updateContent: (slug, payload) =>
+    request(
+      `/admin/content/${slug}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  getFaqs: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.set(key, value);
+      }
+    });
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/admin/faqs${suffix}`, {}, true);
+  },
+  createFaq: (payload) =>
+    request(
+      "/admin/faqs",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  updateFaq: (faqId, payload) =>
+    request(
+      `/admin/faqs/${faqId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  deleteFaq: (faqId) =>
+    request(
+      `/admin/faqs/${faqId}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    ),
+  getSupportMessages: (params = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.set(key, value);
+      }
+    });
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return request(`/admin/support/messages${suffix}`, {}, true);
+  },
+  updateSupportMessage: (messageId, payload) =>
+    request(
+      `/admin/support/messages/${messageId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  deleteSupportMessage: (messageId) =>
+    request(
+      `/admin/support/messages/${messageId}`,
+      {
+        method: "DELETE",
+      },
+      true,
+    ),
   grantEntitlement: (payload) =>
     request(
       "/admin/subscriptions/entitlements/grant",
@@ -108,6 +186,40 @@ export const adminApi = {
       "/admin/password",
       {
         method: "PUT",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  requestEnable2fa: () =>
+    request(
+      "/admin/2fa/setup/request",
+      {
+        method: "POST",
+      },
+      true,
+    ),
+  verifyEnable2fa: (payload) =>
+    request(
+      "/admin/2fa/setup/verify",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  requestDisable2fa: () =>
+    request(
+      "/admin/2fa/disable/request",
+      {
+        method: "POST",
+      },
+      true,
+    ),
+  verifyDisable2fa: (payload) =>
+    request(
+      "/admin/2fa/disable/verify",
+      {
+        method: "POST",
         body: JSON.stringify(payload),
       },
       true,

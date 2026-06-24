@@ -17,7 +17,12 @@ import VideoManager from "../Pages/VideoManager/VideoManager";
 import UploadVideo from "../Pages/VideoManager/UploadVideo";
 import SubscriptionManagement from "../Pages/SubscriptionManagement/SubscriptionManagement";
 import Settings from "../Pages/Settings/Settings";
-
+import PrivacyPolicy from "../Pages/AppContent/PrivacyPolicy";
+import TermsAndConditions from "../Pages/AppContent/TermsAndConditions";
+import AboutApp from "../Pages/AppContent/AboutApp";
+import SupportMessages from "../Pages/AppContent/SupportMessages";
+import FAQList from "../Pages/AppContent/FAQList";
+import AddFAQ from "../Pages/AppContent/AddFAQ";
 export const router = createBrowserRouter([
   {
     path: "/sign-in",
@@ -61,6 +66,12 @@ export const router = createBrowserRouter([
           { path: "/video-manager/:videoId/edit", element: <UploadVideo /> },
           { path: "/subscription", element: <SubscriptionManagement /> },
           { path: "/settings", element: <Settings /> },
+          { path: "/privacy-policy", element: <PrivacyPolicy /> },
+          { path: "/terms-and-conditions", element: <TermsAndConditions /> },
+          { path: "/about-app", element: <AboutApp /> },
+          { path: "/support-messages", element: <SupportMessages /> },
+          { path: "/faq", element: <FAQList /> },
+          { path: "/add-faq", element: <AddFAQ /> },
         ],
       },
     ],

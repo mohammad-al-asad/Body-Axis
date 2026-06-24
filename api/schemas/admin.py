@@ -33,6 +33,15 @@ class AdminAuthResponse(BaseModel):
     admin: AdminResponse
 
 
+class AdminLoginResponse(BaseModel):
+    message: str
+    requires_2fa: bool = False
+    challenge_id: str | None = None
+    access_token: str | None = None
+    token_type: str = "bearer"
+    admin: AdminResponse | None = None
+
+
 class AdminUpdateRequest(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     email: EmailStr
@@ -48,3 +57,13 @@ class AdminUpdateRequest(BaseModel):
 class AdminPasswordUpdateRequest(BaseModel):
     current_password: str = Field(min_length=8, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class AdminTwoFactorChallengeResponse(BaseModel):
+    message: str
+    challenge_id: str
+
+
+class AdminTwoFactorVerifyRequest(BaseModel):
+    challenge_id: str = Field(min_length=16, max_length=160)
+    otp_code: str = Field(min_length=4, max_length=8)

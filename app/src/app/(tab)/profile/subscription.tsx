@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Defs, LinearGradient as SvgLinearGradient, Stop, Rect } from 'react-native-svg';
 import { useSelector } from 'react-redux';
+import Purchases, { CustomerInfo, PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
@@ -15,11 +16,78 @@ import {
 } from '@/redux/api/subscriptionApi';
 import {
   getRevenueCatErrorMessage,
+  getCurrentOffering,
+  getPackageForBillingPeriod,
   hasRealRevenueCatKey,
   isPremiumCustomerInfo,
   isRevenueCatSupported,
+  configureRevenueCat,
+  REVENUECAT_ENTITLEMENT_ID,
   restoreRevenueCatPurchases,
 } from '@/services/revenueCat';
+
+type CurrentPlanType = 'monthly' | 'yearly' | 'unknown' | 'none';
+
+const normalizeIdentifier = (value?: string | null) => value?.trim().toLowerCase() ?? '';
+
+const formatLabel = (value?: string | null, fallback = 'Not available') => {
+  if (!value) {
+    return fallback;
+  }
+
+  return value
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+};
+
+const planTypeFromIdentifier = (value?: string | null): Exclude<CurrentPlanType, 'none'> | null => {
+  const normalized = normalizeIdentifier(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (
+    normalized.includes('monthly') ||
+    normalized.includes('month') ||
+    normalized.includes('p1m') ||
+    normalized.endsWith('_1m') ||
+    normalized.endsWith('-1m')
+  ) {
+    return 'monthly';
+  }
+
+  if (
+    normalized.includes('yearly') ||
+    normalized.includes('annual') ||
+    normalized.includes('year') ||
+    normalized.includes('p1y') ||
+    normalized.endsWith('_1y') ||
+    normalized.endsWith('-1y')
+  ) {
+    return 'yearly';
+  }
+
+  return null;
+};
+
+const getPackageIdentifiers = (pkg: PurchasesPackage | null) => {
+  if (!pkg) {
+    return [];
+  }
+
+  return [
+    pkg.identifier,
+    pkg.product.identifier,
+    pkg.product.subscriptionPeriod,
+    pkg.product.defaultOption?.id,
+    pkg.product.defaultOption?.storeProductId,
+    pkg.product.defaultOption?.productId,
+  ]
+    .map(normalizeIdentifier)
+    .filter(Boolean);
+};
 
 export default function SubscriptionScreen() {
   const theme = useTheme();
@@ -27,7 +95,10 @@ export default function SubscriptionScreen() {
   const styles = createStyles(theme);
   const user = useSelector((state: RootState) => state.auth.user);
 
-  const [selectedPlan, setSelectedPlan] = useState<'yearly' | 'monthly'>('yearly');
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [isUpgrading, setIsUpgrading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
   const [cardHeight, setCardHeight] = useState(0);
@@ -36,16 +107,80 @@ export default function SubscriptionScreen() {
   });
   const [syncSubscriptionStatus] = useSyncSubscriptionStatusMutation();
 
+  const monthlyPackage = useMemo(
+    () => getPackageForBillingPeriod(offering, 'monthly'),
+    [offering]
+  );
+  const yearlyPackage = useMemo(
+    () => getPackageForBillingPeriod(offering, 'yearly'),
+    [offering]
+  );
+
+  const activeEntitlement = customerInfo?.entitlements.active[REVENUECAT_ENTITLEMENT_ID];
+  const activeProductId =
+    activeEntitlement?.productIdentifier ??
+    customerInfo?.activeSubscriptions[0] ??
+    subscription?.product_id ??
+    null;
+  const activeProductPlanId = activeEntitlement?.productPlanIdentifier ?? null;
+
+  const currentPlanType = useMemo<CurrentPlanType>(() => {
+    if (!subscription?.active) {
+      return 'none';
+    }
+
+    const activeSignals = [
+      activeProductPlanId,
+      activeProductId,
+      subscription.product_id,
+      ...(customerInfo?.activeSubscriptions ?? []),
+    ].filter(Boolean) as string[];
+
+    for (const signal of activeSignals) {
+      const detectedPlanType = planTypeFromIdentifier(signal);
+      if (detectedPlanType) {
+        return detectedPlanType;
+      }
+    }
+
+    const monthlyIdentifiers = getPackageIdentifiers(monthlyPackage);
+    const yearlyIdentifiers = getPackageIdentifiers(yearlyPackage);
+    const normalizedSignals = activeSignals.map(normalizeIdentifier);
+
+    const monthlyMatches = normalizedSignals.some((signal) => monthlyIdentifiers.includes(signal));
+    const yearlyMatches = normalizedSignals.some((signal) => yearlyIdentifiers.includes(signal));
+
+    if (monthlyMatches && !yearlyMatches) {
+      return 'monthly';
+    }
+    if (yearlyMatches && !monthlyMatches) {
+      return 'yearly';
+    }
+
+    return 'unknown';
+  }, [
+    activeProductId,
+    activeProductPlanId,
+    customerInfo?.activeSubscriptions,
+    monthlyPackage,
+    subscription,
+    yearlyPackage,
+  ]);
+  
   const activePlanTitle = useMemo(() => {
-    const productId = subscription?.product_id ?? '';
     if (!subscription?.active) {
       return 'No Active Plan';
     }
 
-    return productId.toLowerCase().includes('year')
-      ? 'Premium Annual Plan'
-      : 'Premium Monthly Plan';
-  }, [subscription]);
+    if (currentPlanType === 'yearly') {
+      return 'Premium Yearly Plan';
+    }
+    if (currentPlanType === 'monthly') {
+      return 'Premium Monthly Plan';
+    }
+
+    return 'Premium Active Plan';
+  }, [currentPlanType, subscription?.active]);
 
   const nextBilling = useMemo(() => {
     if (!subscription?.expires_at) {
@@ -55,15 +190,133 @@ export default function SubscriptionScreen() {
     return new Date(subscription.expires_at).toLocaleDateString();
   }, [subscription]);
 
+  const activePackage =
+    currentPlanType === 'monthly'
+      ? monthlyPackage
+      : currentPlanType === 'yearly'
+        ? yearlyPackage
+        : null;
+  const activePlanPrice = isLoadingPlans
+    ? 'Loading'
+    : activePackage?.product.priceString ?? 'Price unavailable';
+  const activePlanPeriod =
+    currentPlanType === 'monthly'
+      ? '/mo'
+      : currentPlanType === 'yearly'
+        ? '/yr'
+        : '';
+  const activePlanCadence =
+    currentPlanType === 'monthly'
+      ? 'Monthly billing'
+      : currentPlanType === 'yearly'
+        ? 'Yearly billing'
+        : 'Store managed';
+  const renewalStatus = subscription?.will_renew
+    ? 'Renews automatically'
+    : subscription?.active
+      ? 'Will not renew'
+      : 'Inactive';
+  const storeLabel = formatLabel(subscription?.store ?? activeEntitlement?.store, 'Store unavailable');
+  const environmentLabel = formatLabel(subscription?.environment, 'Live store');
+
   useEffect(() => {
-    const productId = subscription?.product_id?.toLowerCase() ?? '';
-    if (productId.includes('month')) {
-      setSelectedPlan('monthly');
+    let isMounted = true;
+
+    async function loadPlans() {
+      if (!user || !isRevenueCatSupported() || !hasRealRevenueCatKey(user)) {
+        return;
+      }
+
+      setIsLoadingPlans(true);
+      try {
+        await configureRevenueCat(user);
+        const [currentOffering, latestCustomerInfo] = await Promise.all([
+          getCurrentOffering(user),
+          Purchases.getCustomerInfo(),
+        ]);
+        if (isMounted) {
+          setOffering(currentOffering);
+          setCustomerInfo(latestCustomerInfo);
+        }
+      } catch (error) {
+        console.warn('Failed to load RevenueCat subscription plans', error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingPlans(false);
+        }
+      }
     }
-    if (productId.includes('year')) {
-      setSelectedPlan('yearly');
+
+    loadPlans();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const handleUpgradeToYearly = async () => {
+    if (!user) {
+      router.replace('/auth/sign-in');
+      return;
     }
-  }, [subscription?.product_id]);
+
+    if (!isRevenueCatSupported()) {
+      Alert.alert('Upgrade unavailable', 'Subscriptions can be changed from the mobile app.');
+      return;
+    }
+
+    if (!hasRealRevenueCatKey(user)) {
+      Alert.alert(
+        'Upgrade unavailable',
+        'RevenueCat is using a placeholder key for this platform. Add the real public SDK key before testing subscription changes.'
+      );
+      return;
+    }
+
+    if (!yearlyPackage) {
+      Alert.alert('Yearly plan unavailable', 'RevenueCat did not return the yearly plan yet. Check the offering and product setup.');
+      return;
+    }
+
+    setIsUpgrading(true);
+
+    try {
+      await configureRevenueCat(user);
+      const productChangeInfo =
+        Platform.OS === 'android' && activeProductId
+          ? {
+              oldProductIdentifier: activeProductId,
+              replacementMode: Purchases.STORE_REPLACEMENT_MODE.WITHOUT_PRORATION,
+            }
+          : null;
+
+      const { customerInfo } = await Purchases.purchasePackage(
+        yearlyPackage,
+        null,
+        productChangeInfo
+      );
+
+      if (!isPremiumCustomerInfo(customerInfo)) {
+        Alert.alert(
+          'Subscription pending',
+          'The purchase completed, but premium access was not active yet. Please try restore purchase.'
+        );
+        return;
+      }
+
+      await syncSubscriptionStatus().unwrap();
+      setCustomerInfo(customerInfo);
+      Alert.alert('Subscription Updated', 'Your yearly plan is now active.');
+    } catch (error) {
+      console.warn('Failed to upgrade subscription', error);
+      const message = getRevenueCatErrorMessage(error);
+      if (message) {
+        Alert.alert('Upgrade failed', message);
+      }
+    } finally {
+      setIsUpgrading(false);
+    }
+  };
 
   const handleRestore = async () => {
     if (!user) {
@@ -95,6 +348,7 @@ export default function SubscriptionScreen() {
       }
 
       await syncSubscriptionStatus().unwrap();
+      setCustomerInfo(customerInfo);
       Alert.alert('Restore Success', 'Your active membership has been successfully restored.');
     } catch (error) {
       console.warn('Failed to restore RevenueCat purchases', error);
@@ -118,21 +372,16 @@ export default function SubscriptionScreen() {
     });
   };
 
-  const benefits = [
-    'Unlimited corrective programs',
-    'Personalized mobility protocols',
-    'Advanced movement assessments',
-    'Full exercise video library',
-  ];
-
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
         <Header onBackPress={() => router.back()} showNotification={true} />
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.subtitle}>Manage your premium wellness membership</Text>
-
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Active Plan Gradient Card */}
           <View
             style={styles.activeCard}
@@ -165,84 +414,99 @@ export default function SubscriptionScreen() {
               </View>
 
               <Text style={styles.activePlanTitle}>{activePlanTitle}</Text>
+              <Text style={styles.activePlanCadence}>{activePlanCadence}</Text>
+
+              <View style={styles.activePriceBlock}>
+                <Text style={styles.activePriceLabel}>CURRENT PRICE</Text>
+                <View style={styles.activePriceRow}>
+                  <Text style={styles.activePriceText}>{activePlanPrice}</Text>
+                  {!!activePlanPeriod && (
+                    <Text style={styles.activePricePeriod}>{activePlanPeriod}</Text>
+                  )}
+                </View>
+              </View>
 
               <View style={styles.divider} />
 
-              <View style={styles.activeCardFooterRow}>
-                <View>
-                  <Text style={styles.nextBillingLabel}>NEXT BILLING</Text>
-                  <Text style={styles.nextBillingVal}>{nextBilling}</Text>
+              <View style={styles.activeDetailsGrid}>
+                <View style={styles.activeDetailItem}>
+                  <Text style={styles.activeDetailLabel}>NEXT BILLING</Text>
+                  <Text style={styles.activeDetailValue}>{nextBilling}</Text>
                 </View>
 
-                <View style={styles.validStatusBadge}>
-                  <View style={[styles.validDot, !subscription?.active && styles.inactiveDot]} />
-                  <Text style={styles.validStatusText}>
-                    {subscription?.active ? 'Valid' : 'Inactive'}
-                  </Text>
+                <View style={styles.activeDetailItem}>
+                  <Text style={styles.activeDetailLabel}>RENEWAL</Text>
+                  <Text style={styles.activeDetailValue}>{renewalStatus}</Text>
                 </View>
               </View>
+
             </View>
           </View>
 
-          {/* Membership Benefits Section */}
-          <Text style={styles.sectionHeader}>Membership Benefits</Text>
-          {benefits.map((benefit, idx) => (
-            <View key={idx} style={styles.benefitCard}>
-              <View style={styles.checkCircle}>
-                <Feather name="check" size={12} color={theme.quaternary} />
-              </View>
-              <Text style={styles.benefitText}>{benefit}</Text>
-            </View>
-          ))}
-
           {/* Plan Options Section */}
-          <Text style={styles.sectionHeader}>Plan Options</Text>
+          {currentPlanType === 'monthly' && (
+            <>
+              <Text style={styles.sectionHeader}>Upgrade Available</Text>
 
-          {/* Yearly Plan Card */}
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              selectedPlan === 'yearly' && styles.optionCardSelected,
-            ]}
-            activeOpacity={0.85}
-            onPress={() => setSelectedPlan('yearly')}
-          >
-            {selectedPlan === 'yearly' && (
-              <View style={styles.currentBadge}>
-                <Text style={styles.currentBadgeText}>CURRENT</Text>
-              </View>
-            )}
-            <View style={styles.optionHeaderRow}>
-              <Text style={[styles.optionPlanName, selectedPlan === 'yearly' && {color: "#fff"}]}>Yearly</Text>
-              <Text style={styles.optionPlanPrice}>$199<Text style={styles.pricePeriod}>/yr</Text></Text>
-            </View>
-            <Text style={styles.optionPlanDescription}>
-              Best value. Save $101 compared to monthly.
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.optionCard}
+                activeOpacity={0.85}
+                onPress={handleUpgradeToYearly}
+                disabled={isLoadingPlans || isUpgrading || !yearlyPackage}
+              >
+                <View style={styles.currentBadge}>
+                  <Text style={styles.currentBadgeText}>BEST VALUE</Text>
+                </View>
+                <View style={styles.optionHeaderRow}>
+                  <Text style={styles.optionPlanName}>Upgrade to Yearly</Text>
+                  <Text style={styles.optionPlanPrice}>
+                    {isLoadingPlans
+                      ? 'Loading'
+                      : yearlyPackage?.product.priceString ?? 'Unavailable'}
+                    <Text style={styles.pricePeriod}>/yr</Text>
+                  </Text>
+                </View>
+                <Text style={styles.optionPlanDescription}>
+                  Switch from monthly to yearly billing. RevenueCat and your app store will handle the subscription change.
+                </Text>
+                <View style={styles.upgradeButton}>
+                  <Text style={styles.upgradeButtonText}>
+                    {isUpgrading
+                      ? 'Upgrading...'
+                      : isLoadingPlans
+                        ? 'Loading plan...'
+                        : yearlyPackage
+                          ? 'Upgrade to Yearly'
+                          : 'Yearly Plan Unavailable'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
 
-          {/* Monthly Plan Card */}
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              selectedPlan === 'monthly' && styles.optionCardSelected,
-            ]}
-            activeOpacity={0.85}
-            onPress={() => setSelectedPlan('monthly')}
-          >
-            {selectedPlan === 'monthly' && (
-              <View style={styles.currentBadge}>
-                <Text style={styles.currentBadgeText}>CURRENT</Text>
+          {currentPlanType === 'yearly' && (
+            <>
+              <Text style={styles.sectionHeader}>Plan Options</Text>
+              <View style={styles.infoCard}>
+                <Feather name="check-circle" size={18} color={theme.quaternary} />
+                <Text style={styles.infoCardText}>
+                  You are already on the best plan with the best value.
+                </Text>
               </View>
-            )}
-            <View style={styles.optionHeaderRow}>
-              <Text style={[styles.optionPlanName, selectedPlan === 'monthly' && {color: "#fff"}]}>Monthly</Text>
-              <Text style={styles.optionPlanPrice}>$25<Text style={styles.pricePeriod}>/mo</Text></Text>
-            </View>
-            <Text style={styles.optionPlanDescription}>
-              Flexible access. Cancel anytime.
-            </Text>
-          </TouchableOpacity>
+            </>
+          )}
+
+          {currentPlanType === 'unknown' && (
+            <>
+              <Text style={styles.sectionHeader}>Plan Options</Text>
+              <View style={styles.infoCard}>
+                <Feather name="info" size={18} color={theme.quaternary} />
+                <Text style={styles.infoCardText}>
+                  Your active plan is managed by the app store. Use Manage Subscription to make changes.
+                </Text>
+              </View>
+            </>
+          )}
 
           {/* Action Buttons */}
           <View style={styles.actionContainer}>
@@ -295,19 +559,19 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     safeArea: {
       flex: 1,
     },
+    scrollView: {
+      flex: 1,
+    },
     scrollContent: {
+      flexGrow: 1,
       paddingHorizontal: 24,
       paddingBottom: 40,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: theme.textSecondary,
-      marginTop: 4,
-      marginBottom: 20,
+      paddingTop: 18,
     },
     activeCard: {
       borderRadius: 20,
       marginBottom: 24,
+      minHeight: 320,
       overflow: 'hidden',
       position: 'relative',
       elevation: 1,
@@ -318,7 +582,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     activeCardContent: {
       flex: 1,
-      padding: 20,
+      padding: 24,
     },
     activeCardHeaderRow: {
       flexDirection: 'row',
@@ -352,15 +616,84 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginTop: 5,
       marginBottom: 4,
     },
+    activePlanCadence: {
+      color: 'rgba(255, 255, 255, 0.72)',
+      fontSize: 14,
+      fontWeight: '700',
+      marginBottom: 18,
+    },
+    activePriceBlock: {
+      backgroundColor: 'rgba(255, 255, 255, 0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255, 255, 255, 0.16)',
+      borderRadius: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    activePriceLabel: {
+      color: 'rgba(255, 255, 255, 0.65)',
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 0.8,
+      marginBottom: 4,
+    },
+    activePriceRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+    },
+    activePriceText: {
+      color: '#FFFFFF',
+      fontSize: 36,
+      fontWeight: '900',
+      letterSpacing: -1,
+      flexShrink: 1,
+    },
+    activePricePeriod: {
+      color: 'rgba(255, 255, 255, 0.76)',
+      fontSize: 16,
+      fontWeight: '800',
+      marginLeft: 4,
+      marginBottom: 5,
+    },
     divider: {
       height: 1,
       backgroundColor: 'rgba(255, 255, 255, 0.12)',
       marginVertical: 12,
     },
+    activeDetailsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginBottom: 12,
+    },
+    activeBottomGrid: {
+      flexDirection: 'row',
+      gap: 10,
+      marginTop: 14,
+    },
+    activeDetailItem: {
+      width: '48%',
+      backgroundColor: 'rgba(5, 11, 20, 0.16)',
+      borderRadius: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    activeDetailLabel: {
+      color: 'rgba(255, 255, 255, 0.58)',
+      fontSize: 9,
+      fontWeight: '800',
+      letterSpacing: 0.6,
+      marginBottom: 4,
+    },
+    activeDetailValue: {
+      color: '#FFFFFF',
+      fontSize: 13,
+      fontWeight: '800',
+    },
     activeCardFooterRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-end',
+      justifyContent: 'flex-end',
+      alignItems: 'center',
     },
     nextBillingLabel: {
       color: 'rgba(255, 255, 255, 0.6)',
@@ -404,38 +737,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginTop: 14,
       marginBottom: 12,
     },
-    benefitCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.cardBackground,
-      borderWidth: 1,
-      borderColor: theme.cardBorder,
-      borderRadius: 12,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      marginBottom: 10,
-      elevation: 1,
-      shadowColor: theme.text,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
-    },
-    checkCircle: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      backgroundColor: 'rgba(98, 250, 227, 0.08)',
-      borderWidth: 1,
-      borderColor: 'rgba(98, 250, 227, 0.15)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    benefitText: {
-      fontSize: 15,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
     optionCard: {
       backgroundColor: theme.cardBackground,
       borderWidth: 1.5,
@@ -452,10 +753,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowOffset: { width: 0, height: 1 },
       shadowOpacity: 0.15,
       shadowRadius: 4,
-    },
-    optionCardSelected: {
-      borderColor: theme.quaternary,
-      backgroundColor: theme.backgroundSelected === "#E0E1E6" ? "#050B14" : theme.backgroundSelected,
     },
     currentBadge: {
       position: 'absolute',
@@ -498,8 +795,40 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       color: theme.textSecondary,
       lineHeight: 20,
     },
+    upgradeButton: {
+      height: 46,
+      borderRadius: 14,
+      backgroundColor: theme.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: 18,
+    },
+    upgradeButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    infoCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 16,
+      paddingHorizontal: 18,
+      paddingVertical: 18,
+      marginBottom: 14,
+    },
+    infoCardText: {
+      flex: 1,
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
     actionContainer: {
-      marginTop: 10,
+      marginTop: 'auto',
       marginBottom: 24,
       gap: 12,
     },

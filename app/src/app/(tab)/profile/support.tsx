@@ -5,58 +5,23 @@ import { useRouter } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
+import {
+  useGetFaqsQuery,
+  useSubmitSupportMessageMutation,
+} from '@/redux/api/contentApi';
+import type { FAQItem } from '@/redux/api/contentApi';
 
 // Enable layout animation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-}
-
-const SUBSCRIPTION_FAQS: FAQItem[] = [
-  {
-    id: 'sub_1',
-    question: 'How does the 7-day free trial work?',
-    answer: 'You will receive full access to all premium features, routines, and progress trackers for 7 days. If you do not cancel before the trial period concludes, your account will be charged for the yearly plan.',
-  },
-  {
-    id: 'sub_2',
-    question: 'How do I cancel my active subscription?',
-    answer: 'You can manage or cancel your active subscription directly inside the Subscription Management card in your profile, or through your device\'s App Store or Google Play Store subscription dashboard.',
-  },
-  {
-    id: 'sub_3',
-    question: 'Can I get a refund if I cancel early?',
-    answer: 'Refund policies are managed entirely by the respective store platforms (Apple App Store / Google Play Store). Please contact their billing support teams to request a refund.',
-  },
-];
-
-const APP_FAQS: FAQItem[] = [
-  {
-    id: 'app_1',
-    question: 'What is alignment calibration?',
-    answer: 'Alignment calibration uses interactive assessments to identify posture shifts and joint asymmetries. This builds a customized baseline to tailor the correct therapeutic exercise phases for you.',
-  },
-  {
-    id: 'app_2',
-    question: 'How often should I perform the routines?',
-    answer: 'We recommend performing your customized active routines 3 to 4 times a week. Regular engagement is key to restoring posture balance and reducing compensation patterns.',
-  },
-  {
-    id: 'app_3',
-    question: 'Does the app support offline mode?',
-    answer: 'Yes! Once your personalized routines are synchronized to your local profile, you can view the video steps, alignment guidelines, and session timers without an active internet connection.',
-  },
-];
-
 export default function SupportScreen() {
   const theme = useTheme();
   const router = useRouter();
   const styles = createStyles(theme);
+  const { data: faqData, isLoading: isLoadingFaqs } = useGetFaqsQuery();
+  const [submitSupportMessage, { isLoading: isSubmitting }] = useSubmitSupportMessageMutation();
 
   // List of currently expanded FAQ item IDs
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
@@ -64,7 +29,9 @@ export default function SupportScreen() {
   // Issue submission states
   const [issueCategory, setIssueCategory] = useState<'Billing' | 'Bug' | 'Feature' | 'Other'>('Billing');
   const [issueText, setIssueText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const subscriptionFaqs = faqData?.items.filter((faq) => faq.category === 'Subscription') || [];
+  const appFaqs = faqData?.items.filter((faq) => faq.category !== 'Subscription') || [];
 
   const toggleExpand = (id: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -90,7 +57,7 @@ export default function SupportScreen() {
               <Feather
                 name={isExpanded ? 'chevron-up' : 'chevron-down'}
                 size={18}
-                color={isExpanded ? theme.quaternary || theme.secondary : theme.textSecondary}
+                color={isExpanded ? theme.quaternary : theme.textSecondary}
               />
             </View>
           </TouchableOpacity>
@@ -105,21 +72,27 @@ export default function SupportScreen() {
     });
   };
 
-  const handleSubmitIssue = () => {
+  const handleSubmitIssue = async () => {
     if (!issueText.trim()) {
       Alert.alert('Empty Description', 'Please provide details about the issue you are experiencing.');
       return;
     }
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await submitSupportMessage({
+        category: issueCategory,
+        subject: `${issueCategory} support request`,
+        message: issueText.trim(),
+      }).unwrap();
       setIssueText('');
       Alert.alert(
         'Issue Submitted',
         'Thank you! Your report has been submitted. Our support team will review it and follow up via email.'
       );
-    }, 1200);
+    } catch (error) {
+      console.error('Failed to submit support message', error);
+      Alert.alert('Submission Failed', 'Could not submit your support message. Please try again.');
+    }
   };
 
   return (
@@ -187,11 +160,27 @@ export default function SupportScreen() {
 
           {/* Subscription Section */}
           <Text style={[styles.categoryTitle, { marginTop: 14 }]}>SUBSCRIPTION FAQ</Text>
-          <View style={styles.faqListContainer}>{renderFAQList(SUBSCRIPTION_FAQS)}</View>
+          <View style={styles.faqListContainer}>
+            {isLoadingFaqs ? (
+              <Text style={styles.answerText}>Loading FAQs...</Text>
+            ) : subscriptionFaqs.length > 0 ? (
+              renderFAQList(subscriptionFaqs)
+            ) : (
+              <Text style={styles.answerText}>No subscription FAQs are available yet.</Text>
+            )}
+          </View>
 
           {/* App Section */}
           <Text style={[styles.categoryTitle, { marginTop: 14 }]}>APP FAQ</Text>
-          <View style={styles.faqListContainer}>{renderFAQList(APP_FAQS)}</View>
+          <View style={styles.faqListContainer}>
+            {isLoadingFaqs ? (
+              <Text style={styles.answerText}>Loading FAQs...</Text>
+            ) : appFaqs.length > 0 ? (
+              renderFAQList(appFaqs)
+            ) : (
+              <Text style={styles.answerText}>No app FAQs are available yet.</Text>
+            )}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -227,7 +216,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     categoryTitle: {
       fontSize: 11,
       fontWeight: '800',
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
       letterSpacing: 1.0,
       marginBottom: 12,
     },
@@ -323,7 +312,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     categoryTagActive: {
       backgroundColor: 'rgba(98, 250, 227, 0.08)',
-      borderColor: theme.quaternary || theme.secondary,
+      borderColor: theme.quaternary,
     },
     categoryTagText: {
       fontSize: 12,
@@ -331,7 +320,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       color: theme.textSecondary,
     },
     categoryTagTextActive: {
-      color: theme.quaternary || theme.secondary,
+      color: theme.quaternary,
       fontWeight: '700',
     },
     textInput: {

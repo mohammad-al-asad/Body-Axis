@@ -21,6 +21,11 @@ class Settings:
     otp_expire_minutes: int = int(os.getenv("OTP_EXPIRE_MINUTES", "10"))
     otp_length: int = 4
     return_dev_otp: bool = os.getenv("RETURN_DEV_OTP", "true").lower() == "true"
+    resend_api_key: str | None = os.getenv("RESEND_API_KEY")
+    resend_from_email: str = os.getenv(
+        "RESEND_FROM_EMAIL",
+        "Body Axis <no-reply@example.com>",
+    )
 
     admin_bootstrap_name: str | None = os.getenv("ADMIN_BOOTSTRAP_NAME")
     admin_bootstrap_email: str | None = os.getenv("ADMIN_BOOTSTRAP_EMAIL")

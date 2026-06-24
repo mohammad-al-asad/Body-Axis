@@ -8,6 +8,10 @@ const SignIn = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [challengeId, setChallengeId] = useState("");
+  const [authStep, setAuthStep] = useState("password");
+  const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -15,8 +19,19 @@ const SignIn = () => {
     event.preventDefault();
     setLoading(true);
     setError("");
+    setNotice("");
     try {
       const response = await adminApi.login(email.trim(), password);
+      if (response.requires_2fa) {
+        setChallengeId(response.challenge_id);
+        setAuthStep("2fa");
+        setOtpCode("");
+        setNotice(response.message || "Verification code sent to your email.");
+        return;
+      }
+      if (!response.access_token) {
+        throw new Error("Login response did not include an access token.");
+      }
       storeAdminSession(response);
       navigate("/dashboard", { replace: true });
     } catch (requestError) {
@@ -24,6 +39,38 @@ const SignIn = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleVerify2fa = async (event) => {
+    event.preventDefault();
+    if (!challengeId) {
+      setError("Verification session expired. Please sign in again.");
+      setAuthStep("password");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const response = await adminApi.verifyLogin2fa({
+        challenge_id: challengeId,
+        otp_code: otpCode.trim(),
+      });
+      storeAdminSession(response);
+      navigate("/dashboard", { replace: true });
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackToPassword = () => {
+    setAuthStep("password");
+    setChallengeId("");
+    setOtpCode("");
+    setNotice("");
+    setError("");
   };
 
   return (
@@ -46,12 +93,20 @@ const SignIn = () => {
           <div className="relative w-full max-w-[320px] rounded-2xl border border-[#1E293B] bg-[#131B2F]/60 p-8 shadow-[0_0_30px_rgba(37,99,235,0.08)] backdrop-blur-md">
             <div className="mb-8 text-center">
               <h2 className="mb-2 text-[18px] font-bold tracking-wide text-white">
-                Secure Authentication
+                {authStep === "2fa" ? "Email Verification" : "Secure Authentication"}
               </h2>
               <p className="px-2 text-[11px] leading-relaxed text-[#94A3B8]">
-                Enter your administrative credentials to access the control center.
+                {authStep === "2fa"
+                  ? "Enter the verification code sent to your admin email."
+                  : "Enter your administrative credentials to access the control center."}
               </p>
             </div>
+
+            {notice && (
+              <div className="mb-4 rounded-lg border border-teal-500/30 bg-teal-500/10 p-3 text-[11px] text-teal-200">
+                {notice}
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-[11px] text-red-300">
@@ -59,59 +114,104 @@ const SignIn = () => {
               </div>
             )}
 
-            <form onSubmit={handleSignIn} className="space-y-5">
-              <label className="block space-y-1.5">
-                <span className="block pl-1 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">
-                  Admin Email
-                </span>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="admin@bodyaxis.com"
-                  className="w-full rounded-lg border border-[#334155]/50 bg-[#1E293B]/50 px-4 py-3 text-[13px] font-medium text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#38BDF8]/50 focus:bg-[#1E293B]"
-                />
-              </label>
+            {authStep === "password" ? (
+              <form onSubmit={handleSignIn} className="space-y-5">
+                <label className="block space-y-1.5">
+                  <span className="block pl-1 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                    Admin Email
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="admin@bodyaxis.com"
+                    className="w-full rounded-lg border border-[#334155]/50 bg-[#1E293B]/50 px-4 py-3 text-[13px] font-medium text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#38BDF8]/50 focus:bg-[#1E293B]"
+                  />
+                </label>
 
-              <label className="block space-y-1.5">
-                <span className="block pl-1 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">
-                  Password
-                </span>
-                <input
-                  type="password"
-                  required
-                  minLength="8"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  placeholder="••••••••"
-                  className="w-full rounded-lg border border-[#334155]/50 bg-[#1E293B]/50 px-4 py-3 text-[13px] font-bold tracking-widest text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#38BDF8]/50 focus:bg-[#1E293B]"
-                />
-              </label>
+                <label className="block space-y-1.5">
+                  <span className="block pl-1 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                    Password
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    minLength="8"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="••••••••"
+                    className="w-full rounded-lg border border-[#334155]/50 bg-[#1E293B]/50 px-4 py-3 text-[13px] font-bold tracking-widest text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#38BDF8]/50 focus:bg-[#1E293B]"
+                  />
+                </label>
 
-              <div className="flex justify-end pt-1">
-                <Link
-                  to="/forgate-password"
-                  className="text-[10px] font-bold tracking-wide text-[#06B6D4] transition-colors hover:text-white"
+                <div className="flex justify-end pt-1">
+                  <Link
+                    to="/forgate-password"
+                    className="text-[10px] font-bold tracking-wide text-[#06B6D4] transition-colors hover:text-white"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-[#2563EB] py-3 text-[13px] font-bold tracking-wide text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[#3B82F6] disabled:opacity-70"
                 >
-                  Forgot Password?
-                </Link>
-              </div>
+                  {loading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                  ) : (
+                    "Sign In"
+                  )}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleVerify2fa} className="space-y-5">
+                <label className="block space-y-1.5">
+                  <span className="block pl-1 text-[9px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                    Verification Code
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    minLength="4"
+                    maxLength="8"
+                    autoComplete="one-time-code"
+                    value={otpCode}
+                    onChange={(event) =>
+                      setOtpCode(event.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="1234"
+                    className="w-full rounded-lg border border-[#334155]/50 bg-[#1E293B]/50 px-4 py-3 text-center text-[20px] font-bold tracking-[0.5em] text-white outline-none transition-all placeholder:text-[#64748B] focus:border-[#38BDF8]/50 focus:bg-[#1E293B]"
+                  />
+                </label>
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="mt-4 flex w-full items-center justify-center rounded-lg bg-[#2563EB] py-3 text-[13px] font-bold tracking-wide text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[#3B82F6] disabled:opacity-70"
-              >
-                {loading ? (
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
-                ) : (
-                  "Sign In"
-                )}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={loading || otpCode.trim().length < 4}
+                  className="mt-4 flex w-full items-center justify-center rounded-lg bg-[#2563EB] py-3 text-[13px] font-bold tracking-wide text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-[#3B82F6] disabled:opacity-70"
+                >
+                  {loading ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+                  ) : (
+                    "Verify & Sign In"
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleBackToPassword}
+                  disabled={loading}
+                  className="w-full text-[10px] font-bold tracking-wide text-[#94A3B8] transition-colors hover:text-white disabled:opacity-60"
+                >
+                  Back to password login
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </div>
