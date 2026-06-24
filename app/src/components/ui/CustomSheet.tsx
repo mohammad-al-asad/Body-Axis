@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Modal,
@@ -34,40 +34,75 @@ export function CustomSheet<T>({
 }: CustomSheetProps<T>) {
   const theme = useTheme();
   const slideAnim = useRef(new Animated.Value(300)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const [showModal, setShowModal] = useState(visible);
 
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(300);
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
+      setShowModal(true);
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 1,
+          duration: 280,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 300,
+          duration: 240,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 240,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowModal(false);
+      });
     }
   }, [visible]);
 
   return (
     <Modal
-      visible={visible}
+      visible={showModal}
       transparent={true}
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
-      <TouchableOpacity
-        style={styles.modalOverlay}
-        activeOpacity={1}
-        onPress={onClose}
+      <Animated.View
+        style={[
+          styles.modalOverlay,
+          {
+            opacity: backdropOpacity,
+          },
+        ]}
       >
+        <TouchableOpacity
+          style={StyleSheet.absoluteFill}
+          activeOpacity={1}
+          onPress={onClose}
+        />
         <Animated.View
           style={[
             styles.modalContent,
             {
               backgroundColor: theme.cardBackground,
-              borderColor: theme.cardBorder,
               transform: [{ translateY: slideAnim }],
             },
           ]}
         >
+          <View style={styles.sheetHandleContainer}>
+            <View style={[styles.sheetHandle, { backgroundColor: theme.inputBorder }]} />
+          </View>
+
           <Text style={[styles.modalTitle, { color: theme.text }]}>
             {title}
           </Text>
@@ -105,7 +140,7 @@ export function CustomSheet<T>({
             );
           })}
         </Animated.View>
-      </TouchableOpacity>
+      </Animated.View>
     </Modal>
   );
 }
@@ -119,8 +154,18 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 24,
-    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 24,
+  },
+  sheetHandleContainer: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 5,
+    borderRadius: 2.5,
   },
   modalTitle: {
     fontSize: 18,

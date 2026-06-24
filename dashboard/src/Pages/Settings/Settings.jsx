@@ -54,6 +54,12 @@ const ToggleSwitch = ({ checked, onChange, label }) => (
   </button>
 );
 
+const LoadingSpinner = ({ className = "" }) => (
+  <span
+    className={`inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-[#2DD4BF] ${className}`}
+  />
+);
+
 const Settings = () => {
   const navigate = useNavigate();
   const initialProfile = useMemo(getStoredProfile, []);
@@ -71,6 +77,12 @@ const Settings = () => {
   const [twoFactor, setTwoFactor] = useState(
     initialProfile.two_factor_authentication,
   );
+  const [twoFactorBusy, setTwoFactorBusy] = useState(false);
+  const [twoFactorAction, setTwoFactorAction] = useState(null);
+  const [twoFactorChallengeId, setTwoFactorChallengeId] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorMessage, setTwoFactorMessage] = useState("");
+  const [twoFactorError, setTwoFactorError] = useState("");
   const [savedMessage, setSavedMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -84,8 +96,7 @@ const Settings = () => {
     normalizedEmail !== savedProfile.email ||
     Boolean(profileImageFile) ||
     userAlerts !== savedProfile.notification_settings.user_alerts ||
-    subAlerts !== savedProfile.notification_settings.subscription_alerts ||
-    twoFactor !== savedProfile.two_factor_authentication;
+    subAlerts !== savedProfile.notification_settings.subscription_alerts;
   const canUpdate =
     hasProfileChanges &&
     !saving &&
@@ -133,6 +144,21 @@ const Settings = () => {
     setProfileImage(URL.createObjectURL(selectedImage));
   };
 
+  const persistAdminProfile = (updatedAdmin) => {
+    localStorage.setItem("admin", JSON.stringify(updatedAdmin));
+    setSavedProfile(updatedAdmin);
+    setFullName(updatedAdmin.name);
+    setEmail(updatedAdmin.email);
+    setProfileImage(updatedAdmin.avatar_url);
+    setProfileImageFile(null);
+    setUserAlerts(updatedAdmin.notification_settings.user_alerts);
+    setSubAlerts(updatedAdmin.notification_settings.subscription_alerts);
+    setTwoFactor(updatedAdmin.two_factor_authentication);
+    window.dispatchEvent(
+      new CustomEvent("admin-profile-updated", { detail: updatedAdmin }),
+    );
+  };
+
   const handleUpdate = async () => {
     if (!canUpdate) return;
     setSaving(true);
@@ -142,8 +168,7 @@ const Settings = () => {
         normalizedName !== savedProfile.name ||
         normalizedEmail !== savedProfile.email ||
         userAlerts !== savedProfile.notification_settings.user_alerts ||
-        subAlerts !== savedProfile.notification_settings.subscription_alerts ||
-        twoFactor !== savedProfile.two_factor_authentication;
+        subAlerts !== savedProfile.notification_settings.subscription_alerts;
 
       let updatedAdmin = savedProfile;
       if (settingsChanged) {
@@ -154,30 +179,86 @@ const Settings = () => {
             user_alerts: userAlerts,
             subscription_alerts: subAlerts,
           },
-          two_factor_authentication: twoFactor,
+          two_factor_authentication: savedProfile.two_factor_authentication,
         });
       }
       if (profileImageFile) {
         updatedAdmin = await adminApi.updateAvatar(profileImageFile);
       }
-      localStorage.setItem("admin", JSON.stringify(updatedAdmin));
-      setSavedProfile(updatedAdmin);
-      setFullName(updatedAdmin.name);
-      setEmail(updatedAdmin.email);
-      setProfileImage(updatedAdmin.avatar_url);
-      setProfileImageFile(null);
-      setUserAlerts(updatedAdmin.notification_settings.user_alerts);
-      setSubAlerts(updatedAdmin.notification_settings.subscription_alerts);
-      setTwoFactor(updatedAdmin.two_factor_authentication);
+      persistAdminProfile(updatedAdmin);
       setSavedMessage("Account profile updated.");
-      window.dispatchEvent(
-        new CustomEvent("admin-profile-updated", { detail: updatedAdmin }),
-      );
       window.setTimeout(() => setSavedMessage(""), 2500);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTwoFactorToggle = async () => {
+    if (loading || twoFactorBusy) return;
+
+    const action = twoFactor ? "disable" : "enable";
+    setTwoFactorBusy(true);
+    setError("");
+    setTwoFactorMessage("");
+    setTwoFactorError("");
+    setTwoFactorCode("");
+
+    try {
+      const challenge =
+        action === "enable"
+          ? await adminApi.requestEnable2fa()
+          : await adminApi.requestDisable2fa();
+      setTwoFactorAction(action);
+      setTwoFactorChallengeId(challenge.challenge_id);
+      setTwoFactorMessage(challenge.message);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setTwoFactorBusy(false);
+    }
+  };
+
+  const closeTwoFactorModal = () => {
+    setTwoFactorAction(null);
+    setTwoFactorChallengeId("");
+    setTwoFactorCode("");
+    setTwoFactorMessage("");
+    setTwoFactorError("");
+  };
+
+  const handleVerifyTwoFactor = async (event) => {
+    event.preventDefault();
+    if (!twoFactorAction || !twoFactorChallengeId) {
+      setError("Verification session expired. Please request a new code.");
+      closeTwoFactorModal();
+      return;
+    }
+
+    setTwoFactorBusy(true);
+    setTwoFactorError("");
+    try {
+      const payload = {
+        challenge_id: twoFactorChallengeId,
+        otp_code: twoFactorCode.trim(),
+      };
+      const updatedAdmin =
+        twoFactorAction === "enable"
+          ? await adminApi.verifyEnable2fa(payload)
+          : await adminApi.verifyDisable2fa(payload);
+      persistAdminProfile(updatedAdmin);
+      setSavedMessage(
+        twoFactorAction === "enable"
+          ? "Two-factor authentication enabled."
+          : "Two-factor authentication disabled.",
+      );
+      window.setTimeout(() => setSavedMessage(""), 2500);
+      closeTwoFactorModal();
+    } catch (requestError) {
+      setTwoFactorError(requestError.message);
+    } finally {
+      setTwoFactorBusy(false);
     }
   };
 
@@ -344,11 +425,17 @@ const Settings = () => {
                   Two-Factor Authentication
                 </p>
               </div>
-              <ToggleSwitch
-                label="Two-factor authentication"
-                checked={twoFactor}
-                onChange={() => !loading && setTwoFactor((current) => !current)}
-              />
+              {twoFactorBusy && !twoFactorAction ? (
+                <div className="flex h-5 w-10 items-center justify-center">
+                  <LoadingSpinner />
+                </div>
+              ) : (
+                <ToggleSwitch
+                  label="Two-factor authentication"
+                  checked={twoFactor}
+                  onChange={handleTwoFactorToggle}
+                />
+              )}
             </div>
 
             <div>
@@ -380,6 +467,72 @@ const Settings = () => {
           </button>
         </div>
       </div>
+
+      {twoFactorAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-[440px] rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6 shadow-2xl">
+            <div className="mb-5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-[#2DD4BF]">
+                Email Verification
+              </p>
+              <h2 className="text-xl font-bold text-white">
+                {twoFactorAction === "enable"
+                  ? "Enable Two-Factor Authentication"
+                  : "Disable Two-Factor Authentication"}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[#94A3B8]">
+                {twoFactorMessage ||
+                  `Enter the verification code sent to ${savedProfile.email}.`}
+              </p>
+            </div>
+
+            <form onSubmit={handleVerifyTwoFactor} className="space-y-4">
+              {twoFactorError && (
+                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {twoFactorError}
+                </div>
+              )}
+
+              <label className="block">
+                <span className="mb-2 block text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                  Verification Code
+                </span>
+                <input
+                  value={twoFactorCode}
+                  onChange={(event) => {
+                    setTwoFactorCode(event.target.value.replace(/\D/g, ""));
+                    setTwoFactorError("");
+                  }}
+                  inputMode="numeric"
+                  minLength="4"
+                  maxLength="8"
+                  autoComplete="one-time-code"
+                  className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-center text-xl font-bold tracking-[0.5em] text-white outline-none focus:border-[#38BDF8]"
+                  placeholder="1234"
+                />
+              </label>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeTwoFactorModal}
+                  disabled={twoFactorBusy}
+                  className="rounded-xl border border-[#334155] px-5 py-2.5 text-sm font-bold text-[#94A3B8] hover:bg-[#0A0D14] disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={twoFactorBusy || twoFactorCode.trim().length < 4}
+                  className="rounded-xl bg-[#3B82F6] px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-60"
+                >
+                  {twoFactorBusy ? "Verifying..." : "Verify"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

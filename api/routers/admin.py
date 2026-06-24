@@ -7,8 +7,11 @@ from core.dependencies import get_current_admin
 from schemas.admin import (
     AdminAuthResponse,
     AdminLoginRequest,
+    AdminLoginResponse,
     AdminPasswordUpdateRequest,
     AdminResponse,
+    AdminTwoFactorChallengeResponse,
+    AdminTwoFactorVerifyRequest,
     AdminUpdateRequest,
 )
 from schemas.admin_users import AdminUserListResponse
@@ -21,10 +24,15 @@ from schemas.subscription_admin import (
 )
 from services.admin_service import (
     login_admin,
+    request_admin_2fa_disable,
+    request_admin_2fa_setup,
     serialize_admin,
     update_admin,
     update_admin_avatar,
     update_admin_password,
+    verify_admin_2fa_disable,
+    verify_admin_2fa_setup,
+    verify_admin_login_2fa,
 )
 from services.admin_user_service import get_admin_users
 from services.dashboard_service import get_dashboard_analytics
@@ -37,9 +45,16 @@ from services.subscription_admin_service import (
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
-@router.post("/auth/login", response_model=AdminAuthResponse)
-async def admin_login(payload: AdminLoginRequest) -> AdminAuthResponse:
+@router.post("/auth/login", response_model=AdminLoginResponse)
+async def admin_login(payload: AdminLoginRequest) -> AdminLoginResponse:
     return await login_admin(payload)
+
+
+@router.post("/auth/2fa/verify", response_model=AdminAuthResponse)
+async def admin_login_2fa_verify(
+    payload: AdminTwoFactorVerifyRequest,
+) -> AdminAuthResponse:
+    return await verify_admin_login_2fa(payload)
 
 
 @router.get("/me", response_model=AdminResponse)
@@ -142,6 +157,36 @@ async def update_admin_profile(
     current_admin: dict = Depends(get_current_admin),
 ) -> AdminResponse:
     return await update_admin(current_admin, payload)
+
+
+@router.post("/2fa/setup/request", response_model=AdminTwoFactorChallengeResponse)
+async def request_two_factor_setup(
+    current_admin: dict = Depends(get_current_admin),
+) -> AdminTwoFactorChallengeResponse:
+    return await request_admin_2fa_setup(current_admin)
+
+
+@router.post("/2fa/setup/verify", response_model=AdminResponse)
+async def verify_two_factor_setup(
+    payload: AdminTwoFactorVerifyRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> AdminResponse:
+    return await verify_admin_2fa_setup(current_admin, payload)
+
+
+@router.post("/2fa/disable/request", response_model=AdminTwoFactorChallengeResponse)
+async def request_two_factor_disable(
+    current_admin: dict = Depends(get_current_admin),
+) -> AdminTwoFactorChallengeResponse:
+    return await request_admin_2fa_disable(current_admin)
+
+
+@router.post("/2fa/disable/verify", response_model=AdminResponse)
+async def verify_two_factor_disable(
+    payload: AdminTwoFactorVerifyRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> AdminResponse:
+    return await verify_admin_2fa_disable(current_admin, payload)
 
 
 @router.put("/password", status_code=status.HTTP_204_NO_CONTENT)

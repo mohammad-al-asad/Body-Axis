@@ -6,11 +6,11 @@ import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { useGetContentPageQuery } from '@/redux/api/contentApi';
 
-export default function PrivacyScreen() {
+export default function AboutScreen() {
   const theme = useTheme();
   const router = useRouter();
   const styles = createStyles(theme);
-  const { data, isLoading, isError } = useGetContentPageQuery('privacy');
+  const { data, isLoading, isError } = useGetContentPageQuery('about');
 
   const updatedAt = data?.updated_at
     ? new Date(data.updated_at).toLocaleDateString('en-US', {
@@ -27,14 +27,14 @@ export default function PrivacyScreen() {
         <Header onBackPress={() => router.back()} showNotification={false} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>{data?.title || 'Privacy Policy'}</Text>
+          <Text style={styles.title}>{data?.title || 'About Body Axis'}</Text>
           <Text style={styles.subtitle}>Last updated: {updatedAt}</Text>
 
           <View style={styles.card}>
             {isLoading ? (
               <ActivityIndicator color={theme.secondary} />
             ) : isError ? (
-              <Text style={styles.bodyText}>Unable to load privacy policy right now.</Text>
+              <Text style={styles.bodyText}>Unable to load about content right now.</Text>
             ) : (
               paragraphs.map((paragraph, index) => (
                 <Text key={`${index}-${paragraph.slice(0, 12)}`} style={styles.bodyText}>
