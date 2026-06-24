@@ -56,7 +56,7 @@ export function HomeOnboarding() {
       <View style={styles.initializationCard}>
         <View style={styles.initializationInfo}>
           <Text style={styles.initializationLabel}>INITIALIZATION</Text>
-          <Text style={styles.initializationTitle}>Build Your First Plan</Text>
+          <Text style={styles.initializationTitle}>Build Your First Session</Text>
         </View>
         <TouchableOpacity
           style={styles.getStartedButton}

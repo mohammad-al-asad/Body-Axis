@@ -28,6 +28,7 @@ from schemas.auth import (
     OtpVerifyResponse,
     SignupRequest,
 )
+from services.email_service import send_otp_email
 
 GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
@@ -52,6 +53,8 @@ def _serialize_user(user: dict[str, Any]) -> dict[str, Any]:
         "email": user["email"],
         "gender": user.get("gender"),
         "date_of_birth": user.get("date_of_birth"),
+        "height_cm": user.get("height_cm"),
+        "weight_kg": user.get("weight_kg"),
         "email_verified": bool(user.get("email_verified", False)),
         "auth_provider": user.get("auth_provider", "password"),
         "is_intake_completed": bool(user.get("is_intake_completed", False)),
@@ -125,6 +128,18 @@ async def signup(payload: SignupRequest) -> AuthResponse:
 
     user["_id"] = result.inserted_id
     dev_otp = await _create_otp(email, OtpPurpose.email_verify)
+    try:
+        await send_otp_email(email, dev_otp, OtpPurpose.email_verify.value)
+    except HTTPException:
+        await db.otps.delete_many(
+            {
+                "email": email,
+                "purpose": OtpPurpose.email_verify.value,
+                "used_at": None,
+            }
+        )
+        await db.users.delete_one({"_id": result.inserted_id})
+        raise
     return _auth_response(user, "Signup successful. Verify your email with the OTP.", dev_otp)
 
 
@@ -153,8 +168,9 @@ async def request_otp(payload: OtpRequest) -> OtpResponse:
         return OtpResponse(message="If the account exists, an OTP has been sent.")
 
     dev_otp = await _create_otp(email, payload.purpose)
+    await send_otp_email(email, dev_otp, payload.purpose.value)
     return OtpResponse(
-        message="OTP created. Send this code by email in production.",
+        message="OTP sent to your email.",
         dev_otp=dev_otp if settings.return_dev_otp else None,
     )
 

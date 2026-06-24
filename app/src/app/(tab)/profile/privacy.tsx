@@ -1,14 +1,25 @@
 import React from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
+import { useGetContentPageQuery } from '@/redux/api/contentApi';
 
 export default function PrivacyScreen() {
   const theme = useTheme();
   const router = useRouter();
   const styles = createStyles(theme);
+  const { data, isLoading, isError } = useGetContentPageQuery('privacy');
+
+  const updatedAt = data?.updated_at
+    ? new Date(data.updated_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Not available';
+  const paragraphs = (data?.content || '').split(/\n{2,}/).filter(Boolean);
 
   return (
     <View style={styles.container}>
@@ -16,37 +27,21 @@ export default function PrivacyScreen() {
         <Header onBackPress={() => router.back()} showNotification={false} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>Privacy Policy</Text>
-          <Text style={styles.subtitle}>Last updated: May 19, 2026</Text>
+          <Text style={styles.title}>{data?.title || 'Privacy Policy'}</Text>
+          <Text style={styles.subtitle}>Last updated: {updatedAt}</Text>
 
           <View style={styles.card}>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>1. Data Collection</Text>
-              <Text style={styles.bodyText}>
-                We collect biomechanical alignment measurements, calibration logs, and health statistics to personalize your therapeutic training routines. This data is processed securely on your local device.
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>2. Use of Information</Text>
-              <Text style={styles.bodyText}>
-                Your information is strictly utilized to generate personalized protocols, track recovery progress, and evaluate joint mechanics. We do not sell or lease your personal biometric data.
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>3. Storage & Security</Text>
-              <Text style={styles.bodyText}>
-                All local configuration and session state data are encrypted. Backend synchronized data is sent over encrypted HTTPS connections and stored using standardized secure server layers.
-              </Text>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>4. Contact Us</Text>
-              <Text style={styles.bodyText}>
-                If you have any questions or feedback regarding our privacy standards, feel free to contact our compliance team at support@bodyaxis.com.
-              </Text>
-            </View>
+            {isLoading ? (
+              <ActivityIndicator color={theme.secondary} />
+            ) : isError ? (
+              <Text style={styles.bodyText}>Unable to load privacy policy right now.</Text>
+            ) : (
+              paragraphs.map((paragraph, index) => (
+                <Text key={`${index}-${paragraph.slice(0, 12)}`} style={styles.bodyText}>
+                  {paragraph}
+                </Text>
+              ))
+            )}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -88,6 +83,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderColor: theme.cardBorder,
       borderRadius: 16,
       paddingHorizontal: 20,
+      paddingVertical: 18,
       marginBottom: 16,
       elevation: 1,
       shadowColor: theme.text,
@@ -95,18 +91,10 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowOpacity: 0.15,
       shadowRadius: 4,
     },
-    section: {
-      paddingVertical: 16,
-    },
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.quaternary || theme.secondary,
-      marginBottom: 10,
-    },
     bodyText: {
       fontSize: 14,
       color: theme.text,
       lineHeight: 22,
+      marginBottom: 14,
     },
   });

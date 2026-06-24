@@ -10,6 +10,8 @@ export interface AuthUser {
   email: string;
   gender: Gender | null;
   date_of_birth: string | null;
+  height_cm?: number | null;
+  weight_kg?: number | null;
   email_verified: boolean;
   auth_provider: AuthProvider;
   is_intake_completed: boolean;

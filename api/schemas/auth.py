@@ -81,6 +81,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     gender: str | None = None
     date_of_birth: date | None = None
+    height_cm: int | None = None
+    weight_kg: int | None = None
     email_verified: bool
     auth_provider: str
     is_intake_completed: bool = False
