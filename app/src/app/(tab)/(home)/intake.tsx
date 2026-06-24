@@ -14,6 +14,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { useTheme } from "@/hooks/use-theme";
 import { useSaveIntakeMutation } from "@/redux/api/userApi";
+import { useCreateSessionMutation } from "@/redux/api/sessionApi";
 import { Header } from "@/components/Header";
 import { PainAssessmentStep } from "@/components/intake/PainAssessmentStep";
 import { GoalStep } from "@/components/intake/GoalStep";
@@ -43,7 +44,9 @@ export default function IntakeScreen() {
   const [scheduleWeeks, setScheduleWeeks] = useState<number>(3);
   const [sessionDuration, setSessionDuration] = useState<number>(45);
 
-  const [saveIntake, { isLoading: isSaving }] = useSaveIntakeMutation();
+  const [saveIntake, { isLoading: isSavingIntake }] = useSaveIntakeMutation();
+  const [createSession, { isLoading: isCreatingSession }] = useCreateSessionMutation();
+  const isSaving = isSavingIntake || isCreatingSession;
 
   const handleNext = async (sessionName?: string) => {
     if (activeIndex < slidesData.length - 1) {
@@ -60,10 +63,23 @@ export default function IntakeScreen() {
           session_duration: sessionDuration,
           session_name: sessionName,
         }).unwrap();
-        router.replace("/");
+
+        const session = await createSession({
+          target_areas: selectedPainPoints,
+          user_case: primaryGoal,
+          session_name: sessionName,
+          schedule_days: scheduleDays,
+          schedule_weeks: scheduleWeeks,
+          session_duration: sessionDuration,
+        }).unwrap();
+
+        router.replace({
+          pathname: "/sessions/session-details",
+          params: { sessionId: session.id },
+        });
       } catch (error) {
-        console.error("Failed to save intake data", error);
-        Alert.alert("Error", "Failed to save your intake data. Please try again.");
+        console.error("Failed to create movement session", error);
+        Alert.alert("Error", "Failed to create your movement session. Please try again.");
       }
     }
   };
@@ -84,13 +100,6 @@ export default function IntakeScreen() {
     } else {
       setSelectedPainPoints((prev) => [...prev, label]);
     }
-  };
-
-  const isNextDisabled = () => {
-    if (activeIndex === 0 && selectedPainPoints.length === 0) return true;
-    if (activeIndex === 1 && !primaryGoal) return true;
-    // Step 2 (schedule) requires no validation as it has defaults
-    return false;
   };
 
   const slidesData = [
