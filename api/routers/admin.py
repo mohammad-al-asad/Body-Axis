@@ -11,6 +11,7 @@ from schemas.admin import (
     AdminResponse,
     AdminUpdateRequest,
 )
+from schemas.admin_users import AdminUserListResponse
 from schemas.dashboard import DashboardAnalyticsResponse
 from schemas.subscription_admin import (
     EntitlementActionResponse,
@@ -25,6 +26,7 @@ from services.admin_service import (
     update_admin_avatar,
     update_admin_password,
 )
+from services.admin_user_service import get_admin_users
 from services.dashboard_service import get_dashboard_analytics
 from services.subscription_admin_service import (
     get_subscription_analytics,
@@ -74,6 +76,36 @@ async def get_admin_subscriptions(
 ) -> SubscriptionAnalyticsResponse:
     del current_admin
     return await get_subscription_analytics()
+
+
+@router.get("/users", response_model=AdminUserListResponse)
+async def get_users_for_admin(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=100),
+    search: str | None = Query(default=None, max_length=120),
+    global_search: str | None = Query(default=None, max_length=120),
+    start_date: date | None = None,
+    end_date: date | None = None,
+    status_filter: str | None = Query(default=None, alias="status", max_length=30),
+    current_admin: dict = Depends(get_current_admin),
+) -> AdminUserListResponse:
+    del current_admin
+    if start_date and end_date and start_date > end_date:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="start_date must be before or equal to end_date",
+        )
+    return await get_admin_users(
+        page=page,
+        page_size=page_size,
+        search=search,
+        global_search=global_search,
+        start_date=start_date,
+        end_date=end_date,
+        status=status_filter,
+    )
 
 
 @router.post(

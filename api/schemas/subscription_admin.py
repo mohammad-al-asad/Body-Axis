@@ -7,6 +7,7 @@ class SubscriptionMetric(BaseModel):
     value: float | int | None
     change_percent: float | None = None
     available: bool = True
+    note: str | None = None
 
 
 class SubscriptionMetrics(BaseModel):
@@ -20,12 +21,15 @@ class SubscriptionPlanSummary(BaseModel):
     product_id: str
     store_identifier: str | None = None
     name: str
+    store: str
+    app_name: str | None = None
     duration: str | None = None
     interval: str
     subscribers: int
     price: float | None = None
     price_currency: str | None = None
     price_country: str | None = None
+    price_source: str | None = None
     state: str | None = None
 
 

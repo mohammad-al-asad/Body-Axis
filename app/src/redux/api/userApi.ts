@@ -19,7 +19,7 @@ export const userApi = baseApi.injectEndpoints({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Auth'],
+      invalidatesTags: ['Auth', 'Sessions'],
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;

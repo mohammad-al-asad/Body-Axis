@@ -15,6 +15,7 @@ from services.revenuecat_v2_service import (
     as_http_exception,
     get_revenue,
     grant_entitlement,
+    list_all_customer_attributes,
     list_all_customer_subscriptions,
     list_customers,
     list_entitlements,
@@ -118,6 +119,13 @@ def _humanize(value: str | None, fallback: str) -> str:
 
 
 def _duration_interval(duration: str | None, product_id: str | None) -> str:
+    identifier = (product_id or "").lower()
+    if any(part in identifier for part in ("annual", "yearly", "year")):
+        return "yearly"
+    if any(part in identifier for part in ("monthly", "month")):
+        return "monthly"
+    if any(part in identifier for part in ("weekly", "week")):
+        return "weekly"
     normalized = (duration or "").upper()
     if "Y" in normalized:
         return "yearly"
@@ -127,7 +135,7 @@ def _duration_interval(duration: str | None, product_id: str | None) -> str:
         return "weekly"
     if "D" in normalized:
         return "daily"
-    if "lifetime" in (product_id or "").lower():
+    if "lifetime" in identifier:
         return "lifetime"
     return "unknown"
 
@@ -144,14 +152,79 @@ def _product_price(product: dict[str, Any]) -> tuple[float | None, str | None, s
     return amount, indicative.get("currency"), indicative.get("country")
 
 
-def _attributes(customer: dict[str, Any]) -> dict[str, str]:
+def _attributes(items: list[dict[str, Any]]) -> dict[str, str]:
     result: dict[str, str] = {}
-    for attribute in _nested_items(customer.get("attributes")):
+    for attribute in items:
         name = attribute.get("name")
         value = attribute.get("value")
         if isinstance(name, str) and value is not None:
             result[name] = str(value)
     return result
+
+
+def _short_customer_id(customer_id: str) -> str:
+    if customer_id.startswith("$RCAnonymousID:"):
+        return f"Anonymous · {customer_id[-8:]}"
+    if len(customer_id) > 24:
+        return f"Customer · {customer_id[-8:]}"
+    return customer_id
+
+
+def _store_name(store: str | None) -> str:
+    return {
+        "app_store": "Apple App Store",
+        "play_store": "Google Play",
+        "test_store": "RevenueCat Test Store",
+        "amazon": "Amazon Appstore",
+        "stripe": "Stripe",
+        "promotional": "Promotional",
+    }.get(str(store or "").lower(), _humanize(store, "Unknown store"))
+
+
+def _observed_product_price(
+    product: dict[str, Any],
+    event_documents: list[dict[str, Any]],
+) -> tuple[float | None, str | None, str | None, str | None]:
+    store_identifier = str(product.get("store_identifier") or "")
+    app = product.get("app") if isinstance(product.get("app"), dict) else {}
+    app_type = str(app.get("type") or "")
+    expected_store = {
+        "play_store": "PLAY_STORE",
+        "app_store": "APP_STORE",
+    }.get(app_type)
+    if not store_identifier or not expected_store:
+        return None, None, None, None
+
+    for document in event_documents:
+        event = _event(document)
+        if str(event.get("store") or "").upper() != expected_store:
+            continue
+        event_product = str(event.get("product_id") or "")
+        if (
+            event_product != store_identifier
+            and event_product.split(":")[-1]
+            != store_identifier.split(":")[-1]
+        ):
+            continue
+        try:
+            amount = float(event.get("price_in_purchased_currency"))
+        except (TypeError, ValueError):
+            continue
+        currency = event.get("currency")
+        if amount <= 0 or not currency:
+            continue
+        environment = str(event.get("environment") or "").lower()
+        return (
+            amount,
+            str(currency),
+            event.get("country_code"),
+            (
+                "production_transaction"
+                if environment == "production"
+                else "sandbox_transaction"
+            ),
+        )
+    return None, None, None, None
 
 
 def _subscription_revenue(subscription: dict[str, Any]) -> float:
@@ -320,6 +393,7 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
         )
         customers: list[dict[str, Any]] = []
         subscriptions_by_customer: dict[str, list[dict[str, Any]]] = {}
+        attributes_by_customer: dict[str, list[dict[str, Any]]] = {}
         products: list[dict[str, Any]] = []
         entitlements: list[dict[str, Any]] = []
     else:
@@ -339,6 +413,17 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
                 missing_data.append(_issue(error))
         else:
             subscriptions_by_customer = {}
+
+        if customers:
+            try:
+                attributes_by_customer = await list_all_customer_attributes(
+                    customers
+                )
+            except RevenueCatV2Error as error:
+                attributes_by_customer = {}
+                missing_data.append(_issue(error))
+        else:
+            attributes_by_customer = {}
 
         try:
             products = await list_products()
@@ -392,8 +477,18 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
             for subscription in customer_subscriptions
             if str(subscription.get("environment") or "").lower() == "production"
         ]
+        customer_subscriptions.sort(
+            key=_subscription_sort_key,
+            reverse=True,
+        )
         production_subscriptions.sort(key=_subscription_sort_key, reverse=True)
-        selected = production_subscriptions[0] if production_subscriptions else None
+        selected = (
+            production_subscriptions[0]
+            if production_subscriptions
+            else customer_subscriptions[0]
+            if customer_subscriptions
+            else None
+        )
 
         for subscription in production_subscriptions:
             if subscription.get("gives_access"):
@@ -404,19 +499,25 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
                         customer_id
                     )
 
-        customer_attributes = _attributes(customer)
+        customer_attributes = _attributes(
+            attributes_by_customer.get(customer_id, [])
+        )
         backend_user = backend_by_revenuecat_id.get(customer_id)
         name = (
             (backend_user or {}).get("full_name")
             or customer_attributes.get("$displayName")
             or customer_attributes.get("display_name")
-            or customer_id
+            or _short_customer_id(customer_id)
         )
         email = (
             (backend_user or {}).get("email")
             or customer_attributes.get("$email")
             or customer_attributes.get("email")
-            or "Not provided"
+            or (
+                "Anonymous RevenueCat customer"
+                if customer_id.startswith("$RCAnonymousID:")
+                else "Not provided"
+            )
         )
 
         promotional_entitlement_ids: set[str] = set()
@@ -465,6 +566,9 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
             if selected and selected.get("auto_renewal_status")
             else None
         )
+        if not customer_subscriptions and not active_entitlements:
+            continue
+
         rows.append(
             {
                 "id": customer_id,
@@ -522,12 +626,31 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
         product_id = str(product.get("id") or "")
         if not product_id:
             continue
+        app = product.get("app") if isinstance(product.get("app"), dict) else {}
+        app_type = str(app.get("type") or "unknown")
+        if app_type == "test_store":
+            continue
         duration = (
             product.get("subscription", {}).get("duration")
             if isinstance(product.get("subscription"), dict)
             else None
         )
+        interval = _duration_interval(
+            duration,
+            product.get("store_identifier"),
+        )
+        display_duration = duration or {
+            "monthly": "P1M",
+            "yearly": "P1Y",
+            "weekly": "P1W",
+        }.get(interval)
         price, currency, country = _product_price(product)
+        price_source = "revenuecat_catalog" if price is not None else None
+        if price is None:
+            price, currency, country, price_source = _observed_product_price(
+                product,
+                event_documents,
+            )
         plan_summaries.append(
             {
                 "product_id": product_id,
@@ -537,15 +660,15 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
                     product.get("store_identifier"),
                     "RevenueCat product",
                 ),
-                "duration": duration,
-                "interval": _duration_interval(
-                    duration,
-                    product.get("store_identifier"),
-                ),
+                "store": _store_name(app_type),
+                "app_name": app.get("name"),
+                "duration": display_duration,
+                "interval": interval,
                 "subscribers": len(subscriber_counts.get(product_id, set())),
                 "price": price,
                 "price_currency": currency,
                 "price_country": country,
+                "price_source": price_source,
                 "state": product.get("state"),
             }
         )
@@ -608,7 +731,7 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
             1,
         )
         if recurring
-        else None
+        else 0.0
     )
 
     revenue_growth, revenue_error = (
@@ -735,7 +858,11 @@ async def _build_subscription_analytics() -> SubscriptionAnalyticsResponse:
             },
             "renewal_rate_percent": {
                 "value": renewal_rate,
-                "available": renewal_rate is not None,
+                "available": True,
+                "note": (
+                    f"{len(recurring)} renewable production subscription"
+                    f"{'s' if len(recurring) != 1 else ''}"
+                ),
             },
         },
         plans=plan_summaries,
