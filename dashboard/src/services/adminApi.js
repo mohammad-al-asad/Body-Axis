@@ -236,6 +236,13 @@ export const adminApi = {
       true,
     );
   },
+  getNotifications: () => request("/admin/notifications", {}, true),
+  markNotificationRead: (id) =>
+    request(`/admin/notifications/${id}/read`, { method: "PUT" }, true),
+  markAllNotificationsRead: () =>
+    request("/admin/notifications/read-all", { method: "PUT" }, true),
+  deleteNotification: (id) =>
+    request(`/admin/notifications/${id}`, { method: "DELETE" }, true),
 };
 
 export const storeAdminSession = (authResponse) => {

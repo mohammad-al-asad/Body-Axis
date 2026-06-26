@@ -934,6 +934,11 @@ async def grant_customer_entitlement(
             "created_at": _now(),
         }
     )
+    from services.notification_service import create_notification
+    await create_notification(
+        message=f"Manual entitlement ({payload.entitlement_id}) granted to customer {payload.customer_id}.",
+        notification_type="subscription"
+    )
     await get_subscription_analytics(force_refresh=True)
     return EntitlementActionResponse(message="Entitlement granted")
 
@@ -958,6 +963,11 @@ async def revoke_customer_entitlement(
             "entitlement_id": payload.entitlement_id,
             "created_at": _now(),
         }
+    )
+    from services.notification_service import create_notification
+    await create_notification(
+        message=f"Manual entitlement ({payload.entitlement_id}) revoked from customer {payload.customer_id}.",
+        notification_type="subscription"
     )
     await get_subscription_analytics(force_refresh=True)
     return EntitlementActionResponse(message="Entitlement revoked")
