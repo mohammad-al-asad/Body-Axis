@@ -651,7 +651,7 @@ export default function ProfileScreen() {
           onRequestClose={() => setIsEditProfileVisible(false)}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalContainer}
           >
             <Animated.View
@@ -815,7 +815,7 @@ export default function ProfileScreen() {
           onRequestClose={() => setIsChangePasswordVisible(false)}
         >
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalContainer}
           >
             <Animated.View

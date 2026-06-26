@@ -166,6 +166,7 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
 
     phases: dict[str, list[dict[str, Any]]] = {}
     exercise_count = 0
+    all_equipment: list[str] = []
     for phase_name in ("reset", "control", "integrate"):
         phase_items: list[dict[str, Any]] = []
         for item in phase_map.get(phase_name, []):
@@ -173,17 +174,19 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
             tutorial_video = _video_summary(videos.get(exercise.get("tutorial_video_id")))
             short_clip_video = _video_summary(videos.get(exercise.get("short_clip_video_id")))
 
+            equipment = exercise.get("equipment_needed") or item.get("equipment_needed") or []
+            all_equipment.extend(equipment)
+
             phase_items.append(
                 {
                     "exercise_id": item["exercise_id"],
-                    "exercise_name": item.get("exercise_name")
-                    or exercise.get("exercise_name")
+                    "exercise_name": exercise.get("exercise_name")
+                    or item.get("exercise_name")
                     or item["exercise_id"],
                     "sets": item.get("sets") or exercise.get("sets") or 1,
                     "reps": item.get("reps") or exercise.get("reps") or "1",
-                    "phase": item.get("phase") or phase_name,
-                    "equipment_needed": item.get("equipment_needed")
-                    or exercise.get("equipment_needed", []),
+                    "phase": exercise.get("phase") or item.get("phase") or phase_name,
+                    "equipment_needed": equipment,
                     "primary_intent": exercise.get("primary_intent"),
                     "secondary_benefits": exercise.get("secondary_benefits"),
                     "tutorial_video": tutorial_video,
@@ -193,13 +196,15 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         exercise_count += len(phase_items)
         phases[phase_name] = phase_items
 
+    equipment_needed = list(dict.fromkeys(all_equipment))
+
     return {
         "id": str(plan["_id"]),
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
         "target_area": plan["target_area"],
         "use_case": plan["use_case"],
-        "equipment_needed": plan.get("equipment_needed", []),
+        "equipment_needed": equipment_needed,
         "duration": plan["duration"],
         "phases": phases,
         "status": plan.get("status", "published"),
@@ -217,6 +222,41 @@ def _default_session_name(target_areas: list[str], user_case: str) -> str:
     return f"{target_label} · {user_case}"
 
 
+async def _hydrate_session(document: dict[str, Any]) -> dict[str, Any]:
+    """Hydrate a session document by resolving plan references at read time.
+
+    This ensures exercises and videos always reflect the latest data.
+    """
+    plan_ids = document.get("plan_ids", [])
+    if not plan_ids:
+        # Legacy sessions that still have embedded plans
+        return movement_session_from_document(document)
+
+    object_ids = []
+    for pid in plan_ids:
+        try:
+            object_ids.append(ObjectId(pid))
+        except InvalidId:
+            continue
+
+    plan_docs = await db.plans.find(
+        {"_id": {"$in": object_ids}}
+    ).sort("created_at", DESCENDING).to_list(length=None)
+
+    plans: list[dict[str, Any]] = []
+    exercise_count = 0
+    for plan in plan_docs:
+        hydrated = await _hydrate_plan(plan)
+        exercise_count += hydrated.pop("_exercise_count", 0)
+        plans.append(hydrated)
+
+    result = movement_session_from_document(document)
+    result["plans"] = plans
+    result["plan_count"] = len(plans)
+    result["exercise_count"] = exercise_count
+    return result
+
+
 async def create_user_session(
     current_user: dict[str, Any],
     payload: SessionCreateRequest,
@@ -232,13 +272,6 @@ async def create_user_session(
         }
     ).sort("created_at", DESCENDING).to_list(length=None)
 
-    plans: list[dict[str, Any]] = []
-    exercise_count = 0
-    for plan in matching_plans:
-        hydrated = await _hydrate_plan(plan)
-        exercise_count += hydrated.pop("_exercise_count", 0)
-        plans.append(hydrated)
-
     now = datetime.now(timezone.utc)
     document = {
         "user_id": str(current_user["_id"]),
@@ -252,9 +285,7 @@ async def create_user_session(
         "schedule_days": payload.schedule_days,
         "schedule_weeks": payload.schedule_weeks,
         "session_duration": payload.session_duration,
-        "plans": plans,
-        "plan_count": len(plans),
-        "exercise_count": exercise_count,
+        "plan_ids": [str(plan["_id"]) for plan in matching_plans],
         "status": "active",
         "created_at": now,
         "updated_at": now,
@@ -262,7 +293,7 @@ async def create_user_session(
     result = await db.sessions.insert_one(document)
     document["_id"] = result.inserted_id
 
-    return MovementSessionResponse(**movement_session_from_document(document))
+    return MovementSessionResponse(**await _hydrate_session(document))
 
 
 async def list_user_sessions(
@@ -273,11 +304,11 @@ async def list_user_sessions(
         "created_at",
         DESCENDING,
     ).to_list(length=None)
+    items = []
+    for document in documents:
+        items.append(MovementSessionResponse(**await _hydrate_session(document)))
     return MovementSessionListResponse(
-        items=[
-            MovementSessionResponse(**movement_session_from_document(document))
-            for document in documents
-        ],
+        items=items,
         total=len(documents),
     )
 
@@ -300,4 +331,4 @@ async def get_user_session(
     if not document:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    return MovementSessionResponse(**movement_session_from_document(document))
+    return MovementSessionResponse(**await _hydrate_session(document))

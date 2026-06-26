@@ -37,13 +37,9 @@ async def get_plan_list(
             ]
         }
     total = await db.plans.count_documents(query)
-    items = [
-        serialize_plan(item)
-        async for item in db.plans.find(query)
-        .sort("created_at", -1)
-        .skip(skip)
-        .limit(limit)
-    ]
+    items = []
+    async for item in db.plans.find(query).sort("created_at", -1).skip(skip).limit(limit):
+        items.append(await serialize_plan(item))
     return PlanListResponse(items=items, total=total)
 
 
@@ -52,7 +48,7 @@ async def get_plan(plan_id: str) -> PlanResponse:
     item = await db.plans.find_one({"plan_id": plan_id})
     if not item:
         raise HTTPException(status_code=404, detail="Plan not found")
-    return PlanResponse(**serialize_plan(item))
+    return PlanResponse(**await serialize_plan(item))
 
 
 @router.put("/{plan_id}", response_model=PlanResponse)

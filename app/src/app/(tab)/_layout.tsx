@@ -14,6 +14,7 @@ export default function TabLayout() {
         const hideTabBar = routeName !== undefined && routeName !== "index";
         return {
           headerShown: false,
+          tabBarHideOnKeyboard: true,
           tabBarStyle: {
             display: hideTabBar ? "none" : "flex",
             backgroundColor: theme.background,
