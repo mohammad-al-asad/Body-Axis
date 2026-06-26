@@ -23,6 +23,7 @@ import AboutApp from "../Pages/AppContent/AboutApp";
 import SupportMessages from "../Pages/AppContent/SupportMessages";
 import FAQList from "../Pages/AppContent/FAQList";
 import AddFAQ from "../Pages/AppContent/AddFAQ";
+import Notifications from "../Pages/Notifications/Notifications";
 export const router = createBrowserRouter([
   {
     path: "/sign-in",
@@ -72,6 +73,7 @@ export const router = createBrowserRouter([
           { path: "/support-messages", element: <SupportMessages /> },
           { path: "/faq", element: <FAQList /> },
           { path: "/add-faq", element: <AddFAQ /> },
+          { path: "/notifications", element: <Notifications /> },
         ],
       },
     ],

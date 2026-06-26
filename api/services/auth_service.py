@@ -120,6 +120,11 @@ async def signup(payload: SignupRequest) -> AuthResponse:
 
     try:
         result = await db.users.insert_one(user)
+        from services.notification_service import create_notification
+        await create_notification(
+            message=f"A new user ({user['email']}) joined your app.",
+            notification_type="user_signup"
+        )
     except DuplicateKeyError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -350,6 +355,11 @@ async def _social_sign_in(
 
     try:
         result = await db.users.insert_one(new_user)
+        from services.notification_service import create_notification
+        await create_notification(
+            message=f"A new user ({new_user['email']}) signed up via {provider.title()}.",
+            notification_type="user_signup"
+        )
     except DuplicateKeyError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

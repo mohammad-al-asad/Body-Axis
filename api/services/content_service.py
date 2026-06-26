@@ -224,6 +224,11 @@ async def create_support_message(
     }
     result = await db.support_messages.insert_one(document)
     document["_id"] = result.inserted_id
+    from services.notification_service import create_notification
+    await create_notification(
+        message=f"New support message: {document['subject']}",
+        notification_type="support_message"
+    )
     return _support_response(document)
 
 
