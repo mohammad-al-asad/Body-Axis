@@ -209,6 +209,26 @@ async def _record_revenuecat_event(
                 "created_at": _now(),
             }
         )
+        
+        event_type = event.get("type", "UNKNOWN")
+        user_identifier = user.get("email") if user else event.get("app_user_id", "Unknown User")
+        friendly_type = event_type.replace("_", " ").title()
+        message = f"Subscription update: {friendly_type} for {user_identifier}."
+        
+        if event_type == "INITIAL_PURCHASE":
+            message = f"New Subscription Purchase! User {user_identifier} purchased a plan."
+        elif event_type == "RENEWAL":
+            message = f"Subscription Renewed: User {user_identifier} renewed successfully."
+        elif event_type == "CANCELLATION":
+            message = f"Subscription Cancelled: User {user_identifier} cancelled auto-renewal."
+        elif event_type == "EXPIRATION":
+            message = f"Subscription Expired: User {user_identifier}'s plan expired."
+            
+        from services.notification_service import create_notification
+        await create_notification(
+            message=message,
+            notification_type="subscription"
+        )
     except DuplicateKeyError:
         return
 

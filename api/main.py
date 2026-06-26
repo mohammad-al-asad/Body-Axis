@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from database import client, db
-from routers import admin, auth, content, exercises, plans, revenuecat, sessions, subscription, users, videos
+from routers import admin, auth, content, exercises, plans, revenuecat, sessions, subscription, users, videos, notifications
 from services.admin_service import ensure_admin_indexes
 from services.auth_service import ensure_auth_indexes
 from services.content_service import ensure_content_indexes
@@ -24,6 +24,39 @@ async def lifespan(app: FastAPI):
     await ensure_session_indexes()
     await ensure_content_indexes()
     print("Connected to MongoDB")
+
+    # Seed initial notifications if collection is empty
+    if await db.notifications.count_documents({}) == 0:
+        from datetime import datetime, timezone, timedelta
+        now = datetime.now(timezone.utc)
+        await db.notifications.insert_many([
+            {
+                "message": "A new user joined your app.",
+                "type": "user_signup",
+                "is_read": False,
+                "created_at": now - timedelta(minutes=5),
+            },
+            {
+                "message": "Profile report received.",
+                "type": "profile_report",
+                "is_read": False,
+                "created_at": now - timedelta(hours=2),
+            },
+            {
+                "message": "A new verification request.",
+                "type": "verification",
+                "is_read": True,
+                "created_at": now - timedelta(days=1),
+            },
+            {
+                "message": "New comment on your post.",
+                "type": "comment",
+                "is_read": True,
+                "created_at": now - timedelta(days=2),
+            },
+        ])
+        print("Seeded initial notifications")
+
     yield
     await client.close()
 
@@ -48,6 +81,7 @@ api_router.include_router(sessions.router)
 api_router.include_router(videos.router)
 api_router.include_router(exercises.router)
 api_router.include_router(plans.router)
+api_router.include_router(notifications.router)
 
 
 @api_router.get("/health")
