@@ -103,16 +103,52 @@ async def serialize_exercise(exercise: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
+async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
+    phase_map = plan.get("phases", {})
+    exercise_ids = [
+        item.get("exercise_id")
+        for items in phase_map.values()
+        for item in items
+        if item.get("exercise_id")
+    ]
+    exercises = {
+        item["exercise_id"]: item
+        async for item in db.exercises.find({"exercise_id": {"$in": exercise_ids}})
+    }
+
+    phases: dict[str, list[dict[str, Any]]] = {}
+    all_equipment: list[str] = []
+    for phase_name in ("reset", "control", "integrate"):
+        phase_items: list[dict[str, Any]] = []
+        for item in phase_map.get(phase_name, []):
+            exercise = exercises.get(item.get("exercise_id"), {})
+            equipment = exercise.get("equipment_needed") or item.get("equipment_needed") or []
+            all_equipment.extend(equipment)
+            phase_items.append(
+                {
+                    "exercise_id": item["exercise_id"],
+                    "exercise_name": exercise.get("exercise_name")
+                    or item.get("exercise_name")
+                    or item["exercise_id"],
+                    "sets": item.get("sets") or exercise.get("sets") or 1,
+                    "reps": item.get("reps") or exercise.get("reps") or "1",
+                    "phase": exercise.get("phase") or item.get("phase") or phase_name,
+                    "equipment_needed": equipment,
+                }
+            )
+        phases[phase_name] = phase_items
+
+    equipment_needed = list(dict.fromkeys(all_equipment))
+
     return {
         "id": str(plan["_id"]),
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
         "target_area": plan["target_area"],
         "use_case": plan["use_case"],
-        "equipment_needed": plan.get("equipment_needed", []),
+        "equipment_needed": equipment_needed,
         "duration": plan["duration"],
-        "phases": plan["phases"],
+        "phases": phases,
         "status": plan.get("status", "published"),
         "created_at": plan["created_at"],
         "updated_at": plan["updated_at"],
@@ -417,8 +453,8 @@ async def _plan_document(
                 {
                     "exercise_id": exercise["exercise_id"],
                     "exercise_name": exercise["exercise_name"],
-                    "sets": selection.get("sets") or exercise["sets"],
-                    "reps": selection.get("reps") or exercise["reps"],
+                    "sets": selection.get("sets"),
+                    "reps": selection.get("reps"),
                     "phase": exercise["phase"],
                     "equipment_needed": equipment,
                 }
@@ -452,7 +488,7 @@ async def create_plan(payload: PlanCreate) -> PlanResponse:
             detail="A plan with this Plan ID already exists",
         ) from None
     document["_id"] = result.inserted_id
-    return PlanResponse(**serialize_plan(document))
+    return PlanResponse(**await serialize_plan(document))
 
 
 async def update_plan(plan_id: str, payload: PlanUpdate) -> PlanResponse:
@@ -468,7 +504,7 @@ async def update_plan(plan_id: str, payload: PlanUpdate) -> PlanResponse:
             detail="A plan with this Plan ID already exists",
         ) from None
     updated = await db.plans.find_one({"_id": existing["_id"]})
-    return PlanResponse(**serialize_plan(updated))
+    return PlanResponse(**await serialize_plan(updated))
 
 
 async def delete_plan(plan_id: str) -> None:
