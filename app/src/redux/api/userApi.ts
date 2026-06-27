@@ -80,6 +80,33 @@ export const userApi = baseApi.injectEndpoints({
         method: 'DELETE',
       }),
     }),
+    uploadAvatar: builder.mutation<AuthUser, FormData>({
+      query: (body) => ({
+        url: '/users/me/avatar',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['Auth'],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(updateUser(data));
+        } catch {}
+      },
+    }),
+    deleteAvatar: builder.mutation<AuthUser, void>({
+      query: () => ({
+        url: '/users/me/avatar',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Auth'],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(updateUser(data));
+        } catch {}
+      },
+    }),
   }),
 });
 
@@ -89,4 +116,6 @@ export const {
   useUpdateProfileMutation,
   useChangePasswordMutation,
   useDeleteAccountMutation,
+  useUploadAvatarMutation,
+  useDeleteAvatarMutation,
 } = userApi;

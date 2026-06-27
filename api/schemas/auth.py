@@ -83,6 +83,7 @@ class UserResponse(BaseModel):
     date_of_birth: date | None = None
     height_cm: int | None = None
     weight_kg: int | None = None
+    avatar_url: str | None = None
     email_verified: bool
     auth_provider: str
     is_intake_completed: bool = False
