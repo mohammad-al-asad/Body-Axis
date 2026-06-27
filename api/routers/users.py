@@ -1,13 +1,15 @@
 from datetime import date, datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status, File, UploadFile
 from pydantic import BaseModel, EmailStr, Field, model_validator
 from pymongo.errors import DuplicateKeyError
+from starlette.concurrency import run_in_threadpool
 
 from core.dependencies import get_current_user
 from core.security import hash_password, verify_password
 from database import db
 from schemas.auth import UserResponse
 from services.auth_service import _normalize_email, _serialize_user
+from services.s3_service import upload_file, delete_file
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -147,3 +149,71 @@ async def delete_my_account(
     await db.sessions.delete_many({"user_id": user_id})
     await db.users.delete_one({"_id": current_user["_id"]})
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/me/avatar", response_model=UserResponse)
+async def update_my_avatar(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+) -> UserResponse:
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file must be an image",
+        )
+
+    # Upload new file to S3
+    avatar_url, avatar_key = await run_in_threadpool(
+        upload_file,
+        file.file,
+        file.filename,
+        file.content_type,
+        "avatars",
+    )
+
+    # Delete old avatar from S3 if it exists
+    old_key = current_user.get("avatar_key")
+    if old_key:
+        await run_in_threadpool(delete_file, old_key)
+
+    # Update in database
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {
+            "$set": {
+                "avatar_url": avatar_url,
+                "avatar_key": avatar_key,
+                "updated_at": now,
+            }
+        },
+    )
+
+    updated_user = await db.users.find_one({"_id": current_user["_id"]})
+    return UserResponse(**_serialize_user(updated_user))
+
+
+@router.delete("/me/avatar", response_model=UserResponse)
+async def delete_my_avatar(
+    current_user: dict = Depends(get_current_user),
+) -> UserResponse:
+    # Delete avatar from S3
+    old_key = current_user.get("avatar_key")
+    if old_key:
+        await run_in_threadpool(delete_file, old_key)
+
+    # Reset in database
+    now = datetime.now(timezone.utc)
+    await db.users.update_one(
+        {"_id": current_user["_id"]},
+        {
+            "$set": {
+                "avatar_url": None,
+                "avatar_key": None,
+                "updated_at": now,
+            }
+        },
+    )
+
+    updated_user = await db.users.find_one({"_id": current_user["_id"]})
+    return UserResponse(**_serialize_user(updated_user))
