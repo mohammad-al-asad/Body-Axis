@@ -125,8 +125,6 @@ class ExerciseListResponse(BaseModel):
 
 class PlanExerciseInput(BaseModel):
     exercise_id: str
-    sets: int | None = Field(default=None, ge=1, le=999)
-    reps: str | None = Field(default=None, max_length=80)
 
 
 class PlanPhasesInput(BaseModel):
