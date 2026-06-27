@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   TextInput,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,14 +25,16 @@ import {
   useDeleteAccountMutation, 
   useGetProfileQuery,
   useUpdateProfileMutation,
-  useChangePasswordMutation
+  useChangePasswordMutation,
+  useUploadAvatarMutation,
+  useDeleteAvatarMutation
 } from '@/redux/api/userApi';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
-import { router, useNavigation } from 'expo-router';
+import { router } from 'expo-router';
 import { CustomSwitch } from '@/components/ui/CustomSwitch';
 import { CustomSheet } from '@/components/ui/CustomSheet';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
 
 const genderOptions = [
   { label: 'Female', value: 'female' },
@@ -59,12 +62,99 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
 
+  const [uploadAvatar, { isLoading: isUploadingAvatar }] = useUploadAvatarMutation();
+  const [deleteAvatar] = useDeleteAvatarMutation();
+
+  const handleSelectImage = async (useCamera: boolean) => {
+    try {
+      const permissionResult = useCamera
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (permissionResult.granted === false) {
+        Alert.alert(
+          'Permission Denied',
+          `You need to enable ${useCamera ? 'camera' : 'gallery'} permissions to upload an avatar.`
+        );
+        return;
+      }
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.6,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.6,
+          });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const selectedImage = result.assets[0];
+      const localUri = selectedImage.uri;
+      const filename = localUri.split('/').pop() || 'avatar.jpg';
+
+      // Infer image extension type
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: Platform.OS === 'ios' ? localUri.replace('file://', '') : localUri,
+        name: filename,
+        type,
+      } as any);
+
+      await uploadAvatar(formData).unwrap();
+      Alert.alert('Success', 'Profile picture updated successfully.');
+    } catch (error) {
+      console.error('Failed to upload avatar', error);
+      Alert.alert('Upload Failed', 'There was an error uploading your profile picture. Please try again.');
+    }
+  };
+
+  const handleEditAvatar = () => {
+    const options = [
+      { text: 'Take Photo', onPress: () => handleSelectImage(true) },
+      { text: 'Choose from Library', onPress: () => handleSelectImage(false) },
+    ];
+
+    if (user?.avatar_url) {
+      options.push({
+        text: 'Remove Current Photo',
+        onPress: async () => {
+          try {
+            await deleteAvatar().unwrap();
+            Alert.alert('Success', 'Profile picture removed.');
+          } catch (error) {
+            console.error('Failed to delete avatar', error);
+            Alert.alert('Error', 'Failed to remove profile picture. Please try again.');
+          }
+        },
+      });
+    }
+
+    options.push({ text: 'Cancel', onPress: () => {} });
+
+    Alert.alert(
+      'Profile Picture',
+      'Choose an option to update your profile photo:',
+      options.map(opt => ({
+        text: opt.text,
+        onPress: opt.onPress,
+        style: opt.text === 'Cancel' ? 'cancel' : opt.text === 'Remove Current Photo' ? 'destructive' : 'default',
+      }))
+    );
+  };
+
   // Profile data states for interactive updates
-  const [name, setName] = useState('Alexandria Sterling');
-  const [gender, setGender] = useState('Female');
-  const [dob, setDob] = useState('12 May 1994');
-  const [height, setHeight] = useState(174);
-  const [weight, setWeight] = useState(75);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
 
   // Edit Profile Modal States
@@ -161,12 +251,12 @@ export default function ProfileScreen() {
   const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
 
   const handleOpenEditProfile = () => {
-    setEditName(user?.full_name || name);
+    setEditName(user?.full_name || '');
     setEditEmail(user?.email || '');
-    setEditGender(user?.gender || gender.toLowerCase());
-    setEditDob(user?.date_of_birth || dob);
-    setEditHeight(user?.height_cm ? String(user.height_cm) : String(height));
-    setEditWeight(user?.weight_kg ? String(user.weight_kg) : String(weight));
+    setEditGender(user?.gender || 'female');
+    setEditDob(user?.date_of_birth || '');
+    setEditHeight(user?.height_cm ? String(user.height_cm) : '');
+    setEditWeight(user?.weight_kg ? String(user.weight_kg) : '');
     setIsEditProfileVisible(true);
   };
 
@@ -217,18 +307,7 @@ export default function ProfileScreen() {
       }).unwrap();
       Alert.alert('Success', 'Profile updated successfully.');
       setIsEditProfileVisible(false);
-      
-      await AsyncStorage.setItem(
-        '@user_profile',
-        JSON.stringify({
-          name: editName.trim(),
-          gender: editGender,
-          dob: editDob.trim(),
-          height: heightNum,
-          weight: weightNum,
-        })
-      );
-      loadProfile();
+
     } catch (error) {
       console.error('Failed to update profile', error);
       Alert.alert('Error', 'Failed to save changes. Please try again.');
@@ -266,39 +345,13 @@ export default function ProfileScreen() {
   const [showMeasurementPicker, setShowMeasurementPicker] = useState(false);
   const [measurementUnit, setMeasurementUnit] = useState('metric');
 
-  const navigation = useNavigation();
-
-  const loadProfile = async () => {
-    try {
-      const stored = await AsyncStorage.getItem('@user_profile');
-      if (stored) {
-        const data = JSON.parse(stored);
-        if (data.name) setName(data.name);
-        if (data.gender) setGender(data.gender);
-        if (data.dob) setDob(data.dob);
-        if (data.height) setHeight(Number(data.height));
-        if (data.weight) setWeight(Number(data.weight));
-      }
-    } catch (e) {
-      console.log('Failed to load profile data', e);
-    }
-  };
-
-  useEffect(() => {
-    loadProfile();
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadProfile();
-    });
-    return unsubscribe;
-  }, [navigation]);
-
-  const displayName = user?.full_name || name;
+  const displayName = user?.full_name || '-';
   const displayGender = user?.gender
     ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1)
-    : gender;
+    : '-';
 
   const formatDob = (dobString: string | null) => {
-    if (!dobString) return dob;
+    if (!dobString) return '-';
     try {
       const date = new Date(dobString);
       if (isNaN(date.getTime())) return dobString;
@@ -307,7 +360,29 @@ export default function ProfileScreen() {
       return dobString;
     }
   };
-  const displayDob = user?.date_of_birth ? formatDob(user.date_of_birth) : dob;
+  const displayDob = user?.date_of_birth ? formatDob(user.date_of_birth) : '-';
+
+  const displayHeightValue = () => {
+    const val = user?.height_cm;
+    if (val === null || val === undefined || val === '') return '-';
+    return String(measurementUnit === 'metric' ? val : Math.round(Number(val) / 2.54));
+  };
+  const displayHeightUnit = () => {
+    const val = user?.height_cm;
+    if (val === null || val === undefined || val === '') return '';
+    return measurementUnit === 'metric' ? 'cm' : 'in';
+  };
+
+  const displayWeightValue = () => {
+    const val = user?.weight_kg;
+    if (val === null || val === undefined || val === '') return '-';
+    return String(measurementUnit === 'metric' ? val : Math.round(Number(val) * 2.20462));
+  };
+  const displayWeightUnit = () => {
+    const val = user?.weight_kg;
+    if (val === null || val === undefined || val === '') return '';
+    return measurementUnit === 'metric' ? 'kgs' : 'lbs';
+  };
 
   const selectedLanguageLabel = languageOptions.find((option) => option.value === language)?.label || 'English (United States)';
   const selectedMeasurementLabel = measurementOptions.find((option) => option.value === measurementUnit)?.label || 'Metric (kg, cm, km)';
@@ -376,15 +451,27 @@ export default function ProfileScreen() {
           {/* Main Large Avatar and Name Panel */}
           <View style={styles.avatarPanel}>
             <View style={styles.avatarGlowBorder}>
-              <Image
-                source={{
-                  uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
-                }}
-                style={styles.largeAvatar}
-              />
-              <TouchableOpacity style={styles.avatarEditOverlay} activeOpacity={0.85} onPress={() => handleEditSection('Profile Picture')}>
-                <Feather name="edit-2" size={10} color="#FFFFFF" />
-              </TouchableOpacity>
+              {user?.avatar_url ? (
+                <Image
+                  source={{
+                    uri: user.avatar_url,
+                  }}
+                  style={styles.largeAvatar}
+                />
+              ) : (
+                <View style={[styles.largeAvatar, { backgroundColor: 'rgba(93, 230, 255, 0.08)', justifyContent: 'center', alignItems: 'center' }]}>
+                  <Feather name="user" size={40} color={theme.secondary} />
+                </View>
+              )}
+              {isUploadingAvatar ? (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }]}>
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.avatarEditOverlay} activeOpacity={0.85} onPress={handleEditAvatar}>
+                  <Feather name="edit-2" size={10} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
             </View>
             <Text style={styles.mainName}>{displayName}</Text>
           </View>
@@ -440,20 +527,26 @@ export default function ProfileScreen() {
               <View style={styles.columnBox}>
                 <Text style={styles.columnLabel}>Height</Text>
                 <Text style={styles.columnValue}>
-                  {measurementUnit === 'metric'
-                    ? user?.height_cm ?? height
-                    : Math.round((user?.height_cm ?? height) / 2.54)}{' '}
-                  <Text style={styles.unitLabel}>{measurementUnit === 'metric' ? 'cm' : 'in'}</Text>
+                  {displayHeightValue()}
+                  {displayHeightUnit() ? (
+                    <>
+                      {' '}
+                      <Text style={styles.unitLabel}>{displayHeightUnit()}</Text>
+                    </>
+                  ) : null}
                 </Text>
               </View>
 
               <View style={styles.columnBoxRight}>
                 <Text style={styles.columnLabel}>Weight</Text>
                 <Text style={styles.columnValue}>
-                  {measurementUnit === 'metric'
-                    ? user?.weight_kg ?? weight
-                    : Math.round((user?.weight_kg ?? weight) * 2.20462)}{' '}
-                  <Text style={styles.unitLabel}>{measurementUnit === 'metric' ? 'kgs' : 'lbs'}</Text>
+                  {displayWeightValue()}
+                  {displayWeightUnit() ? (
+                    <>
+                      {' '}
+                      <Text style={styles.unitLabel}>{displayWeightUnit()}</Text>
+                    </>
+                  ) : null}
                 </Text>
               </View>
             </View>
