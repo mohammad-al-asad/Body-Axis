@@ -130,8 +130,8 @@ async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
                     "exercise_name": exercise.get("exercise_name")
                     or item.get("exercise_name")
                     or item["exercise_id"],
-                    "sets": item.get("sets") or exercise.get("sets") or 1,
-                    "reps": item.get("reps") or exercise.get("reps") or "1",
+                    "sets": exercise.get("sets") or 1,
+                    "reps": exercise.get("reps") or "1",
                     "phase": exercise.get("phase") or item.get("phase") or phase_name,
                     "equipment_needed": equipment,
                 }
@@ -434,7 +434,6 @@ async def _plan_document(
         )
 
     phases: dict[str, list[dict[str, Any]]] = {}
-    all_equipment: list[str] = []
     for phase_name, selections in phase_payload.items():
         phase_items = []
         for selection in selections:
@@ -447,16 +446,9 @@ async def _plan_document(
                         f"{exercise['phase']} phase, not {phase_name}"
                     ),
                 )
-            equipment = exercise.get("equipment_needed", [])
-            all_equipment.extend(equipment)
             phase_items.append(
                 {
                     "exercise_id": exercise["exercise_id"],
-                    "exercise_name": exercise["exercise_name"],
-                    "sets": selection.get("sets"),
-                    "reps": selection.get("reps"),
-                    "phase": exercise["phase"],
-                    "equipment_needed": equipment,
                 }
             )
         phases[phase_name] = phase_items
@@ -467,7 +459,6 @@ async def _plan_document(
         "plan_name": payload.plan_name,
         "target_area": payload.target_area.value,
         "use_case": payload.use_case.value,
-        "equipment_needed": list(dict.fromkeys(all_equipment)),
         "duration": payload.duration,
         "phases": phases,
         "status": payload.status.value,
