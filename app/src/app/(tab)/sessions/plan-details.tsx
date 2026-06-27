@@ -187,7 +187,8 @@ export default function PlanDetailsScreen() {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
-  const handlePlayDemo = () => {
+  const handlePlayDemo = (videoUrl: string) => {
+    demoVideoPlayer.replace(videoUrl);
     demoVideoPlayer.currentTime = 0;
     demoVideoPlayer.play();
     setIsDemoVideoStarted(true);
@@ -263,6 +264,10 @@ export default function PlanDetailsScreen() {
               dynamicExercise?.tutorial_video?.thumbnail_url ||
               dynamicExercise?.short_clip_video?.thumbnail_url ||
               DEMO_VIDEO_THUMBNAIL_URL;
+            const videoUrl =
+              dynamicExercise?.tutorial_video?.video_url ||
+              dynamicExercise?.short_clip_video?.video_url ||
+              ISLAMIC_DEMO_VIDEO_URL;
 
             return (
               <View key={index} style={styles.phaseCard}>
@@ -297,7 +302,7 @@ export default function PlanDetailsScreen() {
                         <TouchableOpacity
                           style={styles.videoThumbnailButton}
                           activeOpacity={0.9}
-                          onPress={handlePlayDemo}
+                          onPress={() => handlePlayDemo(videoUrl)}
                         >
                           <Image
                             source={{ uri: thumbnailUrl }}
@@ -313,7 +318,6 @@ export default function PlanDetailsScreen() {
                               />
                             </View>
                           </View>
-                          <Text style={styles.videoLabel}>DEMO VIDEO</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -384,14 +388,14 @@ export default function PlanDetailsScreen() {
           })}
         </ScrollView>
 
-        {/* Start Protocol Fixed Footer Button */}
+        {/* Start Plan Fixed Footer Button */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.startProtocolBtn}
             activeOpacity={0.8}
             onPress={handleStartProtocol}
           >
-            <Text style={styles.startProtocolText}>Start Protocol</Text>
+            <Text style={styles.startProtocolText}>Start Plan</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

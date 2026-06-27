@@ -151,10 +151,30 @@ export default function ExerciseTrackerScreen() {
   const [currentIdx, setCurrentIdx] = useState(safeInitialIndex);
   const [currentSet, setCurrentSet] = useState(1);
   const [repsCount, setRepsCount] = useState(10);
-  const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>([
-    { reps: 0, completed: false },
-    { reps: 0, completed: false },
-  ]);
+
+  const totalSets = useMemo(() => {
+    const dynamicExercise = dynamicExercises[currentIdx];
+    if (dynamicExercise) return dynamicExercise.sets;
+    const currentPhase = routine.phases[currentIdx] ?? routine.phases[0] ?? { name: '' };
+    const meta = EXERCISE_METADATA[currentPhase.name] || EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+    return Number.parseInt(meta.sets) || 2;
+  }, [dynamicExercises, routine.phases, currentIdx]);
+
+  const targetReps = useMemo(() => {
+    const dynamicExercise = dynamicExercises[currentIdx];
+    if (dynamicExercise) {
+      const match = /(\d+)/.exec(dynamicExercise.reps);
+      return match ? Number.parseInt(match[1]) : 10;
+    }
+    const currentPhase = routine.phases[currentIdx] ?? routine.phases[0] ?? { name: '' };
+    const meta = EXERCISE_METADATA[currentPhase.name] || EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+    const match = /(\d+)/.exec(meta.repsVal);
+    return match ? Number.parseInt(match[1]) : 10;
+  }, [dynamicExercises, routine.phases, currentIdx]);
+
+  const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>(() => {
+    return Array.from({ length: totalSets }, () => ({ reps: 0, completed: false }));
+  });
 
   // Timer states
   const [isTimerVisible, setIsTimerVisible] = useState(false);
@@ -170,15 +190,31 @@ export default function ExerciseTrackerScreen() {
   const handleCloseVideo = () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
+    videoPlayer.replace(shortClipUrl);
   };
 
-  const handleOpenVideo = () => {
+  const handleOpenVideo = (url?: string) => {
+    if (url) {
+      videoPlayer.replace(url);
+    }
     videoPlayer.currentTime = 0;
     videoPlayer.play();
     setIsVideoPlaying(true);
   };
 
   useEventListener(videoPlayer, 'playToEnd', handleCloseVideo);
+
+  // Initialize/Reset states when currentIdx or totalSets changes
+  useEffect(() => {
+    setSetsData(
+      Array.from({ length: totalSets }, () => ({ reps: 0, completed: false }))
+    );
+    setCurrentSet(1);
+    setRepsCount(targetReps);
+    setIsTimerVisible(false);
+    setIsTimerRunning(false);
+    setIsTimerStartedYet(false);
+  }, [currentIdx, totalSets, targetReps]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -189,12 +225,10 @@ export default function ExerciseTrackerScreen() {
             setIsTimerRunning(false);
             setIsTimerVisible(false);
             setIsTimerStartedYet(false);
-            // Move current set to next set (since it's complete)
-            if (currentSet < 2) {
+            if (currentSet < totalSets) {
               setCurrentSet((prevSet) => prevSet + 1);
             } else {
-              // Both sets completed
-              setCurrentSet(3);
+              setCurrentSet(totalSets + 1);
             }
             return 0;
           }
@@ -205,8 +239,7 @@ export default function ExerciseTrackerScreen() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isTimerVisible, isTimerRunning, currentSet]);
-
+  }, [isTimerVisible, isTimerRunning, currentSet, totalSets]);
 
   const formatTime = (totalSeconds: number) => {
     const minutes = Math.floor(totalSeconds / 60);
@@ -238,13 +271,39 @@ export default function ExerciseTrackerScreen() {
         repsLabel: 'REPS',
       }
     : EXERCISE_METADATA[currentPhase.name] ?? EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
-  const thumbnailUrl =
-    dynamicExercise?.tutorial_video?.thumbnail_url ||
-    dynamicExercise?.short_clip_video?.thumbnail_url ||
-    DEMO_VIDEO_THUMBNAIL_URL;
+
+  const shortClipUrl = useMemo(() => {
+    return (
+      dynamicExercise?.short_clip_video?.video_url ||
+      dynamicExercise?.tutorial_video?.video_url ||
+      ISLAMIC_DEMO_VIDEO_URL
+    );
+  }, [dynamicExercise]);
+
+  const thumbnailUrl = useMemo(() => {
+    return (
+      dynamicExercise?.short_clip_video?.thumbnail_url ||
+      dynamicExercise?.tutorial_video?.thumbnail_url ||
+      DEMO_VIDEO_THUMBNAIL_URL
+    );
+  }, [dynamicExercise]);
+
+  const tutorialVideoUrl = useMemo(() => {
+    return (
+      dynamicExercise?.tutorial_video?.video_url ||
+      ISLAMIC_DEMO_VIDEO_URL
+    );
+  }, [dynamicExercise]);
+
+  useEffect(() => {
+    videoPlayer.replace(shortClipUrl);
+    videoPlayer.currentTime = 0;
+    videoPlayer.pause();
+    setIsVideoPlaying(false);
+  }, [shortClipUrl, videoPlayer]);
 
   const handleLogSetPress = () => {
-    if (currentSet > 2) return;
+    if (currentSet > totalSets) return;
 
     // Log reps for the current set
     setSetsData((prev) => {
@@ -266,10 +325,10 @@ export default function ExerciseTrackerScreen() {
     setIsTimerStartedYet(false);
 
     // Move to next set
-    if (currentSet < 2) {
+    if (currentSet < totalSets) {
       setCurrentSet((prev) => prev + 1);
     } else {
-      setCurrentSet(3);
+      setCurrentSet(totalSets + 1);
     }
   };
 
@@ -279,10 +338,10 @@ export default function ExerciseTrackerScreen() {
     setIsTimerStartedYet(false);
 
     // Move to next set
-    if (currentSet < 2) {
+    if (currentSet < totalSets) {
       setCurrentSet((prev) => prev + 1);
     } else {
-      setCurrentSet(3);
+      setCurrentSet(totalSets + 1);
     }
   };
 
@@ -302,24 +361,60 @@ export default function ExerciseTrackerScreen() {
     setTimerSeconds(period);
   };
 
+  const hasNextExerciseInPlan = currentIdx < routine.phases.length - 1;
+
+  const currentPlanIdx = useMemo(() => {
+    if (!session || !sessionPlan) return -1;
+    return session.plans.findIndex(
+      (p) => p.plan_id === sessionPlan.plan_id || p.id === sessionPlan.id
+    );
+  }, [session, sessionPlan]);
+
+  const nextPlan = useMemo(() => {
+    if (currentPlanIdx === -1 || !session) return null;
+    if (currentPlanIdx < session.plans.length - 1) {
+      return session.plans[currentPlanIdx + 1];
+    }
+    return null;
+  }, [session, currentPlanIdx]);
+
+  const nextButtonText = useMemo(() => {
+    if (hasNextExerciseInPlan) {
+      const currentPhaseName = currentPhase.phase.toLowerCase();
+      const nextPhaseName = upcomingPhase.phase.toLowerCase();
+      if (currentPhaseName !== nextPhaseName) {
+        return 'Next Phase';
+      }
+      return 'Next Exercise';
+    } else if (nextPlan) {
+      return `Next ${nextPlan.plan_name}`;
+    } else {
+      return "Finish Today's Session";
+    }
+  }, [hasNextExerciseInPlan, currentPhase, upcomingPhase, nextPlan]);
+
   const handleNextExercise = () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
-    if (currentIdx < routine.phases.length - 1) {
+
+    if (hasNextExerciseInPlan) {
       setCurrentIdx((prev) => prev + 1);
-      setCurrentSet(1);
-      setSetsData([
-        { reps: 0, completed: false },
-        { reps: 0, completed: false },
-      ]);
-      setRepsCount(10);
-      setIsTimerVisible(false);
-      setIsTimerRunning(false);
-      setIsTimerStartedYet(false);
       return;
     }
 
-    router.replace('/sessions');
+    if (nextPlan) {
+      router.replace({
+        pathname: '/sessions/exercise-tracker',
+        params: {
+          id: nextPlan.plan_id || nextPlan.id,
+          sessionId: session?.id,
+          initialPhaseIndex: '0',
+        },
+      });
+      return;
+    }
+
+    router.replace('/');
   };
 
   const styles = createStyles(theme, isTimerRunning);
@@ -401,7 +496,7 @@ export default function ExerciseTrackerScreen() {
                   style={styles.watchFullVideoBtn}
                   onPress={() => {
                     setIsDetailsVisible(false);
-                    handleOpenVideo();
+                    handleOpenVideo(tutorialVideoUrl);
                   }}
                   activeOpacity={0.8}
                 >
@@ -463,7 +558,7 @@ export default function ExerciseTrackerScreen() {
               <TouchableOpacity
                 style={styles.videoThumbnailButton}
                 activeOpacity={0.9}
-                onPress={handleOpenVideo}
+                onPress={() => handleOpenVideo(shortClipUrl)}
               >
                 <Image
                   source={{ uri: thumbnailUrl }}
@@ -479,26 +574,25 @@ export default function ExerciseTrackerScreen() {
                     />
                   </View>
                 </View>
-                <Text style={styles.videoLabel}>DEMO VIDEO</Text>
               </TouchableOpacity>
             )}
           </View>
 
           {/* START SET Section */}
           <Text style={styles.sectionHeader}>START SET</Text>
-          <View style={[styles.startSetCard, isTimerRunning && styles.disabledCard]}>
+          <View style={[styles.startSetCard, (isTimerRunning || currentSet > totalSets) && styles.disabledCard]}>
             <Text style={styles.startSetTitle}>
-              Log Set {currentSet <= 2 ? currentSet : 2}
+              Log Set {currentSet <= totalSets ? currentSet : totalSets}
             </Text>
-            <Text style={styles.startSetSubtitle}>Target: 2 Set - 10 Reps</Text>
+            <Text style={styles.startSetSubtitle}>Target: {totalSets} Sets - {exerciseMetadata.repsVal} {exerciseMetadata.repsLabel}</Text>
 
             <View style={styles.counterRow}>
               <TouchableOpacity
                 style={styles.counterBtn}
-                disabled={isTimerRunning || currentSet > 2}
+                disabled={isTimerRunning || currentSet > totalSets}
                 onPress={() => setRepsCount((prev) => Math.max(1, prev - 1))}
               >
-                <Feather name="minus" size={20} color={isTimerRunning || currentSet > 2 ? theme.textSecondary : theme.text} />
+                <Feather name="minus" size={20} color={isTimerRunning || currentSet > totalSets ? theme.textSecondary : theme.text} />
               </TouchableOpacity>
 
               <View style={styles.repsCountContainer}>
@@ -508,19 +602,19 @@ export default function ExerciseTrackerScreen() {
 
               <TouchableOpacity
                 style={styles.counterBtn}
-                disabled={isTimerRunning || currentSet > 2}
+                disabled={isTimerRunning || currentSet > totalSets}
                 onPress={() => setRepsCount((prev) => prev + 1)}
               >
-                <Feather name="plus" size={20} color={isTimerRunning || currentSet > 2 ? theme.textSecondary : theme.text} />
+                <Feather name="plus" size={20} color={isTimerRunning || currentSet > totalSets ? theme.textSecondary : theme.text} />
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
               style={[
                 styles.logSetBtn,
-                (isTimerRunning || currentSet > 2) && styles.logSetBtnDisabled,
+                (isTimerRunning || currentSet > totalSets) && styles.logSetBtnDisabled,
               ]}
-              disabled={isTimerRunning || currentSet > 2}
+              disabled={isTimerRunning || currentSet > totalSets}
               onPress={handleLogSetPress}
               activeOpacity={0.8}
             >
@@ -633,7 +727,7 @@ export default function ExerciseTrackerScreen() {
           {/* SET BREAKDOWN Section */}
           <Text style={styles.sectionHeader}>SET BREAKDOWN</Text>
           <View style={styles.breakdownContainer}>
-            {setsData.map((item, index) => {
+            {setsData.slice(0, Math.min(currentSet, totalSets)).map((item, index) => {
               const setNum = index + 1;
               const isActive = setNum === currentSet;
 
@@ -671,7 +765,7 @@ export default function ExerciseTrackerScreen() {
                   </View>
 
                   <Text style={styles.breakdownReps}>
-                    {item.completed ? item.reps.toString().padStart(2, '0') : '00'}/10
+                    {item.completed ? item.reps.toString().padStart(2, '0') : '00'}/{targetReps}
                   </Text>
                 </View>
               );
@@ -712,14 +806,14 @@ export default function ExerciseTrackerScreen() {
           <TouchableOpacity
             style={[
               styles.nextExerciseBtn,
-              isTimerRunning && styles.nextExerciseBtnDisabled,
+              (isTimerRunning || currentSet <= totalSets) && styles.nextExerciseBtnDisabled,
             ]}
-            disabled={isTimerRunning}
+            disabled={isTimerRunning || currentSet <= totalSets}
             onPress={handleNextExercise}
             activeOpacity={0.8}
           >
             <Text style={styles.nextExerciseBtnText}>
-              {currentIdx < routine.phases.length - 1 ? 'Next Exercise' : 'Finish Routine'}
+              {nextButtonText}
             </Text>
           </TouchableOpacity>
         </View>
