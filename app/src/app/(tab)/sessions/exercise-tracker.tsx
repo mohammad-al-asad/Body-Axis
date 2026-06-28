@@ -18,7 +18,8 @@ import { Header } from '@/components/Header';
 import { ISLAMIC_DEMO_VIDEO_URL, DEMO_VIDEO_THUMBNAIL_URL } from '@/constants/videos';
 import { useTheme } from '@/hooks/use-theme';
 import { PLANS as ROUTINES, sessionPlanToResetPlan } from './session-details';
-import { SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
 
 const EXERCISE_METADATA: Record<string, {
   benefits: string;
@@ -117,7 +118,33 @@ export default function ExerciseTrackerScreen() {
   const initialPhaseIndex = Array.isArray(params.initialPhaseIndex)
     ? params.initialPhaseIndex[0]
     : params.initialPhaseIndex;
-  const { data: session } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
+  const { data: onlineSession } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
+  const [offlineSession, setOfflineSession] = useState<MovementSession | null>(null);
+  const session = onlineSession ?? offlineSession;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let isMounted = true;
+
+    const loadOfflineSession = async () => {
+      try {
+        const savedSession = await getSavedOfflineSession(sessionId);
+        if (isMounted) {
+          setOfflineSession(savedSession);
+        }
+      } catch {
+        if (isMounted) {
+          setOfflineSession(null);
+        }
+      }
+    };
+
+    void loadOfflineSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionId]);
 
   const sessionPlan = useMemo(
     () =>
@@ -187,15 +214,23 @@ export default function ExerciseTrackerScreen() {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const videoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
 
+  const resolvePlayableVideoUrl = async (url: string) => {
+    if (!session || !sessionPlan) return url;
+    const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, url);
+    return localUri ?? url;
+  };
+
   const handleCloseVideo = () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
-    videoPlayer.replace(shortClipUrl);
+    void resolvePlayableVideoUrl(shortClipUrl).then((playableUrl) => {
+      videoPlayer.replace(playableUrl);
+    });
   };
 
-  const handleOpenVideo = (url?: string) => {
+  const handleOpenVideo = async (url?: string) => {
     if (url) {
-      videoPlayer.replace(url);
+      videoPlayer.replace(await resolvePlayableVideoUrl(url));
     }
     videoPlayer.currentTime = 0;
     videoPlayer.play();
@@ -249,12 +284,19 @@ export default function ExerciseTrackerScreen() {
       .padStart(2, '0')}`;
   };
 
-  const currentPhase = routine.phases[currentIdx] ??
-    routine.phases[0] ?? {
-      phase: 'No Exercise',
-      name: 'No exercises available',
-    };
-  const upcomingPhase = routine.phases[currentIdx + 1];
+  const currentPhase = useMemo(
+    () =>
+      routine.phases[currentIdx] ??
+      routine.phases[0] ?? {
+        phase: 'No Exercise',
+        name: 'No exercises available',
+      },
+    [currentIdx, routine.phases],
+  );
+  const upcomingPhase = useMemo(
+    () => routine.phases[currentIdx + 1],
+    [currentIdx, routine.phases],
+  );
   const dynamicExercise = dynamicExercises[currentIdx];
   const exerciseMetadata = dynamicExercise
     ? {
@@ -296,11 +338,27 @@ export default function ExerciseTrackerScreen() {
   }, [dynamicExercise]);
 
   useEffect(() => {
-    videoPlayer.replace(shortClipUrl);
-    videoPlayer.currentTime = 0;
-    videoPlayer.pause();
-    setIsVideoPlaying(false);
-  }, [shortClipUrl, videoPlayer]);
+    let isMounted = true;
+
+    const replaceWithPlayableUrl = async () => {
+      const playableUrl =
+        session && sessionPlan
+          ? (await resolveOfflineVideoUri(session.id, sessionPlan, shortClipUrl)) ?? shortClipUrl
+          : shortClipUrl;
+
+      if (!isMounted) return;
+      videoPlayer.replace(playableUrl);
+      videoPlayer.currentTime = 0;
+      videoPlayer.pause();
+      setIsVideoPlaying(false);
+    };
+
+    void replaceWithPlayableUrl();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shortClipUrl, session, sessionPlan, videoPlayer]);
 
   const handleLogSetPress = () => {
     if (currentSet > totalSets) return;

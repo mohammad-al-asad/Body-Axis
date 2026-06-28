@@ -1,0 +1,54 @@
+services:
+  api:
+    build:
+      context: ./api
+    env_file:
+      - ./deploy/api.env
+    restart: unless-stopped
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - bodyaxis
+
+  admin:
+    build:
+      context: ./dashboard
+      args:
+        VITE_API_URL: ${DASHBOARD_API_URL}
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - bodyaxis
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - api
+      - admin
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - bodyaxis
+
+networks:
+  bodyaxis:
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

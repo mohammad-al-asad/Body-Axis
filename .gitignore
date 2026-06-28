@@ -3,3 +3,16 @@ temp_auto_push.bat
 temp_interactive_push.bat
 config.bat
 node_modules
+.env
+.env.*
+**/.env
+**/.env.*
+!*.env.example
+!**/.env.example
+
+# Build, dependency, and local configuration files
+**/build/
+**/.gradle/
+**/local.properties
+**/.expo/
+**/.metro-health-check*
