@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   View,
@@ -18,7 +18,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
-import { SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
 
 const EXERCISE_DETAILS: Record<string, {
   benefits: string;
@@ -147,7 +148,33 @@ export default function PlanDetailsScreen() {
   const sessionId = Array.isArray(params.sessionId)
     ? params.sessionId[0]
     : params.sessionId;
-  const { data: session } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
+  const { data: onlineSession } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
+  const [offlineSession, setOfflineSession] = useState<MovementSession | null>(null);
+  const session = onlineSession ?? offlineSession;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let isMounted = true;
+
+    const loadOfflineSession = async () => {
+      try {
+        const savedSession = await getSavedOfflineSession(sessionId);
+        if (isMounted) {
+          setOfflineSession(savedSession);
+        }
+      } catch {
+        if (isMounted) {
+          setOfflineSession(null);
+        }
+      }
+    };
+
+    void loadOfflineSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionId]);
 
   const sessionPlan = useMemo(
     () =>
@@ -187,8 +214,12 @@ export default function PlanDetailsScreen() {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
-  const handlePlayDemo = (videoUrl: string) => {
-    demoVideoPlayer.replace(videoUrl);
+  const handlePlayDemo = async (videoUrl: string) => {
+    const localUri =
+      session && sessionPlan
+        ? await resolveOfflineVideoUri(session.id, sessionPlan, videoUrl)
+        : null;
+    demoVideoPlayer.replace(localUri ?? videoUrl);
     demoVideoPlayer.currentTime = 0;
     demoVideoPlayer.play();
     setIsDemoVideoStarted(true);

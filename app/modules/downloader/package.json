@@ -1,0 +1,7 @@
+{
+  "name": "body-axis-downloader",
+  "version": "0.1.0",
+  "description": "Expo native offline downloader module for Body Axis",
+  "main": "src/index.ts",
+  "private": true
+}

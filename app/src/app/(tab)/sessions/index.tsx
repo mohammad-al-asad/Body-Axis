@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { SessionCard } from '@/components/SessionCard';
 import { MovementSession, useGetSessionsQuery } from '@/redux/api/sessionApi';
+import { getSavedOfflineSessions } from '@/services/offlineDownloads';
 
 const formatSessionCard = (session: MovementSession, index: number) => {
   const planCount = session.plan_count;
@@ -32,7 +34,36 @@ export default function SessionsScreen() {
   const themeState = useThemeState();
   const styles = createStyles(theme, themeState);
   const { data, isLoading, isError, refetch } = useGetSessionsQuery();
-  const sessions = data?.items ?? [];
+  const [offlineSessions, setOfflineSessions] = useState<MovementSession[]>([]);
+  const sessions = useMemo(
+    () => mergeSessions(data?.items ?? [], offlineSessions),
+    [data?.items, offlineSessions],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadOfflineSessions = async () => {
+        try {
+          const savedSessions = await getSavedOfflineSessions();
+          if (isActive) {
+            setOfflineSessions(savedSessions);
+          }
+        } catch {
+          if (isActive) {
+            setOfflineSessions([]);
+          }
+        }
+      };
+
+      void loadOfflineSessions();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   return (
     <View style={styles.container}>
@@ -51,14 +82,14 @@ export default function SessionsScreen() {
             <Text style={styles.subtitleText}>Manage reminders and wellness alerts</Text>
           </View>
 
-          {isLoading && (
+          {isLoading && sessions.length === 0 && (
             <View style={styles.stateCard}>
               <ActivityIndicator color={theme.secondary} />
               <Text style={styles.stateText}>Loading your sessions…</Text>
             </View>
           )}
 
-          {isError && !isLoading && (
+          {isError && !isLoading && sessions.length === 0 && (
             <View style={styles.stateCard}>
               <Text style={styles.stateText}>Could not load sessions.</Text>
               <TouchableOpacity onPress={refetch} style={styles.retryButton}>
@@ -100,6 +131,19 @@ export default function SessionsScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+function mergeSessions(onlineSessions: MovementSession[], offlineSessions: MovementSession[]) {
+  const merged = [...onlineSessions];
+  const existingIds = new Set(onlineSessions.map((session) => session.id));
+
+  for (const offlineSession of offlineSessions) {
+    if (!existingIds.has(offlineSession.id)) {
+      merged.push(offlineSession);
+    }
+  }
+
+  return merged;
 }
 
 const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType<typeof useThemeState>) =>
