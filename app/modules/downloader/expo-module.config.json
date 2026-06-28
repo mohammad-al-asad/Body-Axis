@@ -1,0 +1,10 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["DownloaderModule"],
+    "appDelegateSubscribers": ["DownloaderAppDelegateSubscriber"]
+  },
+  "android": {
+    "modules": ["com.jointhebodyinstitute.bodyaxis.DownloaderModule"]
+  }
+}

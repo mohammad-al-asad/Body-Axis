@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   ActivityIndicator,
@@ -16,7 +16,16 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { PlanCard, ResetPlan, RoutineEquipment, RoutinePhase } from '@/components/PlanCard';
-import { SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { MovementSession, SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
+import {
+  cancelOfflineDownload,
+  createPlanOfflineDownloadRequest,
+  getOfflineDownloads,
+  getSavedOfflineSession,
+  planAssetDownloadIds,
+  removeOfflinePlan,
+  saveOfflineSession,
+} from '@/services/offlineDownloads';
 
 const EQUIPMENT_ICONS: Record<string, RoutineEquipment['icon']> = {
   'Yoga Mat': 'square',
@@ -154,13 +163,54 @@ export default function SessionDetailsScreen() {
     ? params.sessionId[0]
     : params.sessionId;
   const {
-    data: session,
+    data: onlineSession,
     isLoading,
     isError,
     refetch,
   } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
 
+  const [offlineSession, setOfflineSession] = useState<MovementSession | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+  const session = onlineSession ?? offlineSession;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    let isMounted = true;
+
+    const loadOfflineSession = async () => {
+      try {
+        const [savedSession, downloads] = await Promise.all([
+          getSavedOfflineSession(sessionId),
+          getOfflineDownloads(sessionId),
+        ]);
+
+        if (!isMounted) return;
+        setOfflineSession(savedSession);
+        setSavedIds(
+          Array.from(
+            new Set(
+              downloads
+                .filter((download) => download.status !== 'canceled')
+                .map((download) => download.planId)
+                .filter((planId): planId is string => Boolean(planId)),
+            ),
+          ),
+        );
+      } catch {
+        if (isMounted) {
+          setOfflineSession(null);
+        }
+      }
+    };
+
+    void loadOfflineSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sessionId]);
+
   const plans = useMemo(
     () =>
       session
@@ -171,14 +221,54 @@ export default function SessionDetailsScreen() {
     [session],
   );
 
-  const toggleSave = (plan: ResetPlan) => {
+  const toggleSave = async (plan: ResetPlan) => {
     const isSaved = savedIds.includes(plan.id);
     if (isSaved) {
       setSavedIds((prev) => prev.filter((id) => id !== plan.id));
+      const sessionPlan = session?.plans.find(
+        (item) => item.plan_id === plan.id || item.id === plan.id,
+      );
+      if (session && sessionPlan) {
+        const downloadIds = planAssetDownloadIds(session.id, sessionPlan);
+        void Promise.all([
+          ...downloadIds.map((downloadId) => cancelOfflineDownload(downloadId)),
+          removeOfflinePlan(session.id, sessionPlan),
+        ]);
+      }
       Alert.alert('Removed', `${plan.title} removed from saved list`);
-    } else {
+      return;
+    }
+
+    const sessionPlan = session?.plans.find(
+      (item) => item.plan_id === plan.id || item.id === plan.id,
+    );
+
+    if (!session || !sessionPlan) {
       setSavedIds((prev) => [...prev, plan.id]);
-      Alert.alert('Saved', `${plan.title} saved successfully!`);
+      Alert.alert('Saved', `${plan.title} saved locally. Videos will download when session data is available.`);
+      return;
+    }
+
+    setSavingIds((prev) => [...prev, plan.id]);
+    try {
+      const downloads = await saveOfflineSession(
+        createPlanOfflineDownloadRequest(session, sessionPlan),
+      );
+      const videoCount = downloads.length;
+      setSavedIds((prev) => (prev.includes(plan.id) ? prev : [...prev, plan.id]));
+      Alert.alert(
+        'Download Started',
+        videoCount
+          ? `${plan.title} is being saved offline. You can leave the app while videos download.`
+          : `${plan.title} metadata was saved, but no videos were attached to this plan yet.`,
+      );
+    } catch (error) {
+      Alert.alert(
+        'Could Not Save Offline',
+        error instanceof Error ? error.message : 'Please try again when your connection is stable.',
+      );
+    } finally {
+      setSavingIds((prev) => prev.filter((id) => id !== plan.id));
     }
   };
 
@@ -228,14 +318,14 @@ export default function SessionDetailsScreen() {
               </Text>
             </View>
 
-            {isLoading && (
+            {isLoading && !session && (
               <View style={styles.stateCard}>
                 <ActivityIndicator color={theme.secondary} />
                 <Text style={styles.stateText}>Loading plans…</Text>
               </View>
             )}
 
-            {isError && !isLoading && (
+            {isError && !isLoading && !session && (
               <View style={styles.stateCard}>
                 <Text style={styles.stateText}>Could not load this session.</Text>
                 <TouchableOpacity style={styles.retryButton} onPress={refetch}>
@@ -253,13 +343,15 @@ export default function SessionDetailsScreen() {
               </View>
             )}
 
-            {!isLoading && !isError && plans.map((plan) => {
+            {(!isLoading || session) && (!isError || session) && plans.map((plan) => {
               const isSaved = savedIds.includes(plan.id);
+              const isSaving = savingIds.includes(plan.id);
               return (
                 <PlanCard
                   key={plan.id}
                   plan={plan}
                   isSaved={isSaved}
+                  saveLabel={isSaving ? 'Saving...' : undefined}
                   onToggleSave={() => toggleSave(plan)}
                   onSeeDetails={() => handleSeeDetails(plan)}
                 />

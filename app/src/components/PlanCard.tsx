@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/use-theme';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export interface RoutinePhase {
   phase: string;
@@ -30,6 +28,7 @@ export interface ResetPlan {
 interface PlanCardProps {
   plan: ResetPlan;
   isSaved: boolean;
+  saveLabel?: string;
   onToggleSave: () => void;
   onSeeDetails: () => void;
 }
@@ -45,7 +44,7 @@ const EQUIPMENT_IMAGES: Record<string, any> = {
   'Mini Band': require('@/assets/images/equipments/MiniBand.png'),
 };
 
-export function PlanCard({ plan, isSaved, onToggleSave, onSeeDetails }: PlanCardProps) {
+export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails }: PlanCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
@@ -142,7 +141,7 @@ export function PlanCard({ plan, isSaved, onToggleSave, onSeeDetails }: PlanCard
               isSaved && { color: theme.secondary, fontWeight: '700' },
             ]}
           >
-            {isSaved ? 'Saved  ✓' : 'Save'}
+            {saveLabel ?? (isSaved ? 'Saved  ✓' : 'Save')}
           </Text>
         </TouchableOpacity>
 
