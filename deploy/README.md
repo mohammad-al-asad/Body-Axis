@@ -1,11 +1,11 @@
-# BodyAxis EC2 Docker Deployment
+# BodyAxis EC2 Docker + Nginx Deployment
 
 This deploys:
 
 - `api.jointhebodyinstitute.com` to the FastAPI backend
 - `admin.jointhebodyinstitute.com` to the Vite dashboard
 
-The public entrypoint is Caddy, which automatically issues and renews HTTPS certificates.
+Docker runs the API and dashboard. Nginx runs on the EC2 host as the public reverse proxy, and Certbot manages HTTPS certificates.
 
 ## 1. EC2 and DNS
 
@@ -66,7 +66,18 @@ docker --version
 docker compose version
 ```
 
-## 4. Clone or Upload the Repo
+## 4. Install Nginx and Certbot
+
+Run:
+
+```bash
+sudo apt update
+sudo apt install -y nginx certbot python3-certbot-nginx
+sudo systemctl enable nginx
+sudo systemctl start nginx
+```
+
+## 5. Clone or Upload the Repo
 
 Recommended location:
 
@@ -79,7 +90,7 @@ cd /opt/bodyaxis
 
 If the repository is private, use a GitHub deploy key or authenticate GitHub on the server.
 
-## 5. Create Production Env Files
+## 6. Create Production Env Files
 
 Create the Docker Compose env file:
 
@@ -91,7 +102,6 @@ nano deploy/compose.env
 Example:
 
 ```env
-ACME_EMAIL=admin@jointhebodyinstitute.com
 DASHBOARD_API_URL=https://api.jointhebodyinstitute.com/api/v1
 ```
 
@@ -128,7 +138,7 @@ Lock down the env files:
 chmod 600 deploy/*.env
 ```
 
-## 6. Start Production
+## 7. Start Docker Services
 
 From the repo root:
 
@@ -148,7 +158,45 @@ Check containers:
 docker compose --env-file deploy/compose.env -f docker-compose.prod.yml ps
 ```
 
-## 7. Verify
+The API container is available only on the EC2 host at `127.0.0.1:8000`.
+
+The dashboard container is available only on the EC2 host at `127.0.0.1:8080`.
+
+## 8. Configure Nginx
+
+Copy the included Nginx config:
+
+```bash
+sudo cp deploy/nginx/bodyaxis.conf /etc/nginx/sites-available/bodyaxis
+sudo ln -sf /etc/nginx/sites-available/bodyaxis /etc/nginx/sites-enabled/bodyaxis
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Check HTTP before adding SSL:
+
+```bash
+curl http://api.jointhebodyinstitute.com/health
+curl http://admin.jointhebodyinstitute.com
+```
+
+## 9. Add HTTPS With Certbot
+
+Only run this after GoDaddy DNS points both subdomains to the EC2 Elastic IP:
+
+```bash
+sudo certbot --nginx -d api.jointhebodyinstitute.com -d admin.jointhebodyinstitute.com
+```
+
+Choose the option to redirect HTTP to HTTPS.
+
+Test renewal:
+
+```bash
+sudo certbot renew --dry-run
+```
+
+## 10. Verify
 
 Open:
 
@@ -166,7 +214,7 @@ After the first admin login, remove `ADMIN_BOOTSTRAP_PASSWORD` from `deploy/api.
 docker compose --env-file deploy/compose.env -f docker-compose.prod.yml up -d --build api
 ```
 
-## 8. RevenueCat Webhook
+## 11. RevenueCat Webhook
 
 Set the RevenueCat webhook URL to:
 
@@ -176,7 +224,7 @@ https://api.jointhebodyinstitute.com/api/v1/revenuecat/webhook
 
 The webhook authorization value must match `REVENUECAT_WEBHOOK_AUTH`.
 
-## 9. Future Deploys
+## 12. Future Deploys
 
 Pull the latest code and rebuild:
 
@@ -192,7 +240,14 @@ If you only changed env values:
 docker compose --env-file deploy/compose.env -f docker-compose.prod.yml up -d
 ```
 
-## 10. Useful Commands
+Reload Nginx after proxy config changes:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+## 13. Useful Commands
 
 API logs:
 
@@ -200,10 +255,10 @@ API logs:
 docker compose --env-file deploy/compose.env -f docker-compose.prod.yml logs -f api
 ```
 
-Caddy logs:
+Dashboard logs:
 
 ```bash
-docker compose --env-file deploy/compose.env -f docker-compose.prod.yml logs -f caddy
+docker compose --env-file deploy/compose.env -f docker-compose.prod.yml logs -f admin
 ```
 
 Restart API:
