@@ -114,6 +114,5 @@ jobs:
             git fetch origin main
             git checkout main
             git pull --ff-only origin main
-            chmod +x deploy/scripts/deploy-ec2.sh
             ./deploy/scripts/deploy-ec2.sh
           '"
