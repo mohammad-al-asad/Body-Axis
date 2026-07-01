@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -15,97 +15,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 
 import { Header } from '@/components/Header';
-import { ISLAMIC_DEMO_VIDEO_URL, DEMO_VIDEO_THUMBNAIL_URL } from '@/constants/videos';
 import { useTheme } from '@/hooks/use-theme';
-import { PLANS as ROUTINES, sessionPlanToResetPlan } from './session-details';
+import { getPhaseNumber } from '@/utils/phase';
+import { sessionPlanToResetPlan } from './session-details';
 import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
-
-const EXERCISE_METADATA: Record<string, {
-  benefits: string;
-  targetRegions: string[];
-  equipment: string[];
-  sets: string;
-  repsVal: string;
-  repsLabel: string;
-}> = {
-  'Side-Lying Thoracic Rotation (Open Book)': {
-    benefits: 'Gently restores mid-back rotation with the lower back blocked from compensating. Reduces upper back stiffness that drives neck pain, shoulder restriction, and lower back overload.',
-    targetRegions: ['Shoulder', 'Neck', 'Middle Back', 'Upper Back', 'Lower Back'],
-    equipment: ['Mat', 'Light Dumbbell'],
-    sets: '2',
-    repsVal: '6-10',
-    repsLabel: 'REPS / EACH SIDE',
-  },
-  'Prone Trap Raise': {
-    benefits: 'Strengthens lower and middle trapezius muscles. Helps stabilize the scapula, correcting rounded shoulders and enhancing posture under loads.',
-    targetRegions: ['Upper Back', 'Scapula', 'Shoulders'],
-    equipment: ['Mat', 'Light Weights'],
-    sets: '3',
-    repsVal: '10-12',
-    repsLabel: 'REPS / SET',
-  },
-  'Side-Lying Shoulder External Rotation': {
-    benefits: 'Targets the rotator cuff (infraspinatus/teres minor) to improve humeral head control and alleviate shoulder impingement symptoms.',
-    targetRegions: ['Rotator Cuff', 'Shoulder Joint'],
-    equipment: ['Mat', 'Dumbbell'],
-    sets: '2',
-    repsVal: '10-15',
-    repsLabel: 'REPS / EACH SIDE',
-  },
-  'Suboccipital Release + Chin Nod': {
-    benefits: 'Releases tight neck muscles at the skull base and strengthens deep neck flexors to combat forward head posture.',
-    targetRegions: ['Neck Flexors', 'Suboccipitals', 'Cervical Spine'],
-    equipment: ['Mat', 'Lacrosse Ball'],
-    sets: '2',
-    repsVal: '10s',
-    repsLabel: 'HOLD / EACH REP',
-  },
-  'Serratus Wall Slide': {
-    benefits: 'Activates the serratus anterior to facilitate upward rotation and protraction of the shoulder blade, reducing clicking and pain.',
-    targetRegions: ['Serratus Anterior', 'Scapular Stabilizers'],
-    equipment: ['Wall', 'Foam Roller'],
-    sets: '3',
-    repsVal: '8-10',
-    repsLabel: 'REPS / SET',
-  },
-  'Side-Lying Low Trap Raise': {
-    benefits: 'Isolates the lower fibers of the trapezius. Crucial for overhead arm lifting mechanics and counteracting upper trap dominance.',
-    targetRegions: ['Lower Trapezius', 'Upper Back'],
-    equipment: ['Mat', 'Dumbbell'],
-    sets: '3',
-    repsVal: '10',
-    repsLabel: 'REPS / EACH SIDE',
-  },
-  'Short Foot Activation Hold': {
-    benefits: 'Builds intrinsic foot muscle strength, lifts the medial longitudinal arch, and improves knee alignment tracking from the ground up.',
-    targetRegions: ['Foot Arch', 'Ankle Stabilizers'],
-    equipment: ['None (Barefoot)'],
-    sets: '2',
-    repsVal: '10s',
-    repsLabel: 'HOLD / EACH REP',
-  },
-  'Standing Soleus Knee Bend Hold': {
-    benefits: 'Isolates the deep soleus calf muscle under bent knee alignment to improve ankle dorsiflexion mobility and stability.',
-    targetRegions: ['Soleus Muscle', 'Achilles Tendon', 'Ankle'],
-    equipment: ['Wall', 'Yoga Block'],
-    sets: '3',
-    repsVal: '30s',
-    repsLabel: 'HOLD / EACH SET',
-  },
-  'Single-Leg RNT Squat': {
-    benefits: 'Uses reactive neuromuscular training to correct knee valgus (caving in). Retrains optimal hip and knee tracking.',
-    targetRegions: ['Glutes', 'Knee Joint', 'Ankle'],
-    equipment: ['Resistance Band', 'Mat'],
-    sets: '3',
-    repsVal: '10',
-    repsLabel: 'REPS / EACH SIDE',
-  },
-};
 
 export default function ExerciseTrackerScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
   const params = useLocalSearchParams<{
     id?: string | string[];
     sessionId?: string | string[];
@@ -161,8 +80,8 @@ export default function ExerciseTrackerScreen() {
             session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
             session?.plans.length ?? 1,
           )
-        : ROUTINES.find((item) => item.id === id) ?? ROUTINES[0],
-    [id, session, sessionPlan],
+        : null,
+    [session, sessionPlan],
   );
   const dynamicExercises = useMemo<SessionExercise[]>(() => {
     if (!sessionPlan) return [];
@@ -170,10 +89,12 @@ export default function ExerciseTrackerScreen() {
       (phase) => sessionPlan.phases[phase as keyof typeof sessionPlan.phases],
     );
   }, [sessionPlan]);
+  const phaseList = useMemo(() => routine?.phases ?? [], [routine]);
+  const hasExerciseContent = Boolean(routine && dynamicExercises.length);
   const parsedInitialIndex = Number.parseInt(initialPhaseIndex ?? '0', 10);
   const safeInitialIndex = Number.isNaN(parsedInitialIndex)
     ? 0
-    : Math.min(Math.max(parsedInitialIndex, 0), routine.phases.length - 1);
+    : Math.min(Math.max(parsedInitialIndex, 0), Math.max(phaseList.length - 1, 0));
 
   const [currentIdx, setCurrentIdx] = useState(safeInitialIndex);
   const [currentSet, setCurrentSet] = useState(1);
@@ -181,23 +102,14 @@ export default function ExerciseTrackerScreen() {
 
   const totalSets = useMemo(() => {
     const dynamicExercise = dynamicExercises[currentIdx];
-    if (dynamicExercise) return dynamicExercise.sets;
-    const currentPhase = routine.phases[currentIdx] ?? routine.phases[0] ?? { name: '' };
-    const meta = EXERCISE_METADATA[currentPhase.name] || EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
-    return Number.parseInt(meta.sets) || 2;
-  }, [dynamicExercises, routine.phases, currentIdx]);
+    return dynamicExercise?.sets ?? 0;
+  }, [dynamicExercises, currentIdx]);
 
   const targetReps = useMemo(() => {
     const dynamicExercise = dynamicExercises[currentIdx];
-    if (dynamicExercise) {
-      const match = /(\d+)/.exec(dynamicExercise.reps);
-      return match ? Number.parseInt(match[1]) : 10;
-    }
-    const currentPhase = routine.phases[currentIdx] ?? routine.phases[0] ?? { name: '' };
-    const meta = EXERCISE_METADATA[currentPhase.name] || EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
-    const match = /(\d+)/.exec(meta.repsVal);
-    return match ? Number.parseInt(match[1]) : 10;
-  }, [dynamicExercises, routine.phases, currentIdx]);
+    const match = dynamicExercise?.reps ? /(\d+)/.exec(dynamicExercise.reps) : null;
+    return match ? Number.parseInt(match[1]) : 0;
+  }, [dynamicExercises, currentIdx]);
 
   const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>(() => {
     return Array.from({ length: totalSets }, () => ({ reps: 0, completed: false }));
@@ -212,7 +124,8 @@ export default function ExerciseTrackerScreen() {
   const [isDurationDropdownVisible, setIsDurationDropdownVisible] = useState(false);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const videoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+  const [activeVideoType, setActiveVideoType] = useState<'short' | 'full'>('short');
+  const videoPlayer = useVideoPlayer(null);
 
   const resolvePlayableVideoUrl = async (url: string) => {
     if (!session || !sessionPlan) return url;
@@ -223,14 +136,17 @@ export default function ExerciseTrackerScreen() {
   const handleCloseVideo = () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
-    void resolvePlayableVideoUrl(shortClipUrl).then((playableUrl) => {
-      videoPlayer.replace(playableUrl);
+    const activeVideoUrl = activeVideoType === 'full' ? tutorialVideoUrl : shortClipUrl;
+    if (!activeVideoUrl) return;
+    void resolvePlayableVideoUrl(activeVideoUrl).then((playableUrl) => {
+      return videoPlayer.replaceAsync(playableUrl);
     });
   };
 
-  const handleOpenVideo = async (url?: string) => {
+  const handleOpenVideo = async (url?: string, videoType: 'short' | 'full' = 'short') => {
     if (url) {
-      videoPlayer.replace(await resolvePlayableVideoUrl(url));
+      setActiveVideoType(videoType);
+      await videoPlayer.replaceAsync(await resolvePlayableVideoUrl(url));
     }
     videoPlayer.currentTime = 0;
     videoPlayer.play();
@@ -286,39 +202,34 @@ export default function ExerciseTrackerScreen() {
 
   const currentPhase = useMemo(
     () =>
-      routine.phases[currentIdx] ??
-      routine.phases[0] ?? {
-        phase: 'No Exercise',
-        name: 'No exercises available',
-      },
-    [currentIdx, routine.phases],
+      phaseList[currentIdx] ??
+      phaseList[0] ??
+      { phase: '', name: '' },
+    [currentIdx, phaseList],
+  );
+  const currentPhaseNumber = useMemo(
+    () => getPhaseNumber(currentPhase.phase) ?? 0,
+    [currentPhase.phase],
   );
   const upcomingPhase = useMemo(
-    () => routine.phases[currentIdx + 1],
-    [currentIdx, routine.phases],
+    () => phaseList[currentIdx + 1],
+    [currentIdx, phaseList],
   );
   const dynamicExercise = dynamicExercises[currentIdx];
-  const exerciseMetadata = dynamicExercise
-    ? {
-        benefits:
-          dynamicExercise.secondary_benefits ||
-          dynamicExercise.primary_intent ||
-          'Gently restores movement quality and control for the selected region.',
-        targetRegions: sessionPlan ? [sessionPlan.target_area] : ['Target Area'],
-        equipment: dynamicExercise.equipment_needed.length
-          ? dynamicExercise.equipment_needed
-          : ['None'],
-        sets: String(dynamicExercise.sets),
-        repsVal: dynamicExercise.reps,
-        repsLabel: 'REPS',
-      }
-    : EXERCISE_METADATA[currentPhase.name] ?? EXERCISE_METADATA['Side-Lying Thoracic Rotation (Open Book)'];
+  const exerciseMetadata = {
+    benefits: dynamicExercise?.secondary_benefits || dynamicExercise?.primary_intent || null,
+    targetRegions: sessionPlan?.target_area ? [sessionPlan.target_area] : [],
+    equipment: dynamicExercise?.equipment_needed ?? [],
+    sets: dynamicExercise ? String(dynamicExercise.sets) : 'N/A',
+    repsVal: dynamicExercise?.reps ?? 'N/A',
+    repsLabel: dynamicExercise?.reps?.includes('/') ? 'REPS / EACH SIDE' : 'REPS',
+  };
 
   const shortClipUrl = useMemo(() => {
     return (
       dynamicExercise?.short_clip_video?.video_url ||
       dynamicExercise?.tutorial_video?.video_url ||
-      ISLAMIC_DEMO_VIDEO_URL
+      null
     );
   }, [dynamicExercise]);
 
@@ -326,28 +237,49 @@ export default function ExerciseTrackerScreen() {
     return (
       dynamicExercise?.short_clip_video?.thumbnail_url ||
       dynamicExercise?.tutorial_video?.thumbnail_url ||
-      DEMO_VIDEO_THUMBNAIL_URL
+      null
     );
   }, [dynamicExercise]);
 
   const tutorialVideoUrl = useMemo(() => {
     return (
       dynamicExercise?.tutorial_video?.video_url ||
-      ISLAMIC_DEMO_VIDEO_URL
+      null
     );
   }, [dynamicExercise]);
+  const alternateVideoTarget = useMemo(() => {
+    if (shortClipUrl && tutorialVideoUrl && shortClipUrl === tutorialVideoUrl) {
+      return null;
+    }
+    if (activeVideoType === 'full' && shortClipUrl) {
+      return {
+        url: shortClipUrl,
+        type: 'short' as const,
+        label: 'Watch Short Video',
+      };
+    }
+    if (tutorialVideoUrl) {
+      return {
+        url: tutorialVideoUrl,
+        type: 'full' as const,
+        label: 'Watch Full Video',
+      };
+    }
+    return null;
+  }, [activeVideoType, shortClipUrl, tutorialVideoUrl]);
 
   useEffect(() => {
     let isMounted = true;
 
     const replaceWithPlayableUrl = async () => {
+      if (!shortClipUrl || !session || !sessionPlan) return;
       const playableUrl =
-        session && sessionPlan
-          ? (await resolveOfflineVideoUri(session.id, sessionPlan, shortClipUrl)) ?? shortClipUrl
-          : shortClipUrl;
+        (await resolveOfflineVideoUri(session.id, sessionPlan, shortClipUrl)) ?? shortClipUrl;
 
       if (!isMounted) return;
-      videoPlayer.replace(playableUrl);
+      await videoPlayer.replaceAsync(playableUrl);
+      if (!isMounted) return;
+      setActiveVideoType('short');
       videoPlayer.currentTime = 0;
       videoPlayer.pause();
       setIsVideoPlaying(false);
@@ -419,7 +351,7 @@ export default function ExerciseTrackerScreen() {
     setTimerSeconds(period);
   };
 
-  const hasNextExerciseInPlan = currentIdx < routine.phases.length - 1;
+  const hasNextExerciseInPlan = currentIdx < phaseList.length - 1;
 
   const currentPlanIdx = useMemo(() => {
     if (!session || !sessionPlan) return -1;
@@ -437,9 +369,12 @@ export default function ExerciseTrackerScreen() {
   }, [session, currentPlanIdx]);
 
   const nextButtonText = useMemo(() => {
+    if (!hasExerciseContent) {
+      return 'Session unavailable';
+    }
     if (hasNextExerciseInPlan) {
       const currentPhaseName = currentPhase.phase.toLowerCase();
-      const nextPhaseName = upcomingPhase.phase.toLowerCase();
+      const nextPhaseName = upcomingPhase?.phase.toLowerCase() ?? '';
       if (currentPhaseName !== nextPhaseName) {
         return 'Next Phase';
       }
@@ -449,7 +384,7 @@ export default function ExerciseTrackerScreen() {
     } else {
       return "Finish Today's Session";
     }
-  }, [hasNextExerciseInPlan, currentPhase, upcomingPhase, nextPlan]);
+  }, [hasExerciseContent, hasNextExerciseInPlan, currentPhase, upcomingPhase, nextPlan]);
 
   const handleNextExercise = () => {
     videoPlayer.pause();
@@ -473,6 +408,15 @@ export default function ExerciseTrackerScreen() {
     }
 
     router.replace('/');
+  };
+
+  const handleWatchFullVideo = () => {
+    if (!alternateVideoTarget?.url) return;
+    setIsDetailsVisible(false);
+    requestAnimationFrame(() => {
+      scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+      void handleOpenVideo(alternateVideoTarget.url, alternateVideoTarget.type);
+    });
   };
 
   const styles = createStyles(theme, isTimerRunning);
@@ -511,27 +455,27 @@ export default function ExerciseTrackerScreen() {
                 {/* Benefits */}
                 <Text style={styles.detailsSectionHeader}>BENEFITS</Text>
                 <Text style={styles.detailsBenefitsText}>
-                  {exerciseMetadata.benefits}
+                  {exerciseMetadata.benefits ?? 'Not provided'}
                 </Text>
 
                 {/* Target Regions */}
                 <Text style={styles.detailsSectionHeader}>TARGET REGIONS</Text>
                 <View style={styles.tagsContainer}>
-                  {exerciseMetadata.targetRegions.map((region) => (
+                  {exerciseMetadata.targetRegions.length ? exerciseMetadata.targetRegions.map((region) => (
                     <View key={region} style={styles.tagBadge}>
                       <Text style={styles.tagText}>{region}</Text>
                     </View>
-                  ))}
+                  )) : <Text style={styles.emptyFieldText}>Not provided</Text>}
                 </View>
 
                 {/* Equipment */}
                 <Text style={styles.detailsSectionHeader}>EQUIPMENT</Text>
                 <View style={styles.tagsContainer}>
-                  {exerciseMetadata.equipment.map((item) => (
+                  {exerciseMetadata.equipment.length ? exerciseMetadata.equipment.map((item) => (
                     <View key={item} style={styles.tagBadge}>
                       <Text style={styles.tagText}>{item}</Text>
                     </View>
-                  ))}
+                  )) : <Text style={styles.emptyFieldText}>Not provided</Text>}
                 </View>
 
                 {/* Grid cards */}
@@ -544,21 +488,21 @@ export default function ExerciseTrackerScreen() {
 
                   <View style={styles.detailsGridCard}>
                     <Feather name="repeat" size={20} color={theme.secondary} style={styles.gridCardIcon} />
-                    <Text style={styles.gridCardValue}>{exerciseMetadata.repsVal}</Text>
+                    <Text style={styles.gridCardValueCompact}>{exerciseMetadata.repsVal}</Text>
                     <Text style={styles.gridCardLabel}>{exerciseMetadata.repsLabel}</Text>
                   </View>
                 </View>
 
                 {/* Watch Full Video Button */}
                 <TouchableOpacity
-                  style={styles.watchFullVideoBtn}
-                  onPress={() => {
-                    setIsDetailsVisible(false);
-                    handleOpenVideo(tutorialVideoUrl);
-                  }}
+                  style={[styles.watchFullVideoBtn, !alternateVideoTarget && styles.watchFullVideoBtnDisabled]}
+                  onPress={handleWatchFullVideo}
                   activeOpacity={0.8}
+                  disabled={!alternateVideoTarget}
                 >
-                  <Text style={styles.watchFullVideoBtnText}>Watch Full Video</Text>
+                  <Text style={[styles.watchFullVideoBtnText, !alternateVideoTarget && styles.watchFullVideoBtnTextDisabled]}>
+                    {alternateVideoTarget?.label ?? 'Video Unavailable'}
+                  </Text>
                 </TouchableOpacity>
               </ScrollView>
             </TouchableOpacity>
@@ -566,15 +510,25 @@ export default function ExerciseTrackerScreen() {
         </Modal>
 
         <ScrollView
+          ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {!hasExerciseContent ? (
+            <View style={styles.stateCard}>
+              <Text style={styles.stateTitle}>Exercise data unavailable</Text>
+              <Text style={styles.stateText}>
+                This screen no longer uses fallback routine data. Open it from a loaded session plan.
+              </Text>
+            </View>
+          ) : (
+            <>
 
           <View style={styles.progressHeaderRow}>
             <View>
               <Text style={styles.progressStatusText}>PLAN IN PROGRESS</Text>
               <Text style={styles.progressSubText}>
-                EXERCISE {currentIdx + 1} OF {routine.phases.length}
+                EXERCISE {currentIdx + 1} OF {phaseList.length}
               </Text>
             </View>
           </View>
@@ -583,7 +537,7 @@ export default function ExerciseTrackerScreen() {
             <View style={styles.exerciseMetaRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.phaseLabel}>
-                  PHASE {currentIdx + 1}:{' '}
+                  PHASE {currentPhaseNumber}:{' '}
                   <Text style={styles.phaseLabelHighlight}>
                     {currentPhase.phase.toUpperCase()}
                   </Text>
@@ -604,7 +558,7 @@ export default function ExerciseTrackerScreen() {
 
           {/* Video Preview Card */}
           <View style={styles.videoCard}>
-            {isVideoPlaying ? (
+            {isVideoPlaying && shortClipUrl ? (
               <VideoView
                 player={videoPlayer}
                 contentFit="cover"
@@ -612,7 +566,7 @@ export default function ExerciseTrackerScreen() {
                 fullscreenOptions={{ enable: true }}
                 style={styles.video}
               />
-            ) : (
+            ) : shortClipUrl && thumbnailUrl ? (
               <TouchableOpacity
                 style={styles.videoThumbnailButton}
                 activeOpacity={0.9}
@@ -633,6 +587,8 @@ export default function ExerciseTrackerScreen() {
                   </View>
                 </View>
               </TouchableOpacity>
+            ) : (
+              <Text style={styles.videoUnavailableText}>Video unavailable</Text>
             )}
           </View>
 
@@ -857,6 +813,8 @@ export default function ExerciseTrackerScreen() {
               </View>
             </View>
           )}
+            </>
+          )}
         </ScrollView>
 
         {/* Footer next exercise button */}
@@ -864,9 +822,9 @@ export default function ExerciseTrackerScreen() {
           <TouchableOpacity
             style={[
               styles.nextExerciseBtn,
-              (isTimerRunning || currentSet <= totalSets) && styles.nextExerciseBtnDisabled,
+              (!hasExerciseContent || isTimerRunning || currentSet <= totalSets) && styles.nextExerciseBtnDisabled,
             ]}
-            disabled={isTimerRunning || currentSet <= totalSets}
+            disabled={!hasExerciseContent || isTimerRunning || currentSet <= totalSets}
             onPress={handleNextExercise}
             activeOpacity={0.8}
           >
@@ -893,6 +851,28 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       paddingHorizontal: 24,
       paddingTop: 20,
       paddingBottom: 100,
+    },
+    stateCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 24,
+      marginTop: 8,
+      alignItems: 'center',
+      gap: 12,
+    },
+    stateTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    stateText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 20,
     },
     backContainer: {
       flexDirection: 'row',
@@ -978,6 +958,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       width: '100%',
       height: '100%',
       position: 'relative',
+    },
+    videoUnavailableText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
     },
     videoOverlay: {
       ...StyleSheet.absoluteFillObject,
@@ -1416,6 +1401,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       flexWrap: 'wrap',
       gap: 8,
     },
+    emptyFieldText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
+    },
     tagBadge: {
       backgroundColor: theme.backgroundSelected,
       paddingHorizontal: 12,
@@ -1451,11 +1441,20 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       color: theme.text,
       marginBottom: 4,
     },
+    gridCardValueCompact: {
+      fontSize: 20,
+      lineHeight: 28,
+      fontWeight: '800',
+      color: theme.text,
+      marginBottom: 4,
+      textAlign: 'center',
+    },
     gridCardLabel: {
       fontSize: 9,
       fontWeight: '800',
       color: theme.textSecondary,
       letterSpacing: 0.5,
+      textAlign: 'center',
     },
     watchFullVideoBtn: {
       width: '100%',
@@ -1467,10 +1466,16 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       alignItems: 'center',
       marginTop: 12,
     },
+    watchFullVideoBtnDisabled: {
+      borderColor: theme.inputBorder,
+    },
     watchFullVideoBtnText: {
       color: theme.secondary,
       fontSize: 14,
       fontWeight: '800',
+    },
+    watchFullVideoBtnTextDisabled: {
+      color: theme.textSecondary,
     },
 
   });

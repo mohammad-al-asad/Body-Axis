@@ -37,20 +37,18 @@ export function SessionCard({
 
   return (
     <View style={[styles.sessionCard, { borderColor: cardBorderColor }]}>
-      {/* Card Top Row */}
-      {session.isActive && (
-        <View style={[styles.cardHeader, { justifyContent: 'flex-end' }]}>
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>ACTIVE</Text>
-          </View>
-        </View>
-      )}
-
       {/* Plan Label */}
       <Text style={styles.planLabel}>{session.label}</Text>
 
-      {/* Plan Title */}
-      <Text style={styles.planTitle}>{session.title}</Text>
+      {/* Title & Active Badge Row */}
+      <View style={styles.titleRow}>
+        <Text style={styles.planTitle}>{session.title}</Text>
+        {session.isActive && (
+          <View style={styles.activeBadge}>
+            <Text style={styles.activeBadgeText}>ACTIVE</Text>
+          </View>
+        )}
+      </View>
 
       {/* Info Grid (Phase & Schedule) */}
       <View style={styles.infoGrid}>
@@ -118,11 +116,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       shadowOpacity: 0.05,
       shadowRadius: 6,
     },
-    cardHeader: {
+    titleRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 16,
+      marginBottom: 20,
     },
     activeBadge: {
       backgroundColor: 'rgba(93, 230, 255, 0.1)',
@@ -146,10 +144,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       marginBottom: 8,
     },
     planTitle: {
+      flex: 1,
+      marginRight: 12,
       fontSize: 22,
       fontWeight: '700',
       color: theme.text,
-      marginBottom: 20,
     },
     infoGrid: {
       flexDirection: 'row',

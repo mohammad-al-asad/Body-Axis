@@ -17,6 +17,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { PlanCard, ResetPlan, RoutineEquipment, RoutinePhase } from '@/components/PlanCard';
 import { MovementSession, SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
+import { phaseOrder } from '@/utils/phase';
 import {
   cancelOfflineDownload,
   createPlanOfflineDownloadRequest,
@@ -37,8 +38,6 @@ const EQUIPMENT_ICONS: Record<string, RoutineEquipment['icon']> = {
   Bench: 'trello',
   'Mini Band': 'activity',
 };
-
-const phaseOrder = ['reset', 'control', 'integrate'] as const;
 
 export const sessionPlanToResetPlan = (
   plan: SessionPlan,
@@ -66,93 +65,6 @@ export const sessionPlanToResetPlan = (
     phases,
   };
 };
-
-export const PLANS: ResetPlan[] = [
-  {
-    id: '1',
-    title: 'Hip Mobility',
-    duration: '~15 Mins',
-    isActive: true,
-    progressPercent: 33,
-    progressLabel: 'Plan 1 of 3',
-    equipment: [
-      { icon: 'square', name: 'Yoga Mat' },
-      { icon: 'activity', name: 'Resistance Band' },
-      { icon: 'activity', name: 'Mini Band' },
-      { icon: 'target', name: 'Dumbbell' },
-      { icon: 'disc', name: 'Foam Roller' },
-      { icon: 'circle', name: 'Lacrosse Ball' },
-      { icon: 'box', name: 'Yoga Block' },
-      { icon: 'trello', name: 'Bench' },
-    ],
-    phases: [
-      { phase: 'RESET', name: 'Side-Lying Thoracic Rotation (Open Book)' },
-      { phase: 'CONTROL', name: 'Prone Trap Raise' },
-      { phase: 'INTEGRATE', name: 'Side-Lying Shoulder External Rotation' },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Shoulder Impingement',
-    duration: '~15 Mins',
-    isActive: false,
-    progressPercent: 33,
-    progressLabel: 'Plan 1 of 3',
-    equipment: [
-      { icon: 'square', name: 'Yoga Mat' },
-      { icon: 'activity', name: 'Resistance Band' },
-      { icon: 'disc', name: 'Foam Roller' },
-    ],
-    phases: [
-      { phase: 'RESET', name: 'Suboccipital Release + Chin Nod' },
-      { phase: 'CONTROL', name: 'Serratus Wall Slide' },
-      { phase: 'INTEGRATE', name: 'Side-Lying Low Trap Raise' },
-    ],
-  },
-  {
-    id: '3',
-    title: 'Ankle Stability',
-    duration: '~15 Mins',
-    isActive: false,
-    progressPercent: 33,
-    progressLabel: 'Plan 1 of 3',
-    equipment: [
-      { icon: 'square', name: 'Yoga Mat' },
-      { icon: 'activity', name: 'Resistance Band' },
-    ],
-    phases: [
-      { phase: 'RESET', name: 'Short Foot Activation Hold' },
-      { phase: 'CONTROL', name: 'Standing Soleus Knee Bend Hold' },
-      { phase: 'INTEGRATE', name: 'Single-Leg RNT Squat' },
-    ],
-  },
-  {
-    id: '4',
-    title: 'Full Body Alignment',
-    duration: '~30 Mins',
-    isActive: false,
-    progressPercent: 33,
-    progressLabel: 'Plan 1 of 3',
-    equipment: [
-      { icon: 'square', name: 'Yoga Mat' },
-      { icon: 'activity', name: 'Resistance Band' },
-      { icon: 'activity', name: 'Mini Band' },
-      { icon: 'target', name: 'Dumbbell' },
-      { icon: 'disc', name: 'Foam Roller' },
-      { icon: 'circle', name: 'Lacrosse Ball' },
-      { icon: 'box', name: 'Yoga Block' },
-      { icon: 'trello', name: 'Bench' },
-    ],
-    phases: [
-      { phase: 'RESET', name: 'Full Body Foam Roll & Lacrosse Release' },
-      { phase: 'CONTROL', name: 'Banded Dumbbell Bench Press' },
-      { phase: 'INTEGRATE', name: 'Yoga Block Squat Calibration' },
-    ],
-  },
-];
-
-// Compatibility exports
-export const ROUTINES = PLANS;
 
 export default function SessionDetailsScreen() {
   const theme = useTheme();
@@ -217,7 +129,7 @@ export default function SessionDetailsScreen() {
         ? session.plans.map((plan, index) =>
             sessionPlanToResetPlan(plan, index, session.plans.length),
           )
-        : PLANS,
+        : [],
     [session],
   );
 
@@ -309,12 +221,12 @@ export default function SessionDetailsScreen() {
             {/* Movement Library Header Titles */}
             <View style={styles.titleContainer}>
               <Text style={styles.mainTitle}>
-                {session?.session_name || 'Hip Mobility + Core Stability'}
+                {session?.session_name ?? 'Session details unavailable'}
               </Text>
               <Text style={styles.subtitle}>
                 {session
                   ? `${session.plan_count} matching plan${session.plan_count === 1 ? '' : 's'} for ${session.target_areas.join(', ')} · ${session.user_case}`
-                  : 'Based on your selections, here are your personalized movement plans to choose from.'}
+                  : 'We could not load session-backed plans for this screen.'}
               </Text>
             </View>
 

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useTheme } from '@/hooks/use-theme';
+import { getPhaseNumber } from '@/utils/phase';
 
 export interface RoutinePhase {
   phase: string;
@@ -47,6 +48,20 @@ const EQUIPMENT_IMAGES: Record<string, any> = {
 export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails }: PlanCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
+
+  // Group phases to show multiple exercises under a single phase
+  const groupedPhases = React.useMemo(() => {
+    const groups: { phase: string; exercises: string[] }[] = [];
+    plan.phases.forEach((ph) => {
+      let group = groups.find((g) => g.phase.toLowerCase() === ph.phase.toLowerCase());
+      if (!group) {
+        group = { phase: ph.phase, exercises: [] };
+        groups.push(group);
+      }
+      group.exercises.push(ph.name);
+    });
+    return groups;
+  }, [plan.phases]);
 
   return (
     <View style={styles.card}>
@@ -96,16 +111,25 @@ export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails 
 
       {/* Phase Descriptions */}
       <View style={styles.phasesContainer}>
-        {plan.phases.map((ph, index) => (
-          <View key={index} style={styles.phaseRow}>
+        {groupedPhases.map((group, index) => (
+          <View key={group.phase} style={styles.phaseRow}>
             <View style={styles.phaseIndicatorLine} />
             <View style={styles.phaseContent}>
               <Text style={styles.phaseText}>
-                PHASE {index + 1}: <Text style={styles.phaseNameHighlight}>{ph.phase.toUpperCase()}</Text>
+                PHASE {getPhaseNumber(group.phase) ?? index + 1}: <Text style={styles.phaseNameHighlight}>{group.phase.toUpperCase()}</Text>
               </Text>
-              <Text style={styles.exerciseName} numberOfLines={1}>
-                {ph.name}
-              </Text>
+              {group.exercises.map((exercise, idx) => (
+                <Text
+                  key={idx}
+                  style={[
+                    styles.exerciseName,
+                    idx > 0 && { marginTop: 6 }
+                  ]}
+                  numberOfLines={1}
+                >
+                  {exercise}
+                </Text>
+              ))}
             </View>
           </View>
         ))}
@@ -114,11 +138,11 @@ export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails 
       {/* Progress Bar Section */}
       <View style={styles.progressSection}>
         <View style={styles.progressTextRow}>
-          <Text style={styles.progressTextLeft}>{plan.progressLabel || 'Exercise 1 of 3'}</Text>
-          <Text style={styles.progressTextRight}>{plan.progressPercent ?? 33}%</Text>
+          <Text style={styles.progressTextLeft}>{plan.progressLabel ?? 'Progress unavailable'}</Text>
+          <Text style={styles.progressTextRight}>{plan.progressPercent ?? 0}%</Text>
         </View>
         <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${plan.progressPercent ?? 33}%` }]} />
+          <View style={[styles.progressBarFill, { width: `${plan.progressPercent ?? 0}%` }]} />
         </View>
       </View>
 
@@ -179,6 +203,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       marginBottom: 16,
     },
     cardTitle: {
+      flex: 1,
+      marginRight: 12,
       fontSize: 22,
       fontWeight: '800',
       color: theme.text,
