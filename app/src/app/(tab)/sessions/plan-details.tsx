@@ -12,129 +12,14 @@ import { Feather } from '@expo/vector-icons';
 import { useEventListener } from 'expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/hooks/use-theme';
-import { PLANS, sessionPlanToResetPlan } from './session-details';
+import { sessionPlanToResetPlan } from './session-details';
+import { getPhaseNumber } from '@/utils/phase';
 import { Header } from '@/components/Header';
 import { useSelector } from 'react-redux';
 import { RootState } from '@/redux/store';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
 import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
-
-const EXERCISE_DETAILS: Record<string, {
-  benefits: string;
-  targetRegions: string[];
-  equipment: string[];
-  avoidIf: string;
-  sets: string;
-  reps: string;
-}> = {
-  'Side-Lying Thoracic Rotation (Open Book)': {
-    benefits: 'Gently restores mid-back rotation with the lower back blocked from compensating. Reduces upper back stiffness that drives neck pain, shoulder restriction, and lower back overload.',
-    targetRegions: ['Shoulder', 'Neck', 'Middle Back', 'Upper Back', 'Lower Back'],
-    equipment: ['Mat', 'Light Dumbbell'],
-    avoidIf: 'Painful rotation',
-    sets: '2',
-    reps: '6-10 / EACH SIDE',
-  },
-  'Prone Trap Raise': {
-    benefits: 'Strengthens the lower trapezius muscles to improve scapular depression and upward rotation, reducing neck strain and impingement risks.',
-    targetRegions: ['Upper Back', 'Shoulder', 'Middle Back'],
-    equipment: ['Mat'],
-    avoidIf: 'Shoulder pinching or impingement pain',
-    sets: '2',
-    reps: '12 / EACH SIDE',
-  },
-  'Side-Lying Shoulder External Rotation': {
-    benefits: 'Targets the infraspinatus and teres minor to stabilize the humeral head, balancing shoulder joint dynamics.',
-    targetRegions: ['Rotator Cuff', 'Shoulder'],
-    equipment: ['Resistance Band', 'Mat'],
-    avoidIf: 'Sharp pain in the front of the shoulder',
-    sets: '2',
-    reps: '10 / EACH SIDE',
-  },
-  'Suboccipital Release + Chin Nod': {
-    benefits: 'Relieves tension in suboccipital muscles at the base of skull, restoring cervical alignment and correcting forward head posture.',
-    targetRegions: ['Neck', 'Upper Back', 'Base of Skull'],
-    equipment: ['Massage Ball'],
-    avoidIf: 'Dizziness or numbness down the arms',
-    sets: '2',
-    reps: '10s HOLD',
-  },
-  'Serratus Wall Slide': {
-    benefits: 'Activates the serratus anterior to encourage healthy scapular upward rotation and ribcage alignment.',
-    targetRegions: ['Serratus Anterior', 'Shoulder', 'Ribs'],
-    equipment: ['Foam Roller', 'Wall'],
-    avoidIf: 'Inability to reach overhead without arching lower back',
-    sets: '2',
-    reps: '10 REPS',
-  },
-  'Side-Lying Low Trap Raise': {
-    benefits: 'Strengthens lower traps in a side-lying position, isolating shoulder blade stability under controlled gravity.',
-    targetRegions: ['Shoulder Blade', 'Lower Traps', 'Upper Back'],
-    equipment: ['Mat', 'Light Dumbbell'],
-    avoidIf: 'Neck tension or shoulder joint clicking',
-    sets: '2',
-    reps: '10 / EACH SIDE',
-  },
-  'Short Foot Activation Hold': {
-    benefits: 'Activates intrinsic foot muscles to lift the medial longitudinal arch, rebuilding natural foot stability and balance.',
-    targetRegions: ['Foot Arch', 'Ankle', 'Plantar Fascia'],
-    equipment: ['Mat'],
-    avoidIf: 'Foot cramping (relax and try again with less intensity)',
-    sets: '2',
-    reps: '5 x 10s HOLD',
-  },
-  'Standing Soleus Knee Bend Hold': {
-    benefits: 'Targets soleus muscle strength and tendon stiffness to increase ankle dorsiflexion mobility.',
-    targetRegions: ['Calf', 'Achilles Tendon', 'Ankle Joint'],
-    equipment: ['Strap Loop', 'Wall'],
-    avoidIf: 'Achilles tendon pain or pinches',
-    sets: '2',
-    reps: '30s HOLD',
-  },
-  'Single-Leg RNT Squat': {
-    benefits: 'Uses reactive neuromuscular training to correct knee valgus and build lateral ankle and hip control.',
-    targetRegions: ['Glute Medius', 'Ankle Stabilizers', 'Knee Joint'],
-    equipment: ['Resistance Band', 'Mat'],
-    avoidIf: 'Loss of balance or sharp knee patellar pain',
-    sets: '2',
-    reps: '10 / EACH SIDE',
-  },
-  'Full Body Foam Roll & Lacrosse Release': {
-    benefits: 'Uses a Foam Roller and Lacrosse Ball to release trigger points, restore soft-tissue quality, and increase systemic range of motion.',
-    targetRegions: ['Glutes', 'Calves', 'Upper Back', 'Foot Arch'],
-    equipment: ['Foam Roller', 'Lacrosse Ball'],
-    avoidIf: 'Severe muscle strain, bruising, or acute bone fractures.',
-    sets: '3',
-    reps: '60s HOLD',
-  },
-  'Banded Dumbbell Bench Press': {
-    benefits: 'Combines resistance band tension and dumbbells on a gym bench to load and stabilize the shoulders and chest through a controlled range.',
-    targetRegions: ['Chest', 'Shoulders', 'Triceps'],
-    equipment: ['Resistance Band', 'Dumbbell', 'Bench'],
-    avoidIf: 'Shoulder impingement or pain during horizontal pressing.',
-    sets: '3',
-    reps: '10 REPS',
-  },
-  'Yoga Block Squat Calibration': {
-    benefits: 'Utilizes a Yoga Block between the knees and a Mini Band around the thighs to optimize hip alignment and foot arch stability during squats.',
-    targetRegions: ['Glutes', 'Hips', 'Quads', 'Core'],
-    equipment: ['Yoga Mat', 'Yoga Block', 'Mini Band'],
-    avoidIf: 'Sharp knee patellar pain or back stiffness.',
-    sets: '3',
-    reps: '12 REPS',
-  },
-};
-
-const DEFAULT_DETAILS = {
-  benefits: 'Gently restores mobility and movement capability with the targeted area blocked from compensation. Improves neural activation and reduces stiffness.',
-  targetRegions: ['Shoulder', 'Neck', 'Back'],
-  equipment: ['Mat'],
-  avoidIf: 'Sharp pain or severe discomfort',
-  sets: '2',
-  reps: '10 reps',
-};
 
 export default function PlanDetailsScreen() {
   const theme = useTheme();
@@ -183,24 +68,29 @@ export default function PlanDetailsScreen() {
       ),
     [id, session],
   );
-  const plan = sessionPlan
-    ? sessionPlanToResetPlan(
-        sessionPlan,
-        session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
-        session?.plans.length ?? 1,
-      )
-    : PLANS.find((r) => r.id === id) || PLANS[0];
+  const plan = useMemo(
+    () =>
+      sessionPlan
+        ? sessionPlanToResetPlan(
+            sessionPlan,
+            session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
+            session?.plans.length ?? 1,
+          )
+        : null,
+    [session, sessionPlan],
+  );
   const dynamicExercises = useMemo<SessionExercise[]>(() => {
     if (!sessionPlan) return [];
     return ['reset', 'control', 'integrate'].flatMap(
       (phase) => sessionPlan.phases[phase as keyof typeof sessionPlan.phases],
     );
   }, [sessionPlan]);
+  const hasPlanContent = Boolean(plan && dynamicExercises.length);
 
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [isDemoVideoStarted, setIsDemoVideoStarted] = useState(false);
-  const demoVideoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+  const demoVideoPlayer = useVideoPlayer(null);
 
   useEventListener(demoVideoPlayer, 'playToEnd', () => {
     demoVideoPlayer.pause();
@@ -215,17 +105,16 @@ export default function PlanDetailsScreen() {
   };
 
   const handlePlayDemo = async (videoUrl: string) => {
-    const localUri =
-      session && sessionPlan
-        ? await resolveOfflineVideoUri(session.id, sessionPlan, videoUrl)
-        : null;
-    demoVideoPlayer.replace(localUri ?? videoUrl);
+    if (!session || !sessionPlan) return;
+    const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, videoUrl);
+    await demoVideoPlayer.replaceAsync(localUri ?? videoUrl);
     demoVideoPlayer.currentTime = 0;
     demoVideoPlayer.play();
     setIsDemoVideoStarted(true);
   };
 
   const handleStartProtocol = () => {
+    if (!plan) return;
     demoVideoPlayer.pause();
     router.push({
       pathname: '/sessions/exercise-tracker',
@@ -253,6 +142,15 @@ export default function PlanDetailsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
+          {!hasPlanContent ? (
+            <View style={styles.stateCard}>
+              <Text style={styles.stateTitle}>Plan details unavailable</Text>
+              <Text style={styles.stateText}>
+                This screen only renders session-backed plan data. Reopen the session and try again.
+              </Text>
+            </View>
+          ) : (
+            <>
           {/* Plan Title */}
           <Text style={styles.planTitle}>{plan.title}</Text>
 
@@ -275,30 +173,24 @@ export default function PlanDetailsScreen() {
           {/* Phases List */}
           {plan.phases.map((phase, index) => {
             const isExpanded = expandedIndex === index;
+            const phaseNumber = getPhaseNumber(phase.phase) ?? index + 1;
             const dynamicExercise = dynamicExercises[index];
-            const details = dynamicExercise
-              ? {
-                  benefits:
-                    dynamicExercise.secondary_benefits ||
-                    dynamicExercise.primary_intent ||
-                    DEFAULT_DETAILS.benefits,
-                  targetRegions: sessionPlan ? [sessionPlan.target_area] : DEFAULT_DETAILS.targetRegions,
-                  equipment: dynamicExercise.equipment_needed.length
-                    ? dynamicExercise.equipment_needed
-                    : DEFAULT_DETAILS.equipment,
-                  avoidIf: DEFAULT_DETAILS.avoidIf,
-                  sets: String(dynamicExercise.sets),
-                  reps: dynamicExercise.reps,
-                }
-              : EXERCISE_DETAILS[phase.name] || DEFAULT_DETAILS;
+            const details = {
+              benefits: dynamicExercise?.secondary_benefits || dynamicExercise?.primary_intent || null,
+              targetRegions: sessionPlan?.target_area ? [sessionPlan.target_area] : [],
+              equipment: dynamicExercise?.equipment_needed ?? [],
+              avoidIf: null,
+              sets: dynamicExercise ? String(dynamicExercise.sets) : 'N/A',
+              reps: dynamicExercise?.reps ?? 'N/A',
+            };
             const thumbnailUrl =
               dynamicExercise?.tutorial_video?.thumbnail_url ||
               dynamicExercise?.short_clip_video?.thumbnail_url ||
-              DEMO_VIDEO_THUMBNAIL_URL;
+              null;
             const videoUrl =
               dynamicExercise?.tutorial_video?.video_url ||
               dynamicExercise?.short_clip_video?.video_url ||
-              ISLAMIC_DEMO_VIDEO_URL;
+              null;
 
             return (
               <View key={index} style={styles.phaseCard}>
@@ -307,7 +199,7 @@ export default function PlanDetailsScreen() {
                   <View style={styles.badgeWrapper}>
                     <View style={styles.phaseBadge}>
                       <Text style={styles.phaseBadgeText}>
-                        PHASE {index + 1} - {phase.phase}
+                        PHASE {phaseNumber} - {phase.phase}
                       </Text>
                     </View>
                   </View>
@@ -321,7 +213,7 @@ export default function PlanDetailsScreen() {
                   <View style={styles.expandedContent}>
                     {/* Video Player */}
                     <View style={styles.videoPlayer}>
-                      {isDemoVideoStarted ? (
+                      {isDemoVideoStarted && videoUrl ? (
                         <VideoView
                           player={demoVideoPlayer}
                           contentFit="cover"
@@ -329,7 +221,7 @@ export default function PlanDetailsScreen() {
                           fullscreenOptions={{ enable: true }}
                           style={styles.video}
                         />
-                      ) : (
+                      ) : videoUrl && thumbnailUrl ? (
                         <TouchableOpacity
                           style={styles.videoThumbnailButton}
                           activeOpacity={0.9}
@@ -350,31 +242,33 @@ export default function PlanDetailsScreen() {
                             </View>
                           </View>
                         </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.videoUnavailableText}>Video unavailable</Text>
                       )}
                     </View>
 
                     {/* Benefits */}
                     <Text style={styles.sectionHeader}>BENEFITS</Text>
-                    <Text style={styles.sectionBody}>{details.benefits}</Text>
+                    <Text style={styles.sectionBody}>{details.benefits ?? 'Not provided'}</Text>
 
                     {/* Target Regions */}
                     <Text style={styles.sectionHeader}>TARGET REGIONS</Text>
                     <View style={styles.badgeRow}>
-                      {details.targetRegions.map((region, rIdx) => (
+                      {details.targetRegions.length ? details.targetRegions.map((region, rIdx) => (
                         <View key={rIdx} style={styles.regionBadge}>
                           <Text style={styles.regionBadgeText}>{region}</Text>
                         </View>
-                      ))}
+                      )) : <Text style={styles.emptyFieldText}>Not provided</Text>}
                     </View>
 
                     {/* Equipment */}
                     <Text style={styles.sectionHeader}>EQUIPMENT</Text>
                     <View style={styles.badgeRow}>
-                      {details.equipment.map((eq, eIdx) => (
+                      {details.equipment.length ? details.equipment.map((eq, eIdx) => (
                         <View key={eIdx} style={styles.regionBadge}>
                           <Text style={styles.regionBadgeText}>{eq}</Text>
                         </View>
-                      ))}
+                      )) : <Text style={styles.emptyFieldText}>Not provided</Text>}
                     </View>
 
                     {/* Avoid If warning */}
@@ -383,7 +277,7 @@ export default function PlanDetailsScreen() {
                         <Feather name="alert-triangle" size={13} color={theme.error} style={{ marginRight: 6 }} />
                         <Text style={styles.avoidIfTitle}>AVOID IF</Text>
                       </View>
-                      <Text style={styles.avoidIfText}>{details.avoidIf}</Text>
+                      <Text style={styles.avoidIfText}>{details.avoidIf ?? 'Not provided'}</Text>
                     </View>
                   </View>
                 )}
@@ -397,7 +291,7 @@ export default function PlanDetailsScreen() {
                   </View>
                   <View style={styles.gridBox}>
                     <Feather name="repeat" size={14} color={theme.secondary} style={styles.gridIcon} />
-                    <Text style={styles.gridVal}>{details.reps.split(' ')[0]}</Text>
+                    <Text style={styles.gridVal}>{details.reps.split(' ')[0] || 'N/A'}</Text>
                     <Text style={styles.gridLabel}>
                       {details.reps.includes('/') ? 'REPS / EACH SIDE' : 'REPS'}
                     </Text>
@@ -417,14 +311,17 @@ export default function PlanDetailsScreen() {
               </View>
             );
           })}
+            </>
+          )}
         </ScrollView>
 
         {/* Start Plan Fixed Footer Button */}
         <View style={styles.footer}>
           <TouchableOpacity
-            style={styles.startProtocolBtn}
+            style={[styles.startProtocolBtn, !hasPlanContent && styles.startProtocolBtnDisabled]}
             activeOpacity={0.8}
             onPress={handleStartProtocol}
+            disabled={!hasPlanContent}
           >
             <Text style={styles.startProtocolText}>Start Plan</Text>
           </TouchableOpacity>
@@ -446,6 +343,28 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
     scrollContent: {
       paddingHorizontal: 24,
       paddingBottom: 100, // Leave space for floating footer button
+    },
+    stateCard: {
+      backgroundColor: theme.cardBackground,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 20,
+      padding: 24,
+      marginTop: 16,
+      alignItems: 'center',
+      gap: 12,
+    },
+    stateTitle: {
+      color: theme.text,
+      fontSize: 18,
+      fontWeight: '800',
+    },
+    stateText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+      textAlign: 'center',
+      lineHeight: 20,
     },
     planTitle: {
       fontSize: 28,
@@ -555,6 +474,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       width: '100%',
       height: '100%',
     },
+    videoUnavailableText: {
+      color: theme.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
     videoOverlay: {
       ...StyleSheet.absoluteFillObject,
       backgroundColor: 'rgba(0, 0, 0, 0.25)',
@@ -600,6 +524,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       flexWrap: 'wrap',
       gap: 8,
       marginBottom: 20,
+    },
+    emptyFieldText: {
+      fontSize: 12,
+      fontWeight: '600',
+      color: theme.textSecondary,
     },
     regionBadge: {
       backgroundColor: theme.backgroundElement,
@@ -705,6 +634,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 5,
+    },
+    startProtocolBtnDisabled: {
+      backgroundColor: theme.inputBackground,
+      shadowColor: 'transparent',
+      elevation: 0,
     },
     startProtocolText: {
       color: '#FFFFFF',
