@@ -72,7 +72,6 @@ async function request(path, options = {}) {
       method,
       online: navigator.onLine,
       requestBody,
-      likelyCause,
       errorName: networkError.name,
       errorMessage: networkError.message,
       error: networkError,
