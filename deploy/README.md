@@ -84,7 +84,7 @@ Recommended location:
 ```bash
 sudo mkdir -p /opt/bodyaxis
 sudo chown -R ubuntu:ubuntu /opt/bodyaxis
-git clone YOUR_REPO_URL /opt/bodyaxis
+git clone https://github.com/mohammad-al-asad/Body-Axis.git /opt/bodyaxis
 cd /opt/bodyaxis
 ```
 
