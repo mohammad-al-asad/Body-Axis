@@ -272,3 +272,74 @@ Stop everything:
 ```bash
 docker compose --env-file deploy/compose.env -f docker-compose.prod.yml down
 ```
+
+## 14. GitHub Actions CI/CD
+
+This repository now includes a workflow at `.github/workflows/ec2-deploy.yml`.
+
+What it does:
+
+- On pull requests to `main`, it runs API CI and dashboard CI
+- On pushes to `main`, it runs the same CI checks and then deploys to EC2 over SSH
+- It reuses the existing Docker Compose deployment on the server
+
+### Create A GitHub Environment
+
+In GitHub, create an environment named `production`.
+
+Recommended protections:
+
+- Restrict deployments to the `main` branch
+- Require manual approval if you want a release gate before production deploys
+
+### Add These GitHub Secrets
+
+Prefer adding these as `production` environment secrets instead of plain repository secrets:
+
+```txt
+EC2_HOST=your_server_public_ip_or_dns
+EC2_PORT=22
+EC2_USER=ubuntu
+EC2_APP_PATH=/opt/bodyaxis
+EC2_SSH_KEY=the_full_private_key_contents
+```
+
+`EC2_SSH_KEY` should be the private key that matches the public key in `~/.ssh/authorized_keys` for the EC2 user.
+
+### Server Prerequisites For CI/CD
+
+Before the workflow can deploy successfully, the EC2 instance still needs the one-time setup from earlier sections:
+
+- Docker and Docker Compose plugin installed
+- Nginx and Certbot installed
+- Repository cloned into `/opt/bodyaxis`
+- `deploy/compose.env` created
+- `deploy/api.env` created
+
+The deploy job runs this script on the server:
+
+```bash
+./deploy/scripts/deploy-ec2.sh
+```
+
+That script:
+
+- Pulls the latest code
+- Rebuilds the API and dashboard containers
+- Restarts them with Docker Compose
+- Verifies `http://127.0.0.1:8000/health`
+- Verifies `http://127.0.0.1:8080/`
+
+### First-Time SSH Setup Check
+
+From your own machine, confirm the GitHub Actions user/key can reach the server by testing the same key manually:
+
+```bash
+ssh -i ~/.ssh/your-key.pem ubuntu@EC2_ELASTIC_IP
+```
+
+### Triggering Deploys
+
+Deploy happens automatically when a commit touching the API, dashboard, deploy config, or production workflow is pushed to `main`.
+
+You can also run the workflow manually from the GitHub Actions tab with `workflow_dispatch`.
