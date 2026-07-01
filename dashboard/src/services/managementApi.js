@@ -67,13 +67,6 @@ async function request(path, options = {}) {
   try {
     response = await fetch(url, { ...options, headers });
   } catch (networkError) {
-    const exceedsVercelLimit =
-      requestBody.type === "multipart/form-data" &&
-      requestBody.totalFileBytes > 4.5 * 1024 * 1024;
-    const likelyCause = exceedsVercelLimit
-      ? "The multipart upload is larger than Vercel Functions' 4.5 MB request limit."
-      : "No HTTP response was received. Check connectivity, CORS, DNS, and the API deployment.";
-
     console.error("[Management API] Network request failed", {
       url,
       method,
@@ -86,7 +79,7 @@ async function request(path, options = {}) {
     });
 
     throw new Error(
-      `Network request failed: ${likelyCause} See the browser console for full diagnostics.`,
+      `Network request failed: See the browser console for full diagnostics.`,
       { cause: networkError },
     );
   }

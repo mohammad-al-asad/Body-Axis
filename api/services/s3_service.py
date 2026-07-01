@@ -20,14 +20,20 @@ def _client():
             detail="S3_BUCKET_NAME is not configured",
         )
 
-    return boto3.client(
-        "s3",
-        region_name=settings.aws_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token,
-        endpoint_url=settings.s3_endpoint_url,
-    )
+    client_kwargs = {
+        "region_name": settings.aws_region,
+        "endpoint_url": settings.s3_endpoint_url,
+    }
+
+    # Let boto3 fall back to the default credential chain so EC2 instance
+    # roles work automatically when static keys are not provided.
+    if settings.aws_access_key_id and settings.aws_secret_access_key:
+        client_kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        client_kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        if settings.aws_session_token:
+            client_kwargs["aws_session_token"] = settings.aws_session_token
+
+    return boto3.client("s3", **client_kwargs)
 
 
 def _public_url(key: str) -> str:
