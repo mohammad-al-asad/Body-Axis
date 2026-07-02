@@ -132,6 +132,19 @@ If MongoDB Atlas is used, add the EC2 Elastic IP to Atlas Network Access.
 
 If S3 uploads are used, prefer assigning an IAM role to the EC2 instance. If you use explicit AWS keys instead, add them to `deploy/api.env`.
 
+If video uploads use browser-to-S3 multipart upload, configure bucket CORS too. A minimal example:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["PUT", "GET", "HEAD"],
+    "AllowedOrigins": ["https://admin.jointhebodyinstitute.com"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
+```
+
 Lock down the env files:
 
 ```bash
