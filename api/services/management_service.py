@@ -17,7 +17,11 @@ from schemas.management import (
     PlanResponse,
     PlanUpdate,
 )
-from services.s3_service import delete_file, upload_file
+from services.s3_service import (
+    complete_multipart_upload,
+    delete_file,
+    upload_file,
+)
 
 
 async def ensure_management_indexes() -> None:
@@ -160,7 +164,12 @@ async def create_video(
     video_name: str,
     video_description: str,
     thumbnail: UploadFile,
-    video_file: UploadFile,
+    video_file: UploadFile | None = None,
+    video_upload_key: str | None = None,
+    video_upload_id: str | None = None,
+    video_upload_parts: list[dict[str, Any]] | None = None,
+    video_file_name: str | None = None,
+    video_file_size: int | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     thumbnail_url, thumbnail_key = await run_in_threadpool(
@@ -171,13 +180,30 @@ async def create_video(
         "thumbnails",
     )
     try:
-        video_url, video_key = await run_in_threadpool(
-            upload_file,
-            video_file.file,
-            video_file.filename,
-            video_file.content_type,
-            "videos",
-        )
+        if video_file is not None:
+            video_url, video_key = await run_in_threadpool(
+                upload_file,
+                video_file.file,
+                video_file.filename,
+                video_file.content_type,
+                "videos",
+            )
+            resolved_video_name = video_file.filename
+            resolved_video_size = video_file.size
+        elif video_upload_key and video_upload_id and video_upload_parts:
+            video_url, video_key = await run_in_threadpool(
+                complete_multipart_upload,
+                video_upload_key,
+                video_upload_id,
+                video_upload_parts,
+            )
+            resolved_video_name = video_file_name
+            resolved_video_size = video_file_size
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="A completed video upload is required",
+            )
     except HTTPException:
         await run_in_threadpool(delete_file, thumbnail_key)
         raise
@@ -190,8 +216,8 @@ async def create_video(
         "thumbnail_key": thumbnail_key,
         "video_url": video_url,
         "video_key": video_key,
-        "video_file_name": video_file.filename,
-        "video_file_size": video_file.size,
+        "video_file_name": resolved_video_name,
+        "video_file_size": resolved_video_size,
         "created_at": now,
         "updated_at": now,
     }
@@ -212,6 +238,11 @@ async def update_video(
     video_description: str,
     thumbnail: UploadFile | None,
     video_file: UploadFile | None,
+    video_upload_key: str | None = None,
+    video_upload_id: str | None = None,
+    video_upload_parts: list[dict[str, Any]] | None = None,
+    video_file_name: str | None = None,
+    video_file_size: int | None = None,
 ) -> dict[str, Any]:
     object_id = _object_id(video_id, "Video")
     existing = await db.videos.find_one({"_id": object_id})
@@ -276,6 +307,23 @@ async def update_video(
                     "video_key": key,
                     "video_file_name": video_file.filename,
                     "video_file_size": video_file.size,
+                }
+            )
+            old_keys.append(existing.get("video_key"))
+            new_keys.append(key)
+        elif video_upload_key and video_upload_id and video_upload_parts:
+            url, key = await run_in_threadpool(
+                complete_multipart_upload,
+                video_upload_key,
+                video_upload_id,
+                video_upload_parts,
+            )
+            changes.update(
+                {
+                    "video_url": url,
+                    "video_key": key,
+                    "video_file_name": video_file_name,
+                    "video_file_size": video_file_size,
                 }
             )
             old_keys.append(existing.get("video_key"))

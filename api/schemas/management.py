@@ -69,6 +69,35 @@ class VideoListResponse(BaseModel):
     total: int
 
 
+class VideoMultipartInitiateRequest(BaseModel):
+    file_name: str = Field(min_length=1, max_length=255)
+    content_type: str = Field(min_length=1, max_length=255)
+    file_size: int = Field(gt=0)
+
+
+class VideoMultipartPart(BaseModel):
+    part_number: int = Field(ge=1)
+    url: str
+
+
+class VideoMultipartInitiateResponse(BaseModel):
+    upload_id: str
+    key: str
+    public_url: str
+    part_size: int = Field(gt=0)
+    parts: list[VideoMultipartPart]
+
+
+class VideoMultipartCompletedPart(BaseModel):
+    part_number: int = Field(ge=1)
+    etag: str = Field(min_length=1)
+
+
+class VideoMultipartAbortRequest(BaseModel):
+    upload_id: str = Field(min_length=1)
+    key: str = Field(min_length=1)
+
+
 class ExerciseBase(BaseModel):
     exercise_id: str = Field(min_length=1, max_length=80)
     exercise_name: str = Field(min_length=1, max_length=160)

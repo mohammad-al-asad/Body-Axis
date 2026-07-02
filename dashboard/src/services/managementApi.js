@@ -137,6 +137,16 @@ async function request(path, options = {}) {
 }
 
 export const managementApi = {
+  initiateVideoMultipartUpload: (payload) =>
+    request("/videos/uploads/multipart/initiate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  abortVideoMultipartUpload: (payload) =>
+    request("/videos/uploads/multipart/abort", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   listVideos: (search = "") =>
     request(`/videos?limit=200&search=${encodeURIComponent(search)}`),
   getVideo: (id) => request(`/videos/${encodeURIComponent(id)}`),
