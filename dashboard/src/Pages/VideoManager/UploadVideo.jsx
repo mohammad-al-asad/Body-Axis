@@ -47,6 +47,8 @@ const FileDrop = ({ accept, file, existingUrl, icon: Icon, label, onSelect }) =>
       </div>
       <div className="text-sm font-bold">{name || label}</div>
       <div className="mt-2 text-xs text-[#64748B]">
+
+
         {name ? "Click or drop to replace" : "Click or drag and drop"}
       </div>
     </button>
@@ -72,6 +74,19 @@ const UploadVideo = () => {
   const [submitting, setSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState("");
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState(null);
+
+  useEffect(() => {
+    if (!videoFile) {
+      setVideoPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(videoFile);
+    setVideoPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [videoFile]);
 
   useEffect(() => {
     if (!existing) return;
@@ -214,7 +229,6 @@ const UploadVideo = () => {
             </div>
           </div>
         )}
-
         <div className="grid gap-6 xl:grid-cols-12">
           <div className="grid gap-6 md:grid-cols-2 xl:col-span-8">
             <div className="rounded-2xl border border-[#1E293B] bg-[#131B2F] p-6">
@@ -249,7 +263,7 @@ const UploadVideo = () => {
                 {videoFile ? (
                   <video
                     controls
-                    src={URL.createObjectURL(videoFile)}
+                    src={videoPreviewUrl}
                     className="aspect-video w-full rounded-xl bg-black object-contain"
                   />
                 ) : existing?.video_url ? (
