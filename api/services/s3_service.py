@@ -1,4 +1,5 @@
 import logging
+import math
 from pathlib import Path
 from typing import BinaryIO
 from urllib.parse import quote
@@ -11,6 +12,8 @@ from fastapi import HTTPException, status
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+MULTIPART_PART_SIZE = 16 * 1024 * 1024
+MULTIPART_URL_EXPIRATION_SECONDS = 60 * 60
 
 
 def _client():
@@ -83,6 +86,132 @@ def upload_file(
         ) from exc
 
     return _public_url(key), key
+
+
+def create_multipart_upload(
+    original_name: str,
+    content_type: str,
+    file_size: int,
+    folder: str,
+) -> dict[str, object]:
+    if file_size <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File size must be greater than 0",
+        )
+
+    suffix = Path(original_name).suffix.lower()
+    key = f"exercise-videos/{folder}/{uuid4().hex}{suffix}"
+    client = _client()
+
+    try:
+        response = client.create_multipart_upload(
+            Bucket=settings.s3_bucket_name,
+            Key=key,
+            ContentType=content_type or "application/octet-stream",
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.exception(
+            "S3 multipart create failed: bucket=%s key=%s content_type=%s",
+            settings.s3_bucket_name,
+            key,
+            content_type,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to initialize multipart upload",
+        ) from exc
+
+    upload_id = response["UploadId"]
+    total_parts = math.ceil(file_size / MULTIPART_PART_SIZE)
+    if total_parts > 10_000:
+        abort_multipart_upload(key, upload_id)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="File is too large for multipart upload",
+        )
+
+    parts = [
+        {
+            "part_number": part_number,
+            "url": client.generate_presigned_url(
+                "upload_part",
+                Params={
+                    "Bucket": settings.s3_bucket_name,
+                    "Key": key,
+                    "UploadId": upload_id,
+                    "PartNumber": part_number,
+                },
+                ExpiresIn=MULTIPART_URL_EXPIRATION_SECONDS,
+            ),
+        }
+        for part_number in range(1, total_parts + 1)
+    ]
+
+    return {
+        "upload_id": upload_id,
+        "key": key,
+        "public_url": _public_url(key),
+        "part_size": MULTIPART_PART_SIZE,
+        "parts": parts,
+    }
+
+
+def complete_multipart_upload(
+    key: str,
+    upload_id: str,
+    parts: list[dict[str, object]],
+) -> tuple[str, str]:
+    if not parts:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Multipart upload parts are required",
+        )
+
+    completed_parts = [
+        {"ETag": str(part["etag"]), "PartNumber": int(part["part_number"])}
+        for part in sorted(parts, key=lambda item: int(item["part_number"]))
+    ]
+
+    try:
+        _client().complete_multipart_upload(
+            Bucket=settings.s3_bucket_name,
+            Key=key,
+            UploadId=upload_id,
+            MultipartUpload={"Parts": completed_parts},
+        )
+    except (BotoCoreError, ClientError) as exc:
+        logger.exception(
+            "S3 multipart complete failed: bucket=%s key=%s upload_id=%s",
+            settings.s3_bucket_name,
+            key,
+            upload_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Unable to finalize multipart upload",
+        ) from exc
+
+    return _public_url(key), key
+
+
+def abort_multipart_upload(key: str, upload_id: str) -> None:
+    if not key or not upload_id or not settings.s3_bucket_name:
+        return
+    try:
+        _client().abort_multipart_upload(
+            Bucket=settings.s3_bucket_name,
+            Key=key,
+            UploadId=upload_id,
+        )
+    except (BotoCoreError, ClientError):
+        logger.exception(
+            "S3 multipart abort failed: bucket=%s key=%s upload_id=%s",
+            settings.s3_bucket_name,
+            key,
+            upload_id,
+        )
+        return
 
 
 def delete_file(key: str | None) -> None:

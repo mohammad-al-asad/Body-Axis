@@ -8,6 +8,14 @@ import {
   Save,
 } from "lucide-react";
 import { VideoContext } from "../../context/VideoContext";
+import { uploadVideoMultipart } from "../../services/videoUpload";
+
+const formatBytes = (bytes) => {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
+  return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+};
 
 const FileDrop = ({ accept, file, existingUrl, icon: Icon, label, onSelect }) => {
   const inputRef = useRef(null);
@@ -62,6 +70,7 @@ const UploadVideo = () => {
   const [thumbnail, setThumbnail] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -86,10 +95,37 @@ const UploadVideo = () => {
     body.append("video_name", form.videoName.trim());
     body.append("video_description", form.videoDescription.trim());
     if (thumbnail) body.append("thumbnail", thumbnail);
-    if (videoFile) body.append("video_file", videoFile);
 
     setSubmitting(true);
     try {
+      if (videoFile) {
+        setUploadProgress({
+          stage: "uploading",
+          uploadedBytes: 0,
+          totalBytes: videoFile.size,
+          percent: 0,
+        });
+        const uploadFields = await uploadVideoMultipart(videoFile, {
+          onProgress: ({ uploadedBytes, totalBytes, percent }) => {
+            setUploadProgress({
+              stage: "uploading",
+              uploadedBytes,
+              totalBytes,
+              percent,
+            });
+          },
+        });
+        Object.entries(uploadFields).forEach(([key, value]) => {
+          body.append(key, value);
+        });
+        setUploadProgress({
+          stage: "finalizing",
+          uploadedBytes: videoFile.size,
+          totalBytes: videoFile.size,
+          percent: 100,
+        });
+      }
+
       if (editing) await updateVideo(videoId, body);
       else await createVideo(body);
       navigate("/video-manager");
@@ -118,6 +154,7 @@ const UploadVideo = () => {
       setError(requestError.message);
     } finally {
       setSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -137,7 +174,8 @@ const UploadVideo = () => {
               {editing ? "Edit Video Asset" : "Upload Video Asset"}
             </h1>
             <p className="mt-1 text-[13px] text-[#94A3B8]">
-              Video files and thumbnails are uploaded directly to AWS S3.
+              Video files upload directly from the browser to S3 in multipart
+              chunks, then the dashboard saves the finished asset metadata.
             </p>
           </div>
           <button
@@ -152,6 +190,28 @@ const UploadVideo = () => {
         {error && (
           <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             {error}
+          </div>
+        )}
+
+        {uploadProgress && (
+          <div className="mb-5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-[#BFDBFE]">
+            <div className="flex items-center justify-between gap-4">
+              <span>
+                {uploadProgress.stage === "finalizing"
+                  ? "Finalizing uploaded video…"
+                  : `Uploading video to S3: ${uploadProgress.percent}%`}
+              </span>
+              <span>
+                {formatBytes(uploadProgress.uploadedBytes)} /{" "}
+                {formatBytes(uploadProgress.totalBytes)}
+              </span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#0A0D14]">
+              <div
+                className="h-full rounded-full bg-[#38BDF8] transition-all"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
           </div>
         )}
 
