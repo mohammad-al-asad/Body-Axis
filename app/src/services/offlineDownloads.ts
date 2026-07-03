@@ -27,10 +27,10 @@ export async function saveOfflineSession(payload: SaveOfflineSessionRequest) {
   const existingMetadata = existing ? parseMetadata(existing.metadataJson) : null;
   const nextMetadata = mergeOfflineMetadata(existingMetadata, payload.metadata);
 
-  return DownloaderModule.saveSessionAsync({
+  return DownloaderModule.saveSessionAsync(toNativeSafeOfflineRequest({
     ...payload,
     metadata: nextMetadata,
-  });
+  }));
 }
 
 export function getOfflineDownloads(sessionId?: string) {
@@ -87,7 +87,7 @@ export async function removeOfflinePlan(sessionId: string, plan: SessionPlan) {
     return removeOfflineSession(sessionId);
   }
 
-  await DownloaderModule.saveSessionAsync({
+  await DownloaderModule.saveSessionAsync(toNativeSafeOfflineRequest({
     sessionId,
     title: record.title ?? undefined,
     metadata: {
@@ -95,7 +95,7 @@ export async function removeOfflinePlan(sessionId: string, plan: SessionPlan) {
       savedPlanIds,
     },
     assets: [],
-  });
+  }));
 
   return true;
 }
@@ -230,13 +230,14 @@ function offlineSessionRecordToMovementSession(record: OfflineSessionRecord): Mo
       : [];
 
   if (plans.length === 0) return null;
+  const exerciseCount = plans.reduce((count, plan) => count + countPlanExercises(plan), 0);
 
   if (fullSession) {
     return {
       ...fullSession,
       plans,
       plan_count: plans.length,
-      exercise_count: plans.reduce((count, plan) => count + countPlanExercises(plan), 0),
+      exercise_count: exerciseCount,
       status: fullSession.status || 'offline',
     };
   }
@@ -268,8 +269,11 @@ function offlineSessionRecordToMovementSession(record: OfflineSessionRecord): Mo
       typeof session?.session_duration === 'number' ? session.session_duration : null,
     plans,
     plan_count: plans.length,
-    exercise_count: plans.reduce((count, plan) => count + countPlanExercises(plan), 0),
-    status: record.status || 'offline',
+    exercise_count: exerciseCount,
+    status: 'active',
+    progress_percent: 0,
+    completed_exercise_count: 0,
+    total_exercise_count: exerciseCount,
     created_at: new Date(record.createdAt).toISOString(),
     updated_at: new Date(record.updatedAt).toISOString(),
   };
@@ -307,6 +311,37 @@ function stableHash(value: string) {
     hash = (hash * 33) ^ value.charCodeAt(index);
   }
   return Math.abs(hash >>> 0).toString(36);
+}
+
+function toNativeSafeOfflineRequest(payload: SaveOfflineSessionRequest): SaveOfflineSessionRequest {
+  return sanitizeForNative(payload) as SaveOfflineSessionRequest;
+}
+
+function sanitizeForNative(value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeForNative(item))
+      .filter((item) => item !== undefined);
+  }
+
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>).reduce<Record<string, unknown>>(
+      (result, [key, item]) => {
+        const sanitized = sanitizeForNative(item);
+        if (sanitized !== undefined) {
+          result[key] = sanitized;
+        }
+        return result;
+      },
+      {},
+    );
+  }
+
+  return value;
 }
 
 export type { DownloadEventPayload, OfflineDownload };

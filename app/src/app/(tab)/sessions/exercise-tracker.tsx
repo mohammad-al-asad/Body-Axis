@@ -464,7 +464,7 @@ export default function ExerciseTrackerScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Header onBackPress={() => { videoPlayer.pause(); router.back(); }} showNotification />
+        <Header showNotification />
 
         {/* Learn the Exercise Modal */}
         <Modal
@@ -565,12 +565,20 @@ export default function ExerciseTrackerScreen() {
             <>
 
           <View style={styles.progressHeaderRow}>
-            <View>
-              <Text style={styles.progressStatusText}>PLAN IN PROGRESS</Text>
-              <Text style={styles.progressSubText}>
-                EXERCISE {currentIdx + 1} OF {phaseList.length}
-              </Text>
-            </View>
+            <TouchableOpacity
+              style={styles.backContainer}
+              onPress={() => {
+                videoPlayer.pause();
+                router.back();
+              }}
+              activeOpacity={0.7}
+            >
+              <Feather name="arrow-left" size={16} color={theme.tertiary} style={styles.backIcon} />
+              <Text style={styles.backText}>Go Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.progressSubText}>
+              EXERCISE {currentIdx + 1} OF {phaseList.length}
+            </Text>
           </View>
 
           <View style={styles.exerciseMetaSection}>
@@ -938,13 +946,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
     },
     progressHeaderRow: {
       marginBottom: 16,
-    },
-    progressStatusText: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.secondary,
-      letterSpacing: 1.2,
-      marginBottom: 4,
     },
     progressSubText: {
       fontSize: 12,
