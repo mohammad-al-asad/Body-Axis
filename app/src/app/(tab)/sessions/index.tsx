@@ -10,9 +10,21 @@ import { SessionCard } from '@/components/SessionCard';
 import { MovementSession, useGetSessionsQuery } from '@/redux/api/sessionApi';
 import { getSavedOfflineSessions } from '@/services/offlineDownloads';
 
+const getCompletedPlanCount = (session: MovementSession) =>
+  session.plans.filter(
+    (plan) =>
+      plan.progress_status === 'completed' ||
+      (plan.total_exercise_count > 0 &&
+        plan.completed_exercise_count >= plan.total_exercise_count),
+  ).length;
+
 const formatSessionCard = (session: MovementSession, index: number) => {
   const planCount = session.plan_count;
   const exerciseCount = session.total_exercise_count || session.exercise_count;
+  const completedPlanCount = getCompletedPlanCount(session);
+  const planProgressPercent = planCount
+    ? Math.round((completedPlanCount / planCount) * 100)
+    : 0;
 
   return {
     id: session.id,
@@ -22,10 +34,10 @@ const formatSessionCard = (session: MovementSession, index: number) => {
     schedule: session.schedule_days
       ? `Repeat ${session.schedule_days}x`
       : `${exerciseCount} Exercises`,
-    progressPercent: session.progress_percent,
+    progressPercent: planProgressPercent,
     progressLabel:
-      exerciseCount > 0
-        ? `${session.completed_exercise_count} of ${exerciseCount} exercises`
+      planCount > 0
+        ? `${completedPlanCount} of ${planCount} plans`
         : 'No matching plans yet',
     isActive: session.status === 'active' && index === 0,
   };

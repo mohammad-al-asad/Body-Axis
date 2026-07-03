@@ -74,7 +74,6 @@ export default function PlanDetailsScreen() {
         ? sessionPlanToResetPlan(
             sessionPlan,
             session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
-            session?.plans.length ?? 1,
           )
         : null,
     [session, sessionPlan],
@@ -136,13 +135,22 @@ export default function PlanDetailsScreen() {
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         {/* Header */}
-        <Header onBackPress={handleBack} />
+        <Header />
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          {!hasPlanContent ? (
+          <TouchableOpacity
+            style={styles.backContainer}
+            onPress={handleBack}
+            activeOpacity={0.7}
+          >
+            <Feather name="arrow-left" size={16} color={theme.tertiary} style={styles.backIcon} />
+            <Text style={styles.backText}>Go Back</Text>
+          </TouchableOpacity>
+
+          {!plan || !hasPlanContent ? (
             <View style={styles.stateCard}>
               <Text style={styles.stateTitle}>Plan details unavailable</Text>
               <Text style={styles.stateText}>
@@ -151,8 +159,9 @@ export default function PlanDetailsScreen() {
             </View>
           ) : (
             <>
-          {/* Plan Title */}
-          <Text style={styles.planTitle}>{plan.title}</Text>
+          <View style={styles.titleContainer}>
+            <Text style={styles.mainTitle}>All Exercises for : {plan.title}</Text>
+          </View>
 
           {/* Plan Metadata Sub-row */}
           <View style={styles.metaRow}>
@@ -342,7 +351,34 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
     },
     scrollContent: {
       paddingHorizontal: 24,
+      paddingTop: 16,
       paddingBottom: 100, // Leave space for floating footer button
+    },
+    backContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 8,
+      marginBottom: 16,
+    },
+    backIcon: {
+      marginRight: 8,
+    },
+    backText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.tertiary,
+    },
+    titleContainer: {
+      alignItems: 'flex-start',
+      marginBottom: 24,
+    },
+    mainTitle: {
+      fontSize: 26,
+      fontWeight: '800',
+      color: theme.text,
+      textAlign: 'left',
+      marginBottom: 10,
+      letterSpacing: -0.5,
     },
     stateCard: {
       backgroundColor: theme.cardBackground,
@@ -365,14 +401,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       fontWeight: '600',
       textAlign: 'center',
       lineHeight: 20,
-    },
-    planTitle: {
-      fontSize: 28,
-      fontWeight: '800',
-      color: theme.text,
-      marginTop: 8,
-      marginBottom: 12,
-      letterSpacing: -0.6,
     },
     metaRow: {
       flexDirection: 'row',

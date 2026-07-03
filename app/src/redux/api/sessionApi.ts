@@ -64,6 +64,7 @@ export interface NextExercise {
   plan_name: string;
   exercise_id: string;
   exercise_name: string;
+  exercise_index?: number;
   phase: 'reset' | 'control' | 'integrate';
   tutorial_video?: SessionVideo | null;
   short_clip_video?: SessionVideo | null;
@@ -119,6 +120,7 @@ export interface ProgressSummary {
   sessions_completed_total: number;
   total_exercises_completed: number;
   active_session?: MovementSession | null;
+  next_exercise?: NextExercise | null;
   wins: ProgressAchievement[];
 }
 

@@ -15,7 +15,21 @@ import { router } from 'expo-router';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { SessionCard } from '@/components/SessionCard';
 import { RootState } from '@/redux/store';
-import { useGetProgressSummaryQuery, useGetSessionsQuery } from '@/redux/api/sessionApi';
+import {
+  MovementSession,
+  useGetProgressSummaryQuery,
+  useGetSessionsQuery,
+} from '@/redux/api/sessionApi';
+
+const getCompletedPlanCount = (session?: MovementSession | null) => {
+  if (!session) return 0;
+  return session.plans.filter(
+    (plan) =>
+      plan.progress_status === 'completed' ||
+      (plan.total_exercise_count > 0 &&
+        plan.completed_exercise_count >= plan.total_exercise_count),
+  ).length;
+};
 
 const currentWeekDates = () => {
   const now = new Date();
@@ -30,9 +44,29 @@ const currentWeekDates = () => {
     date.setDate(monday.getDate() + index);
     return {
       key: date.toLocaleDateString('en-CA'),
-      label: date.toLocaleDateString('en-US', { weekday: 'narrow' }),
+      label: date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
     };
   });
+};
+
+const clampWeeklyTarget = (value?: number | null) =>
+  Math.min(Math.max(value ?? 7, 1), 7);
+
+const getTargetWeekDates = (
+  weekDates: ReturnType<typeof currentWeekDates>,
+  completedDates: string[],
+  targetCount: number,
+) => {
+  const completedSet = new Set(completedDates);
+  const completedWeekDates = weekDates.filter((day) => completedSet.has(day.key));
+  const remainingWeekDates = weekDates.filter((day) => !completedSet.has(day.key));
+  const selectedKeys = new Set(
+    [...completedWeekDates, ...remainingWeekDates]
+      .slice(0, targetCount)
+      .map((day) => day.key),
+  );
+
+  return weekDates.filter((day) => selectedKeys.has(day.key));
 };
 
 export function HomeDashboard() {
@@ -45,23 +79,46 @@ export function HomeDashboard() {
 
   const activeSession = summary?.active_session ?? null;
   const focusAreas = activeSession?.target_areas ?? [];
-  const nextExercise = activeSession?.next_exercise ?? null;
+  const nextExercise = summary?.next_exercise ?? null;
   const weekDates = useMemo(currentWeekDates, []);
+  const weeklyTargetCount = clampWeeklyTarget(summary?.weekly_target_count);
+  const targetWeekDates = useMemo(
+    () =>
+      getTargetWeekDates(
+        weekDates,
+        summary?.completed_dates_this_week ?? [],
+        weeklyTargetCount,
+      ),
+    [summary?.completed_dates_this_week, weekDates, weeklyTargetCount],
+  );
+  const nextExerciseSession = useMemo(() => {
+    if (!nextExercise) return null;
+    if (activeSession?.id === nextExercise.session_id) return activeSession;
+    return sessionsData?.items.find((session) => session.id === nextExercise.session_id) ?? null;
+  }, [activeSession, nextExercise, sessionsData?.items]);
   const nextExerciseInitialIndex = useMemo(() => {
-    if (!activeSession?.next_exercise) return 0;
-    const plan = activeSession.plans.find(
-      (item) => item.plan_id === activeSession.next_exercise?.plan_id,
+    if (!nextExercise) return '0';
+    if (typeof nextExercise.exercise_index === 'number') {
+      return String(nextExercise.exercise_index);
+    }
+    if (!nextExerciseSession) return '0';
+    const plan = nextExerciseSession.plans.find(
+      (item) => item.plan_id === nextExercise.plan_id,
     );
-    if (!plan) return 0;
+    if (!plan) return '0';
     const exercises = ['reset', 'control', 'integrate'].flatMap(
       (phase) => plan.phases[phase as keyof typeof plan.phases],
     );
     const index = exercises.findIndex(
-      (exercise) => exercise.exercise_id === activeSession.next_exercise?.exercise_id,
+      (exercise) => exercise.exercise_id === nextExercise.exercise_id,
     );
     return index >= 0 ? String(index) : '0';
-  }, [activeSession]);
+  }, [nextExercise, nextExerciseSession]);
 
+  const completedPlanCount = activeSession ? getCompletedPlanCount(activeSession) : 0;
+  const planProgressPercent = activeSession?.plan_count
+    ? Math.round((completedPlanCount / activeSession.plan_count) * 100)
+    : 0;
   const currentSessionCard = activeSession
     ? {
         title: activeSession.session_name,
@@ -70,10 +127,10 @@ export function HomeDashboard() {
         schedule: activeSession.schedule_days
           ? `Repeat ${activeSession.schedule_days}x`
           : `${activeSession.total_exercise_count} Exercises`,
-        progressPercent: activeSession.progress_percent,
+        progressPercent: planProgressPercent,
         progressLabel:
-          activeSession.total_exercise_count > 0
-            ? `${activeSession.completed_exercise_count} of ${activeSession.total_exercise_count} exercises`
+          activeSession.plan_count > 0
+            ? `${completedPlanCount} of ${activeSession.plan_count} plans`
             : 'No progress yet',
         isActive: activeSession.status === 'active',
       }
@@ -126,14 +183,19 @@ export function HomeDashboard() {
         <View style={styles.halfCard}>
           <Text style={styles.statLabel}>WEEKLY PROGRESS</Text>
           <View style={styles.indicatorsContainer}>
-            {weekDates.map((day) => {
+            {targetWeekDates.map((day) => {
               const isCompleted = summary?.completed_dates_this_week.includes(day.key);
-              return isCompleted ? (
-                <View key={day.key} style={styles.indicatorCompleted}>
-                  <Feather name="check" size={10} color="#050B14" />
+              return (
+                <View key={day.key} style={styles.weeklyDayItem}>
+                  {isCompleted ? (
+                    <View style={styles.indicatorCompleted}>
+                      <Feather name="check" size={10} color="#050B14" />
+                    </View>
+                  ) : (
+                    <View style={styles.indicatorEmpty} />
+                  )}
+                  <Text style={styles.weeklyDayLabel}>{day.label}</Text>
                 </View>
-              ) : (
-                <View key={day.key} style={styles.indicatorEmpty} />
               );
             })}
           </View>
@@ -228,7 +290,16 @@ export function HomeDashboard() {
         </TouchableOpacity>
       ) : (
         <View style={styles.stateCardCompact}>
-          <Text style={styles.stateText}>No next exercise right now.</Text>
+          <Text style={styles.stateText}>
+            All sessions are finished. Create a new session to keep going.
+          </Text>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            activeOpacity={0.8}
+            onPress={() => router.push('/intake')}
+          >
+            <Text style={styles.primaryButtonText}>Create Session</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -308,6 +379,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       padding: 16,
       marginBottom: 24,
       alignItems: 'center',
+      gap: 10,
     },
     stateTitle: {
       fontSize: 18,
@@ -357,9 +429,15 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     },
     indicatorsContainer: {
       flexDirection: 'row',
-      gap: 6,
-      marginBottom: 12,
+      justifyContent: 'space-between',
+      gap: 8,
+      marginBottom: 10,
       flexWrap: 'wrap',
+    },
+    weeklyDayItem: {
+      alignItems: 'center',
+      gap: 5,
+      minWidth: 28,
     },
     indicatorCompleted: {
       width: 18,
@@ -375,6 +453,12 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       borderRadius: 9,
       borderWidth: 1.5,
       borderColor: theme.inputBorder,
+    },
+    weeklyDayLabel: {
+      fontSize: 9,
+      color: theme.textSecondary,
+      fontWeight: '800',
+      letterSpacing: 0.3,
     },
     statValue: {
       fontSize: 14,

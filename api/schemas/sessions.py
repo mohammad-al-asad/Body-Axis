@@ -78,6 +78,7 @@ class NextExerciseResponse(BaseModel):
     plan_name: str
     exercise_id: str
     exercise_name: str
+    exercise_index: int = 0
     phase: Phase
     tutorial_video: SessionVideoResponse | None = None
     short_clip_video: SessionVideoResponse | None = None
@@ -131,6 +132,7 @@ class ProgressSummaryResponse(BaseModel):
     sessions_completed_total: int
     total_exercises_completed: int
     active_session: MovementSessionResponse | None = None
+    next_exercise: NextExerciseResponse | None = None
     wins: list[ProgressAchievementResponse]
 
 
