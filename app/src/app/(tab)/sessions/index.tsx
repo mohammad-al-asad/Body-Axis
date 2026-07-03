@@ -12,20 +12,22 @@ import { getSavedOfflineSessions } from '@/services/offlineDownloads';
 
 const formatSessionCard = (session: MovementSession, index: number) => {
   const planCount = session.plan_count;
-  const exerciseCount = session.exercise_count;
-  const progressPercent = planCount > 0 ? Math.round((1 / planCount) * 100) : 0;
+  const exerciseCount = session.total_exercise_count || session.exercise_count;
 
   return {
     id: session.id,
     title: session.session_name,
-    label: index === 0 ? 'CURRENT MOVEMENT SESSION' : 'MOVEMENT SESSION',
+    label: session.status === 'active' && index === 0 ? 'CURRENT MOVEMENT SESSION' : 'MOVEMENT SESSION',
     phase: planCount === 1 ? '1 Plan' : `${planCount} Plans`,
     schedule: session.schedule_days
       ? `Repeat ${session.schedule_days}x`
       : `${exerciseCount} Exercises`,
-    progressPercent,
-    progressLabel: planCount ? `Plan 1 of ${planCount}` : 'No matching plans yet',
-    isActive: index === 0 && session.status === 'active',
+    progressPercent: session.progress_percent,
+    progressLabel:
+      exerciseCount > 0
+        ? `${session.completed_exercise_count} of ${exerciseCount} exercises`
+        : 'No matching plans yet',
+    isActive: session.status === 'active' && index === 0,
   };
 };
 
