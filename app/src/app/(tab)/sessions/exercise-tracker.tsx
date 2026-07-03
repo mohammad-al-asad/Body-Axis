@@ -85,7 +85,6 @@ export default function ExerciseTrackerScreen() {
         ? sessionPlanToResetPlan(
             sessionPlan,
             session?.plans.findIndex((item) => item.plan_id === sessionPlan.plan_id) ?? 0,
-            session?.plans.length ?? 1,
           )
         : null,
     [session, sessionPlan],

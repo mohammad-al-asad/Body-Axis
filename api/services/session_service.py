@@ -313,7 +313,7 @@ def _find_next_exercise(
             for phase_items in hydrated_plan.get("phases", {}).values()
             for exercise in phase_items
         }
-        for progress_exercise in plan_progress.get("exercises", []):
+        for exercise_index, progress_exercise in enumerate(plan_progress.get("exercises", [])):
             if progress_exercise.get("is_completed"):
                 continue
             hydrated_exercise = exercises_by_id.get(progress_exercise["exercise_id"])
@@ -326,6 +326,7 @@ def _find_next_exercise(
                 "plan_name": hydrated_plan["plan_name"],
                 "exercise_id": hydrated_exercise["exercise_id"],
                 "exercise_name": hydrated_exercise["exercise_name"],
+                "exercise_index": exercise_index,
                 "phase": hydrated_exercise["phase"],
                 "tutorial_video": hydrated_exercise.get("tutorial_video"),
                 "short_clip_video": hydrated_exercise.get("short_clip_video"),
@@ -748,6 +749,7 @@ async def get_user_progress_summary(
 
     sessions = await list_user_sessions(current_user)
     active_session = next((item for item in sessions.items if item.status != "completed"), None)
+    next_exercise = next((item.next_exercise for item in sessions.items if item.next_exercise), None)
 
     completed_dates = summary.get("completed_dates", [])
     week_dates = _week_dates_for(datetime.now(timezone.utc).date())
@@ -764,6 +766,7 @@ async def get_user_progress_summary(
         "sessions_completed_total": summary.get("sessions_completed_total", 0),
         "total_exercises_completed": summary.get("total_exercises_completed", 0),
         "active_session": active_session.model_dump() if active_session else None,
+        "next_exercise": next_exercise.model_dump() if next_exercise else None,
         "wins": _build_wins(summary),
     }
     return ProgressSummaryResponse(**summary_payload)

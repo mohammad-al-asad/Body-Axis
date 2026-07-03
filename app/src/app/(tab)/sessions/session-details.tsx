@@ -42,7 +42,6 @@ const EQUIPMENT_ICONS: Record<string, RoutineEquipment['icon']> = {
 export const sessionPlanToResetPlan = (
   plan: SessionPlan,
   index = 0,
-  total = 1,
 ): ResetPlan => {
   const phases: RoutinePhase[] = phaseOrder.flatMap((phase) =>
     plan.phases[phase].map((exercise) => ({
@@ -50,14 +49,25 @@ export const sessionPlanToResetPlan = (
       name: exercise.exercise_name,
     })),
   );
+  const totalExercises = plan.total_exercise_count || phases.length;
+  const completedFromExercises = phaseOrder.reduce(
+    (count, phase) =>
+      count + plan.phases[phase].filter((exercise) => exercise.is_completed).length,
+    0,
+  );
+  const completedExercises = plan.completed_exercise_count ?? completedFromExercises;
 
   return {
     id: plan.plan_id,
     title: plan.plan_name,
     duration: plan.duration,
     isActive: index === 0,
-    progressPercent: total ? Math.round(((index + 1) / total) * 100) : 0,
-    progressLabel: total ? `Plan ${index + 1} of ${total}` : 'Plan 1 of 1',
+    progressPercent: totalExercises
+      ? Math.round((completedExercises / totalExercises) * 100)
+      : 0,
+    progressLabel: totalExercises
+      ? `${completedExercises} of ${totalExercises} exercises`
+      : 'No exercises yet',
     equipment: plan.equipment_needed.map((name) => ({
       name,
       icon: EQUIPMENT_ICONS[name] ?? 'box',
@@ -127,7 +137,7 @@ export default function SessionDetailsScreen() {
     () =>
       session
         ? session.plans.map((plan, index) =>
-            sessionPlanToResetPlan(plan, index, session.plans.length),
+            sessionPlanToResetPlan(plan, index),
           )
         : [],
     [session],
@@ -221,7 +231,7 @@ export default function SessionDetailsScreen() {
             {/* Movement Library Header Titles */}
             <View style={styles.titleContainer}>
               <Text style={styles.mainTitle}>
-                {session?.session_name ?? 'Session details unavailable'}
+                {session ? `All Plans for : ${session.session_name}` : 'Session details unavailable'}
               </Text>
               <Text style={styles.subtitle}>
                 {session
