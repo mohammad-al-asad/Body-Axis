@@ -72,8 +72,8 @@ export default function IntakeScreen() {
           schedule_weeks: scheduleWeeks,
           session_duration: sessionDuration,
         }).unwrap();
-
-        router.replace({
+router.dismissAll();
+        router.navigate({
           pathname: "/sessions/session-details",
           params: { sessionId: session.id },
         });

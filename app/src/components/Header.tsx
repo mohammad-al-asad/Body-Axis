@@ -3,7 +3,9 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
+import { useSelector } from 'react-redux';
 import { useTheme } from '@/hooks/use-theme';
+import { RootState } from '@/redux/store';
 
 interface HeaderProps {
   onBellPress?: () => void;
@@ -22,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const theme = useTheme();
   const styles = createStyles(theme);
+  const avatarUrl = useSelector((state: RootState) => state.auth.user?.avatar_url);
 
   // Calculate balancing widths to keep logo centered mathematically
   // Right side: Avatar (36) + gap (16) + Notification (36) = 88. Without notification = 36.
@@ -51,12 +54,16 @@ export const Header: React.FC<HeaderProps> = ({
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.75}>
-            <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80',
-              }}
-              style={styles.avatar}
-            />
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Feather name="user" size={17} color={theme.secondary} />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -124,6 +131,16 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderRadius: 18,
       borderWidth: 1.5,
       borderColor: theme.secondary,
+    },
+    avatarFallback: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderWidth: 1.5,
+      borderColor: theme.secondary,
+      backgroundColor: 'rgba(93, 230, 255, 0.08)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
   });
 export default Header;

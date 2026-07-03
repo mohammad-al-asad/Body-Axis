@@ -233,28 +233,23 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.weeklyActivityCard}>
-            <Text style={styles.weeklyActivitySubtitle}>
-              {summary?.weekly_completed_count ?? 0} out of {summary?.weekly_target_count ?? 0} days completed
-            </Text>
-            {/* Pill progress bar */}
-            <View style={styles.weeklyActivityTrack}>
-              <View style={[styles.weeklyActivityFill, { width: `${recoveryPercentage}%` }]} />
-            </View>
-
-            {/* Days letters row */}
-            <View style={styles.daysRow}>
+            <View style={styles.weeklyCirclesRow}>
               {weekDates.map((day) => {
                 const isCompleted = summary?.completed_dates_this_week.includes(day.key) ?? false;
                 return (
-                  <Text
-                    key={day.key}
-                    style={[
-                      styles.dayLetter,
-                      isCompleted ? styles.dayLetterCompleted : styles.dayLetterIncomplete,
-                    ]}
-                  >
-                    {day.label}
-                  </Text>
+                  <View key={day.key} style={styles.weeklyDayItem}>
+                    <View style={isCompleted ? styles.weeklyCircleCompleted : styles.weeklyCircleEmpty}>
+                      {isCompleted && <Feather name="check" size={12} color="#050B14" />}
+                    </View>
+                    <Text
+                      style={[
+                        styles.dayLetter,
+                        isCompleted ? styles.dayLetterCompleted : styles.dayLetterIncomplete,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </View>
                 );
               })}
             </View>
@@ -284,9 +279,7 @@ export default function ProgressScreen() {
           {/* Recent Wins */}
           <View style={styles.sectionHeaderViewAll}>
             <Text style={styles.sectionTitle}>Recent Wins</Text>
-            <TouchableOpacity onPress={handleToggleAchievements}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+
           </View>
 
           <ScrollView
@@ -536,9 +529,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'baseline',
+      gap: 12,
       marginBottom: 10,
     },
     programTitle: {
+      flex: 1,
       fontSize: 20,
       fontWeight: '800',
       color: '#FFFFFF',
@@ -548,6 +543,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 14,
       fontWeight: '700',
       color: theme.secondary,
+      flexShrink: 0,
     },
     trackBarTrack: {
       height: 5,
@@ -574,28 +570,29 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       shadowOpacity: 0.15,
       shadowRadius: 4,
     },
-    weeklyActivitySubtitle: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      fontWeight: '600',
-      marginBottom: 16,
-    },
-    weeklyActivityTrack: {
-      height: 8,
-      backgroundColor: theme.inputBackground,
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginBottom: 16,
-    },
-    weeklyActivityFill: {
-      height: '100%',
-      backgroundColor: theme.secondary,
-      borderRadius: 4,
-    },
-    daysRow: {
+    weeklyCirclesRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingHorizontal: 8,
+      alignItems: 'center',
+    },
+    weeklyDayItem: {
+      alignItems: 'center',
+      gap: 8,
+    },
+    weeklyCircleCompleted: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: theme.secondary,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    weeklyCircleEmpty: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: theme.inputBorder,
     },
     dayLetter: {
       fontSize: 12,
