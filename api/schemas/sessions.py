@@ -45,6 +45,8 @@ class SessionExerciseResponse(BaseModel):
     secondary_benefits: str | None = None
     tutorial_video: SessionVideoResponse | None = None
     short_clip_video: SessionVideoResponse | None = None
+    is_completed: bool = False
+    completed_at: datetime | None = None
 
 
 class SessionPlanPhasesResponse(BaseModel):
@@ -63,6 +65,24 @@ class SessionPlanResponse(BaseModel):
     duration: str
     phases: SessionPlanPhasesResponse
     status: PublishStatus
+    progress_status: str = "pending"
+    progress_percent: int = 0
+    completed_exercise_count: int = 0
+    total_exercise_count: int = 0
+
+
+class NextExerciseResponse(BaseModel):
+    session_id: str
+    session_name: str
+    plan_id: str
+    plan_name: str
+    exercise_id: str
+    exercise_name: str
+    phase: Phase
+    tutorial_video: SessionVideoResponse | None = None
+    short_clip_video: SessionVideoResponse | None = None
+    primary_intent: str | None = None
+    secondary_benefits: str | None = None
 
 
 class MovementSessionResponse(BaseModel):
@@ -78,6 +98,10 @@ class MovementSessionResponse(BaseModel):
     plan_count: int
     exercise_count: int
     status: str
+    progress_percent: int = 0
+    completed_exercise_count: int = 0
+    total_exercise_count: int = 0
+    next_exercise: NextExerciseResponse | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -85,6 +109,29 @@ class MovementSessionResponse(BaseModel):
 class MovementSessionListResponse(BaseModel):
     items: list[MovementSessionResponse]
     total: int
+
+
+class SessionExerciseCompleteRequest(BaseModel):
+    plan_id: str = Field(min_length=1)
+    completed_local_date: str = Field(min_length=10, max_length=10)
+    completed_weekday: str = Field(min_length=1, max_length=16)
+
+
+class ProgressAchievementResponse(BaseModel):
+    key: str
+    title: str
+    unlocked: bool
+
+
+class ProgressSummaryResponse(BaseModel):
+    current_streak_days: int
+    completed_dates_this_week: list[str]
+    weekly_completed_count: int
+    weekly_target_count: int
+    sessions_completed_total: int
+    total_exercises_completed: int
+    active_session: MovementSessionResponse | None = None
+    wins: list[ProgressAchievementResponse]
 
 
 def movement_session_from_document(document: dict[str, Any]) -> dict[str, Any]:
@@ -101,6 +148,10 @@ def movement_session_from_document(document: dict[str, Any]) -> dict[str, Any]:
         "plan_count": document.get("plan_count", 0),
         "exercise_count": document.get("exercise_count", 0),
         "status": document.get("status", "active"),
+        "progress_percent": document.get("progress_percent", 0),
+        "completed_exercise_count": document.get("completed_exercise_count", 0),
+        "total_exercise_count": document.get("total_exercise_count", 0),
+        "next_exercise": document.get("next_exercise"),
         "created_at": document["created_at"],
         "updated_at": document["updated_at"],
     }
