@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Alert,
   ScrollView,
@@ -13,8 +13,9 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
+import { useGetProgressSummaryQuery } from '@/redux/api/sessionApi';
 
-interface MilestoneCard {
+interface NextStepCard {
   id: string;
   badge: string;
   title: string;
@@ -32,66 +33,75 @@ interface AchievementItem {
   locked: boolean;
 }
 
-const MILESTONES_DATA: MilestoneCard[] = [
-  {
-    id: '1',
-    badge: 'UNLOCKS AT 15 DAYS',
-    title: 'Core Stability Unlock',
-    subtitle: 'Targeting deep transverse abdominis control.',
-    badgeColor: '#C084FC',
-  },
-  {
-    id: '2',
-    badge: 'NEXT LEVEL',
-    title: 'Advanced Mobility Intro',
-    subtitle: 'Proprioceptive calibration & athletic agility.',
-    badgeColor: '#44E2CD',
-  },
-];
-
-const ACHIEVEMENTS_DATA: AchievementItem[] = [
-  {
-    id: '1',
-    title: 'Early Bird',
-    icon: 'award',
-    iconType: 'feather',
-    color: '#C084FC',
-    glowColor: 'rgba(192, 132, 252, 0.15)',
-    locked: false,
-  },
-  {
-    id: '2',
-    title: '7-Day Streak',
-    icon: 'fire',
-    iconType: 'material',
-    color: '#44E2CD',
-    glowColor: 'rgba(68, 226, 205, 0.15)',
-    locked: false,
-  },
-  {
-    id: '3',
-    title: 'Legend',
-    icon: 'lock',
-    iconType: 'feather',
-    color: '#475569',
-    glowColor: 'transparent',
-    locked: true,
-  },
-];
+const getCurrentWeekDates = () => {
+  const now = new Date();
+  const monday = new Date(now);
+  const day = monday.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, idx) => {
+    const value = new Date(monday);
+    value.setDate(monday.getDate() + idx);
+    return {
+      key: value.toLocaleDateString('en-CA'),
+      label: value.toLocaleDateString('en-US', { weekday: 'narrow' }),
+    };
+  });
+};
 
 export default function ProgressScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
-
-  const [showAllAchievements, setShowAllAchievements] = useState(false);
+  const { data: summary } = useGetProgressSummaryQuery();
 
   // SVG parameters for Recovery circle (88%)
   const circleSize = 64;
   const strokeWidth = 4;
   const radius = (circleSize - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const recoveryPercentage = 88;
+  const recoveryPercentage = summary?.weekly_target_count
+    ? Math.min(Math.round((summary.weekly_completed_count / summary.weekly_target_count) * 100), 100)
+    : 0;
   const strokeDashoffset = circumference - (recoveryPercentage / 100) * circumference;
+  const activeSession = summary?.active_session ?? null;
+  const activePlan =
+    activeSession?.plans.find((plan) => plan.plan_id === activeSession.next_exercise?.plan_id) ??
+    activeSession?.plans.find((plan) => plan.progress_status !== 'completed') ??
+    null;
+  const weekDates = getCurrentWeekDates();
+  const nextSteps: NextStepCard[] = activeSession?.next_exercise
+    ? [
+        {
+          id: '1',
+          badge: "TODAY'S FOCUS",
+          title: activeSession.next_exercise.exercise_name,
+          subtitle: `Continue ${activeSession.next_exercise.plan_name} in the ${activeSession.next_exercise.phase} phase.`,
+          badgeColor: '#C084FC',
+        },
+      ]
+    : [
+        {
+          id: '1',
+          badge: 'NEXT FOCUS',
+          title: 'Create or resume a session',
+          subtitle: 'Your next movement suggestion will appear here once a session is active.',
+          badgeColor: '#44E2CD',
+        },
+      ];
+  const achievements: AchievementItem[] = (summary?.wins ?? []).map((win, index) => ({
+    id: `${index + 1}`,
+    title: win.title,
+    icon: win.key.includes('streak') ? 'fire' : win.unlocked ? 'award' : 'lock',
+    iconType: win.key.includes('streak') ? 'material' : 'feather',
+    color: win.unlocked ? (index % 2 === 0 ? '#C084FC' : '#44E2CD') : '#475569',
+    glowColor: win.unlocked
+      ? index % 2 === 0
+        ? 'rgba(192, 132, 252, 0.15)'
+        : 'rgba(68, 226, 205, 0.25)'
+      : 'transparent',
+    locked: !win.unlocked,
+  }));
 
   const handleAchievementPress = (item: AchievementItem) => {
     if (item.locked) {
@@ -102,8 +112,7 @@ export default function ProgressScreen() {
   };
 
   const handleToggleAchievements = () => {
-    setShowAllAchievements((prev) => !prev);
-    Alert.alert('Achievements', 'You have unlocked 3 out of 12 global training milestones!');
+    Alert.alert('Achievements', `You have unlocked ${achievements.filter((item) => !item.locked).length} wins so far.`);
   };
 
   return (
@@ -118,16 +127,16 @@ export default function ProgressScreen() {
             <View style={styles.dashboardRow}>
               {/* Sessions count */}
               <View style={styles.statBox}>
-                <Text style={styles.dashboardLabel}>Sessions</Text>
+                <Text style={styles.dashboardLabel}>Sessions Completed</Text>
                 <View style={styles.sessionsValueRow}>
-                  <Text style={styles.sessionsNumber}>18</Text>
+                  <Text style={styles.sessionsNumber}>{summary?.sessions_completed_total ?? 0}</Text>
                   <Text style={styles.sessionsSubText}>total</Text>
                 </View>
               </View>
 
               {/* Recovery SVG circle */}
               <View style={styles.recoveryBox}>
-                <Text style={styles.dashboardLabelRight}>Recovery</Text>
+                <Text style={styles.dashboardLabelRight}>Weekly Progress</Text>
                 <View style={styles.circleWrapper}>
                   <Svg width={circleSize} height={circleSize} style={styles.svgCircle}>
                     {/* Background Circle */}
@@ -154,7 +163,7 @@ export default function ProgressScreen() {
                   </Svg>
                   {/* Center Text */}
                   <View style={styles.circleTextCenter}>
-                    <Text style={styles.recoveryValue}>88</Text>
+                    <Text style={styles.recoveryValue}>{recoveryPercentage}%</Text>
                   </View>
                 </View>
               </View>
@@ -163,23 +172,25 @@ export default function ProgressScreen() {
             {/* Bottom Row: Improvement & Current Streak */}
             <View style={styles.dashboardBottomRow}>
               <View style={styles.bottomStatBox}>
-                <Text style={styles.dashboardLabel}>Improvement</Text>
+                <Text style={styles.dashboardLabel}>Current Plan Progress</Text>
                 <View style={styles.trendingRow}>
                   <Feather name="trending-up" size={15} color="#10B981" style={{ marginRight: 4 }} />
-                  <Text style={styles.improvementValue}>+24%</Text>
+                  <Text style={styles.improvementValue}>{activePlan?.progress_percent ?? 0}%</Text>
                 </View>
               </View>
 
               <View style={styles.bottomStatBoxRight}>
                 <Text style={styles.dashboardLabelRight}>Current Streak</Text>
-                <Text style={styles.streakValue}>12 <Text style={styles.streakLabel}>Days</Text></Text>
+                <Text style={styles.streakValue}>
+                  {summary?.current_streak_days ?? 0} <Text style={styles.streakLabel}>Days</Text>
+                </Text>
               </View>
             </View>
           </View>
 
           {/* Active Program Section */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Active Program</Text>
+            <Text style={styles.sectionTitle}>Active Movement Plan</Text>
           </View>
 
           <View style={styles.activeProgramCard}>
@@ -194,18 +205,24 @@ export default function ProgressScreen() {
             <View style={styles.programContentContainer}>
               <View style={styles.programBadgesRow}>
                 <View style={styles.programBadge}>
-                  <Text style={styles.programBadgeText}>WEEK 3 OF 4</Text>
+                  <Text style={styles.programBadgeText}>
+                    {activePlan?.progress_status === 'completed' ? 'COMPLETED' : 'ACTIVE PLAN'}
+                  </Text>
                 </View>
               </View>
 
               <View style={styles.programTitleProgressRow}>
-                <Text style={styles.programTitle}>Hip Mobility Reset</Text>
-                <Text style={styles.programProgressPercent}>72%</Text>
+                <Text style={styles.programTitle}>
+                  {activePlan?.plan_name ?? 'No Active Movement Plan'}
+                </Text>
+                <Text style={styles.programProgressPercent}>
+                  {activePlan?.progress_percent ?? 0}%
+                </Text>
               </View>
 
               {/* Custom Track Bar */}
               <View style={styles.trackBarTrack}>
-                <View style={[styles.trackBarFill, { width: '72%' }]} />
+                <View style={[styles.trackBarFill, { width: `${activePlan?.progress_percent ?? 0}%` }]} />
               </View>
             </View>
           </View>
@@ -216,34 +233,36 @@ export default function ProgressScreen() {
           </View>
 
           <View style={styles.weeklyActivityCard}>
-            <Text style={styles.weeklyActivitySubtitle}>3 out of 4 sessions completed</Text>
+            <Text style={styles.weeklyActivitySubtitle}>
+              {summary?.weekly_completed_count ?? 0} out of {summary?.weekly_target_count ?? 0} days completed
+            </Text>
             {/* Pill progress bar */}
             <View style={styles.weeklyActivityTrack}>
-              <View style={[styles.weeklyActivityFill, { width: '75%' }]} />
+              <View style={[styles.weeklyActivityFill, { width: `${recoveryPercentage}%` }]} />
             </View>
 
             {/* Days letters row */}
             <View style={styles.daysRow}>
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
-                const isCompleted = idx < 3;
+              {weekDates.map((day) => {
+                const isCompleted = summary?.completed_dates_this_week.includes(day.key) ?? false;
                 return (
                   <Text
-                    key={idx}
+                    key={day.key}
                     style={[
                       styles.dayLetter,
                       isCompleted ? styles.dayLetterCompleted : styles.dayLetterIncomplete,
                     ]}
                   >
-                    {day}
+                    {day.label}
                   </Text>
                 );
               })}
             </View>
           </View>
 
-          {/* Upcoming Milestones */}
+          {/* Next Steps */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming Milestones</Text>
+            <Text style={styles.sectionTitle}>Next Steps</Text>
           </View>
 
           <ScrollView
@@ -251,7 +270,7 @@ export default function ProgressScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.milestonesScrollContent}
           >
-            {MILESTONES_DATA.map((card) => (
+            {nextSteps.map((card) => (
               <View key={card.id} style={styles.milestoneCard}>
                 <Text style={[styles.milestoneBadgeText, { color: card.badgeColor }]}>
                   {card.badge}
@@ -262,9 +281,12 @@ export default function ProgressScreen() {
             ))}
           </ScrollView>
 
-          {/* Achievements */}
+          {/* Recent Wins */}
           <View style={styles.sectionHeaderViewAll}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
+            <Text style={styles.sectionTitle}>Recent Wins</Text>
+            <TouchableOpacity onPress={handleToggleAchievements}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
           </View>
 
           <ScrollView
@@ -272,7 +294,7 @@ export default function ProgressScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.achievementsScrollContent}
           >
-            {ACHIEVEMENTS_DATA.map((item) => (
+            {achievements.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.achievementCircleCard}
@@ -292,7 +314,7 @@ export default function ProgressScreen() {
                     <Feather name={item.icon as any} size={18} color={item.locked ? '#475569' : item.color} />
                   )}
                 </View>
-                <Text style={styles.achievementTitle} numberOfLines={2}>
+                <Text style={styles.achievementTitle} numberOfLines={3}>
                   {item.title}
                 </Text>
               </TouchableOpacity>
@@ -310,7 +332,7 @@ export default function ProgressScreen() {
             <View style={styles.quoteContent}>
               <Text style={styles.quoteQuoteMark}>”</Text>
               <Text style={styles.quoteText}>
-                You're building healthier movement habits every week. Keep it up!
+                You&apos;re building healthier movement habits every week. Keep it up!
               </Text>
             </View>
           </View>
@@ -597,7 +619,7 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       borderColor: theme.cardBorder,
       padding: 20,
       marginRight: 14,
-      width: 240,
+      width: 260,
       elevation: 1,
       shadowColor: theme.text,
       shadowOffset: { width: 0, height: 1 },
