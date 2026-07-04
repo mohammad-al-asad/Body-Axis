@@ -30,6 +30,7 @@ interface PlanCardProps {
   plan: ResetPlan;
   isSaved: boolean;
   saveLabel?: string;
+  saveDisabled?: boolean;
   onToggleSave: () => void;
   onSeeDetails: () => void;
 }
@@ -45,7 +46,7 @@ const EQUIPMENT_IMAGES: Record<string, any> = {
   'Mini Band': require('@/assets/images/equipments/MiniBand.png'),
 };
 
-export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails }: PlanCardProps) {
+export function PlanCard({ plan, isSaved, saveLabel, saveDisabled = false, onToggleSave, onSeeDetails }: PlanCardProps) {
   const theme = useTheme();
   const styles = createStyles(theme);
 
@@ -158,11 +159,13 @@ export function PlanCard({ plan, isSaved, saveLabel, onToggleSave, onSeeDetails 
           ]}
           activeOpacity={0.7}
           onPress={onToggleSave}
+          disabled={saveDisabled}
         >
           <Text
             style={[
               styles.saveButtonText,
               isSaved && { color: theme.secondary, fontWeight: '700' },
+              saveDisabled && { color: theme.textSecondary },
             ]}
           >
             {saveLabel ?? (isSaved ? 'Saved  ✓' : 'Save')}
