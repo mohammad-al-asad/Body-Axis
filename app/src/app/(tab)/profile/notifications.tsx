@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, LayoutAnimation } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, LayoutAnimation } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Feather, MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { CustomSwitch } from '@/components/ui/CustomSwitch';
@@ -14,13 +14,9 @@ export default function NotificationsScreen() {
 
   // Toggle switch states
   const [settings, setSettings] = useState({
-    workoutReminders: true,
     mobilityReminders: true,
-    assessmentReminders: false,
-    progressAlerts: true,
     learningUpdates: false,
     emailNotifications: true,
-    subscriptionNotifications: true,
   });
 
   const toggleSetting = (key: keyof typeof settings) => {
@@ -37,26 +33,8 @@ export default function NotificationsScreen() {
         <Header onBackPress={() => router.back()} showNotification={true} />
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.title}>Notification settings</Text>
           <Text style={styles.subtitle}>Manage reminders and wellness alerts</Text>
-
-          {/* Section: Wellness Reminders */}
-          <Text style={styles.sectionHeader}>WELLNESS REMINDERS</Text>
-
-          {/* Workout Reminders */}
-          <View style={styles.cardItem}>
-            <View style={styles.iconBox}>
-              <MaterialCommunityIcons name="dumbbell" size={20} color={theme.text} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.itemTitle}>Workout reminders</Text>
-              <Text style={styles.itemSubtitle}>Stay on track with schedule</Text>
-            </View>
-            <CustomSwitch
-              value={settings.workoutReminders}
-              onValueChange={() => toggleSetting('workoutReminders')}
-            />
-          </View>
 
           {/* Daily Mobility Reminders */}
           <View style={styles.cardItem}>
@@ -70,24 +48,6 @@ export default function NotificationsScreen() {
             <CustomSwitch
               value={settings.mobilityReminders}
               onValueChange={() => toggleSetting('mobilityReminders')}
-            />
-          </View>
-
-          {/* Section: Program Updates */}
-          <Text style={styles.sectionHeader}>PROGRAM UPDATES</Text>
-
-          {/* Program Progress Alerts */}
-          <View style={styles.cardItem}>
-            <View style={styles.iconBox}>
-              <Feather name="trending-up" size={18} color={theme.text} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.itemTitle}>Program progress alerts</Text>
-              <Text style={styles.itemSubtitle}>Milestones and level ups</Text>
-            </View>
-            <CustomSwitch
-              value={settings.progressAlerts}
-              onValueChange={() => toggleSetting('progressAlerts')}
             />
           </View>
 
@@ -106,9 +66,6 @@ export default function NotificationsScreen() {
             />
           </View>
 
-          {/* Section: Communication Channels */}
-          <Text style={styles.sectionHeader}>COMMUNICATION CHANNELS</Text>
-
           {/* Email Notifications */}
           <View style={styles.cardItem}>
             <View style={styles.iconBox}>
@@ -120,20 +77,6 @@ export default function NotificationsScreen() {
             <CustomSwitch
               value={settings.emailNotifications}
               onValueChange={() => toggleSetting('emailNotifications')}
-            />
-          </View>
-
-          {/* Subscription Notifications */}
-          <View style={styles.cardItem}>
-            <View style={styles.iconBox}>
-              <MaterialCommunityIcons name="credit-card-outline" size={18} color={theme.text} />
-            </View>
-            <View style={styles.textContainer}>
-              <Text style={styles.itemTitle}>Subscription notifications</Text>
-            </View>
-            <CustomSwitch
-              value={settings.subscriptionNotifications}
-              onValueChange={() => toggleSetting('subscriptionNotifications')}
             />
           </View>
         </ScrollView>
@@ -167,14 +110,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 14,
       color: theme.textSecondary,
       marginBottom: 24,
-    },
-    sectionHeader: {
-      fontSize: 11,
-      fontWeight: '800',
-      color: theme.textSecondary,
-      letterSpacing: 1.0,
-      marginTop: 16,
-      marginBottom: 12,
     },
     cardItem: {
       flexDirection: 'row',
