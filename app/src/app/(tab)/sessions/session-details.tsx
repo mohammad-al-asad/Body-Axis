@@ -19,10 +19,12 @@ import { PlanCard, ResetPlan, RoutineEquipment, RoutinePhase } from '@/component
 import { MovementSession, SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { phaseOrder } from '@/utils/phase';
 import {
+  addOfflineDownloadListener,
   cancelOfflineDownload,
   createPlanOfflineDownloadRequest,
   getOfflineDownloads,
   getSavedOfflineSession,
+  OfflineDownload,
   planAssetDownloadIds,
   removeOfflinePlan,
   saveOfflineSession,
@@ -94,6 +96,7 @@ export default function SessionDetailsScreen() {
   const [offlineSession, setOfflineSession] = useState<MovementSession | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [savingIds, setSavingIds] = useState<string[]>([]);
+  const [offlineDownloads, setOfflineDownloads] = useState<OfflineDownload[]>([]);
   const session = onlineSession ?? offlineSession;
 
   useEffect(() => {
@@ -109,16 +112,7 @@ export default function SessionDetailsScreen() {
 
         if (!isMounted) return;
         setOfflineSession(savedSession);
-        setSavedIds(
-          Array.from(
-            new Set(
-              downloads
-                .filter((download) => download.status !== 'canceled')
-                .map((download) => download.planId)
-                .filter((planId): planId is string => Boolean(planId)),
-            ),
-          ),
-        );
+        setOfflineDownloads(downloads.filter((download) => download.status !== 'canceled'));
       } catch {
         if (isMounted) {
           setOfflineSession(null);
@@ -133,6 +127,44 @@ export default function SessionDetailsScreen() {
     };
   }, [sessionId]);
 
+  useEffect(() => {
+    const events = [
+      'downloadProgress',
+      'downloadCompleted',
+      'downloadFailed',
+      'downloadPaused',
+      'downloadResumed',
+      'downloadCanceled',
+    ] as const;
+
+    const subscriptions = events.map((eventName) =>
+      addOfflineDownloadListener(eventName, (payload) => {
+        setOfflineDownloads((current) => {
+          if (payload.status === 'canceled') {
+            return current.filter((download) => download.id !== payload.id);
+          }
+
+          const existingIndex = current.findIndex((download) => download.id === payload.id);
+          if (existingIndex === -1) {
+            return [...current, payload];
+          }
+
+          const next = [...current];
+          next[existingIndex] = payload;
+          return next;
+        });
+
+        if (payload.planId) {
+          setSavingIds((current) => current.filter((id) => id !== payload.planId || payload.status !== 'completed'));
+        }
+      }),
+    );
+
+    return () => {
+      subscriptions.forEach((subscription) => subscription.remove());
+    };
+  }, []);
+
   const plans = useMemo(
     () =>
       session
@@ -143,21 +175,79 @@ export default function SessionDetailsScreen() {
     [session],
   );
 
-  const toggleSave = async (plan: ResetPlan) => {
-    const isSaved = savedIds.includes(plan.id);
-    if (isSaved) {
-      setSavedIds((prev) => prev.filter((id) => id !== plan.id));
-      const sessionPlan = session?.plans.find(
-        (item) => item.plan_id === plan.id || item.id === plan.id,
+  const planDownloadStates = useMemo(() => {
+    const states = new Map<string, 'saving' | 'saved'>();
+    const downloadsByPlan = offlineDownloads.reduce<Map<string, OfflineDownload[]>>((result, download) => {
+      if (!download.planId || download.status === 'canceled') return result;
+      const current = result.get(download.planId) ?? [];
+      current.push(download);
+      result.set(download.planId, current);
+      return result;
+    }, new Map());
+
+    downloadsByPlan.forEach((downloads, planId) => {
+      states.set(
+        planId,
+        downloads.length > 0 && downloads.every((download) => download.status === 'completed')
+          ? 'saved'
+          : 'saving',
       );
-      if (session && sessionPlan) {
-        const downloadIds = planAssetDownloadIds(session.id, sessionPlan);
-        void Promise.all([
-          ...downloadIds.map((downloadId) => cancelOfflineDownload(downloadId)),
-          removeOfflinePlan(session.id, sessionPlan),
-        ]);
+    });
+
+    savedIds.forEach((planId) => {
+      if (!states.has(planId)) {
+        states.set(planId, 'saved');
       }
-      Alert.alert('Removed', `${plan.title} removed from saved list`);
+    });
+
+    savingIds.forEach((planId) => {
+      states.set(planId, 'saving');
+    });
+
+    return states;
+  }, [offlineDownloads, savedIds, savingIds]);
+
+  const toggleSave = async (plan: ResetPlan) => {
+    const planState = planDownloadStates.get(plan.id);
+    const isSaved = planState === 'saved';
+    const isSaving = planState === 'saving';
+
+    if (isSaving) {
+      Alert.alert('Still Saving', `${plan.title} is still downloading. You can manage it from Downloads.`);
+      return;
+    }
+
+    if (isSaved) {
+      Alert.alert(
+        'Remove Saved Plan',
+        `Remove ${plan.title} from saved offline plans?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: () => {
+              const sessionPlan = session?.plans.find(
+                (item) => item.plan_id === plan.id || item.id === plan.id,
+              );
+
+              if (session && sessionPlan) {
+                const downloadIds = planAssetDownloadIds(session.id, sessionPlan);
+                void Promise.all([
+                  ...downloadIds.map((downloadId) => cancelOfflineDownload(downloadId)),
+                  removeOfflinePlan(session.id, sessionPlan),
+                ]).then(() => {
+                  setSavedIds((prev) => prev.filter((id) => id !== plan.id));
+                  setOfflineDownloads((prev) => prev.filter((download) => download.planId !== plan.id));
+                  Alert.alert('Removed', `${plan.title} removed from saved list`);
+                });
+              } else {
+                setSavedIds((prev) => prev.filter((id) => id !== plan.id));
+              }
+            },
+          },
+        ],
+      );
       return;
     }
 
@@ -177,7 +267,10 @@ export default function SessionDetailsScreen() {
         createPlanOfflineDownloadRequest(session, sessionPlan),
       );
       const videoCount = downloads.length;
-      setSavedIds((prev) => (prev.includes(plan.id) ? prev : [...prev, plan.id]));
+      setOfflineDownloads((prev) => mergeDownloads(prev, downloads));
+      if (videoCount === 0 || downloads.every((download) => download.status === 'completed')) {
+        setSavedIds((prev) => (prev.includes(plan.id) ? prev : [...prev, plan.id]));
+      }
       Alert.alert(
         'Download Started',
         videoCount
@@ -266,14 +359,16 @@ export default function SessionDetailsScreen() {
             )}
 
             {(!isLoading || session) && (!isError || session) && plans.map((plan) => {
-              const isSaved = savedIds.includes(plan.id);
-              const isSaving = savingIds.includes(plan.id);
+              const planState = planDownloadStates.get(plan.id);
+              const isSaved = planState === 'saved';
+              const isSaving = planState === 'saving';
               return (
                 <PlanCard
                   key={plan.id}
                   plan={plan}
                   isSaved={isSaved}
-                  saveLabel={isSaving ? 'Saving...' : undefined}
+                  saveLabel={isSaving ? 'Saving' : isSaved ? 'Remove' : undefined}
+                  saveDisabled={isSaving}
                   onToggleSave={() => toggleSave(plan)}
                   onSeeDetails={() => handleSeeDetails(plan)}
                 />
@@ -284,6 +379,18 @@ export default function SessionDetailsScreen() {
       </SafeAreaView>
     </View>
   );
+}
+
+function mergeDownloads(current: OfflineDownload[], incoming: OfflineDownload[]) {
+  const byId = new Map(current.map((download) => [download.id, download]));
+  incoming.forEach((download) => {
+    if (download.status === 'canceled') {
+      byId.delete(download.id);
+    } else {
+      byId.set(download.id, download);
+    }
+  });
+  return Array.from(byId.values());
 }
 
 const createStyles = (theme: ReturnType<typeof useTheme>) =>

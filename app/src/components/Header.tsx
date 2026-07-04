@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
 import { useSelector } from 'react-redux';
 import { useTheme } from '@/hooks/use-theme';
@@ -23,11 +24,13 @@ export const Header: React.FC<HeaderProps> = ({
   hideShadow = false
 }) => {
   const theme = useTheme();
+  const router = useRouter();
   const styles = createStyles(theme);
   const avatarUrl = useSelector((state: RootState) => state.auth.user?.avatar_url);
+  const handleBellPress = onBellPress ?? (() => router.push('/(tab)/(home)/downloads'));
 
   // Calculate balancing widths to keep logo centered mathematically
-  // Right side: Avatar (36) + gap (16) + Notification (36) = 88. Without notification = 36.
+  // Right side: Avatar (36) + gap (16) + Download (36) = 88. Without download = 36.
   const edgeWidth = showNotification ? 88 : 36;
 
   return (
@@ -49,8 +52,8 @@ export const Header: React.FC<HeaderProps> = ({
         
         <View style={[styles.headerRight, { width: edgeWidth, justifyContent: 'flex-end' }]}>
           {showNotification && (
-            <TouchableOpacity style={styles.iconButton} onPress={onBellPress} activeOpacity={0.75}>
-              <Feather name="bell" size={18} color={theme.text} />
+            <TouchableOpacity style={styles.iconButton} onPress={handleBellPress} activeOpacity={0.75}>
+              <Feather name="download-cloud" size={18} color={theme.text} />
             </TouchableOpacity>
           )}
           <TouchableOpacity onPress={onAvatarPress} activeOpacity={0.75}>

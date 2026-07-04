@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { Provider, useSelector } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { store, persistor, RootState } from "@/redux/store";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { RevenueCatBootstrap } from "@/components/RevenueCatBootstrap";
@@ -55,12 +56,14 @@ function RootStack() {
 
 export default function Layout() {
   return (
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <RevenueCatBootstrap />
-        <AnimatedSplashOverlay />
-        <RootStack />
-      </PersistGate>
-    </Provider>
+    <KeyboardProvider preload={false}>
+      <Provider store={store}>
+        <PersistGate loading={null} persistor={persistor}>
+          <RevenueCatBootstrap />
+          <AnimatedSplashOverlay />
+          <RootStack />
+        </PersistGate>
+      </Provider>
+    </KeyboardProvider>
   );
 }

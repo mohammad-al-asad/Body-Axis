@@ -10,11 +10,11 @@ import {
   LayoutAnimation,
   Platform,
   Modal,
-  KeyboardAvoidingView,
   TextInput,
   Animated,
   ActivityIndicator,
 } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -743,10 +743,7 @@ export default function ProfileScreen() {
           animationType="none"
           onRequestClose={() => setIsEditProfileVisible(false)}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalContainer}
-          >
+          <View style={styles.modalContainer}>
             <Animated.View
               style={[
                 styles.modalOverlay,
@@ -780,7 +777,13 @@ export default function ProfileScreen() {
                 Update your biometric measurements and personal details
               </Text>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalFieldsScroll}>
+              <KeyboardAwareScrollView
+                bottomOffset={24}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                style={styles.modalFieldsScroll}
+                contentContainerStyle={styles.modalFieldsContent}
+              >
                 {/* Full Name */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.modalLabel}>FULL NAME</Text>
@@ -895,9 +898,9 @@ export default function ProfileScreen() {
                 >
                   <Text style={[styles.modalCancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
                 </TouchableOpacity>
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Animated.View>
-          </KeyboardAvoidingView>
+          </View>
         </Modal>
 
         {/* Change Password Modal */}
@@ -907,10 +910,7 @@ export default function ProfileScreen() {
           animationType="none"
           onRequestClose={() => setIsChangePasswordVisible(false)}
         >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalContainer}
-          >
+          <View style={styles.modalContainer}>
             <Animated.View
               style={[
                 styles.modalOverlay,
@@ -944,7 +944,13 @@ export default function ProfileScreen() {
                 Choose a strong and secure password for your account
               </Text>
 
-              <ScrollView showsVerticalScrollIndicator={false} style={styles.modalFieldsScroll}>
+              <KeyboardAwareScrollView
+                bottomOffset={24}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+                style={styles.modalFieldsScroll}
+                contentContainerStyle={styles.modalFieldsContent}
+              >
                 {/* Current Password */}
                 <View style={styles.inputGroup}>
                   <Text style={styles.modalLabel}>CURRENT PASSWORD</Text>
@@ -1044,9 +1050,9 @@ export default function ProfileScreen() {
                 >
                   <Text style={[styles.modalCancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
                 </TouchableOpacity>
-              </ScrollView>
+              </KeyboardAwareScrollView>
             </Animated.View>
-          </KeyboardAvoidingView>
+          </View>
         </Modal>
 
         {/* Gender Selection Sheet inside Edit Profile Modal */}
@@ -1292,6 +1298,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     modalFieldsScroll: {
       width: '100%',
+    },
+    modalFieldsContent: {
+      paddingBottom: 8,
     },
     inputGroup: {
       width: '100%',
