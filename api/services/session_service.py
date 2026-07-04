@@ -416,18 +416,12 @@ def _build_wins(summary: dict[str, Any]) -> list[dict[str, Any]]:
     streak = summary.get("current_streak_days", 0)
     sessions_completed_total = summary.get("sessions_completed_total", 0)
     total_exercises_completed = summary.get("total_exercises_completed", 0)
-    completed_dates = summary.get("completed_dates", [])
-    has_first_logged_session = (
-        sessions_completed_total >= 1
-        or total_exercises_completed >= 1
-        or len(completed_dates) >= 1
-    )
 
     return [
         {
             "key": "first_session",
             "title": "First Session",
-            "unlocked": has_first_logged_session,
+            "unlocked": sessions_completed_total >= 1,
         },
         {
             "key": "7_day_streak",
