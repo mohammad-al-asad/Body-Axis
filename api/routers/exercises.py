@@ -7,7 +7,6 @@ from schemas.management import (
     ExerciseListResponse,
     ExerciseResponse,
     ExerciseUpdate,
-    Phase,
 )
 from services.management_service import (
     create_exercise,
@@ -31,7 +30,6 @@ async def create_exercise_item(payload: ExerciseCreate) -> ExerciseResponse:
 @router.get("", response_model=ExerciseListResponse)
 async def get_exercise_list(
     search: str = Query(default="", max_length=160),
-    phase: Phase | None = None,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1, le=200),
 ) -> ExerciseListResponse:
@@ -41,8 +39,6 @@ async def get_exercise_list(
             {"exercise_name": {"$regex": search, "$options": "i"}},
             {"exercise_id": {"$regex": search, "$options": "i"}},
         ]
-    if phase:
-        query["phase"] = phase.value
 
     total = await db.exercises.count_documents(query)
     items = [

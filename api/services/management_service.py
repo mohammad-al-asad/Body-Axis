@@ -28,7 +28,7 @@ async def ensure_management_indexes() -> None:
     await db.videos.create_index([("exercise_id", ASCENDING)])
     await db.videos.create_index([("created_at", DESCENDING)])
     await db.exercises.create_index("exercise_id", unique=True)
-    await db.exercises.create_index([("phase", ASCENDING), ("exercise_name", ASCENDING)])
+    await db.exercises.create_index([("exercise_name", ASCENDING)])
     await db.plans.create_index("plan_id", unique=True)
     await db.plans.create_index([("created_at", DESCENDING)])
 
@@ -96,7 +96,6 @@ async def serialize_exercise(exercise: dict[str, Any]) -> dict[str, Any]:
         "primary_intent": exercise["primary_intent"],
         "secondary_benefits": exercise["secondary_benefits"],
         "equipment_needed": exercise.get("equipment_needed", []),
-        "phase": exercise["phase"],
         "tutorial_video_id": exercise["tutorial_video_id"],
         "short_clip_video_id": exercise["short_clip_video_id"],
         "tutorial_video": _video_summary(tutorial),
@@ -136,7 +135,6 @@ async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
                     or item["exercise_id"],
                     "sets": exercise.get("sets") or 1,
                     "reps": exercise.get("reps") or "1",
-                    "phase": exercise.get("phase") or item.get("phase") or phase_name,
                     "equipment_needed": equipment,
                 }
             )
@@ -486,14 +484,6 @@ async def _plan_document(
         phase_items = []
         for selection in selections:
             exercise = exercises[selection["exercise_id"]]
-            if exercise["phase"] != phase_name:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=(
-                        f"{exercise['exercise_name']} belongs to the "
-                        f"{exercise['phase']} phase, not {phase_name}"
-                    ),
-                )
             phase_items.append(
                 {
                     "exercise_id": exercise["exercise_id"],
