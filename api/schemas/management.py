@@ -106,7 +106,6 @@ class ExerciseBase(BaseModel):
     primary_intent: str = Field(min_length=1, max_length=500)
     secondary_benefits: str = Field(min_length=1, max_length=1000)
     equipment_needed: list[Equipment] = Field(default_factory=list)
-    phase: Phase
     tutorial_video_id: str
     short_clip_video_id: str
     status: PublishStatus = PublishStatus.published
@@ -196,7 +195,6 @@ class PlanExerciseResponse(BaseModel):
     exercise_name: str
     sets: int
     reps: str
-    phase: Phase
     equipment_needed: list[Equipment]
 
 

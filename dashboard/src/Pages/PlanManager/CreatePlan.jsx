@@ -96,7 +96,6 @@ const CreatePlan = () => {
           exercise_name: exercise.exercise_name,
           sets: exercise.sets,
           reps: exercise.reps,
-          phase: exercise.phase,
           equipment_needed: exercise.equipment_needed,
         },
       ],
@@ -332,7 +331,6 @@ const CreatePlan = () => {
               {PHASE_OPTIONS.map((phase, phaseIndex) => {
                 const available = exercises.filter(
                   (exercise) =>
-                    exercise.phase === phase &&
                     !selectedIds.has(exercise.exercise_id),
                 );
                 return (
