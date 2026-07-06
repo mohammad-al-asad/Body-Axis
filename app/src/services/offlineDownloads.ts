@@ -148,7 +148,8 @@ function collectPlanVideoAssets(sessionId: string, plan: SessionPlan): OfflineDo
   const assets: OfflineDownloadAsset[] = [];
 
   for (const phase of phaseOrder) {
-    for (const exercise of plan.phases[phase]) {
+    const phaseExercises = plan.phases?.[phase] ?? [];
+    for (const exercise of phaseExercises) {
       const videos = [
         { kind: 'tutorial', video: exercise.tutorial_video },
         { kind: 'short-clip', video: exercise.short_clip_video },
@@ -297,7 +298,7 @@ function isMovementSession(value: OfflineMetadata['session']): value is Movement
 }
 
 function countPlanExercises(plan: SessionPlan) {
-  return phaseOrder.reduce((count, phase) => count + plan.phases[phase].length, 0);
+  return phaseOrder.reduce((count, phase) => count + (plan.phases?.[phase]?.length ?? 0), 0);
 }
 
 function sanitizeIdPart(value: string) {

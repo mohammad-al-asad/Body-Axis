@@ -46,7 +46,7 @@ export const sessionPlanToResetPlan = (
   index = 0,
 ): ResetPlan => {
   const phases: RoutinePhase[] = phaseOrder.flatMap((phase) =>
-    plan.phases[phase].map((exercise) => ({
+    (plan.phases?.[phase] ?? []).map((exercise) => ({
       phase,
       name: exercise.exercise_name,
     })),
@@ -54,7 +54,7 @@ export const sessionPlanToResetPlan = (
   const totalExercises = plan.total_exercise_count || phases.length;
   const completedFromExercises = phaseOrder.reduce(
     (count, phase) =>
-      count + plan.phases[phase].filter((exercise) => exercise.is_completed).length,
+      count + (plan.phases?.[phase] ?? []).filter((exercise) => exercise.is_completed).length,
     0,
   );
   const completedExercises = plan.completed_exercise_count ?? completedFromExercises;
@@ -70,7 +70,7 @@ export const sessionPlanToResetPlan = (
     progressLabel: totalExercises
       ? `${completedExercises} of ${totalExercises} exercises`
       : 'No exercises yet',
-    equipment: plan.equipment_needed.map((name) => ({
+    equipment: (plan.equipment_needed ?? []).map((name) => ({
       name,
       icon: EQUIPMENT_ICONS[name] ?? 'box',
     })),
