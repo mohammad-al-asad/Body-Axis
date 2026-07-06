@@ -27,16 +27,19 @@ const Sidebar = ({ closeDrawer }) => {
       icon: <Activity size={22} />,
       label: "Plan Manager",
       Link: "/plan-manager",
+      relatedPaths: ["/create-plan"],
     },
     {
       icon: <Dumbbell size={22} />,
       label: "Exercise Management",
       Link: "/exercise-library",
+      relatedPaths: ["/add-exercise"],
     },
     {
       icon: <Video size={22} />,
       label: "Video Manager",
       Link: "/video-manager",
+      relatedPaths: ["/upload-video"],
     },
     {
       icon: <Users size={22} />,
@@ -97,7 +100,8 @@ const Sidebar = ({ closeDrawer }) => {
         {menuItems.map((item) => {
           const isActive =
             location.pathname === item.Link ||
-            (item.Link !== "/" && location.pathname.startsWith(item.Link));
+            (item.Link !== "/" && location.pathname.startsWith(item.Link)) ||
+            (item.relatedPaths || []).some((path) => location.pathname.startsWith(path));
 
           return (
             <Link

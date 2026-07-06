@@ -9,7 +9,7 @@ import {
   Search,
   X,
 } from "lucide-react";
-import { EQUIPMENT_OPTIONS, PHASE_OPTIONS } from "../../constants/management";
+import { EQUIPMENT_OPTIONS } from "../../constants/management";
 import { ExerciseContext } from "../../context/ExerciseContext";
 import { VideoContext } from "../../context/VideoContext";
 
@@ -21,7 +21,6 @@ const emptyForm = {
   primaryIntent: "",
   secondaryBenefits: "",
   equipmentNeeded: [],
-  phase: "reset",
   tutorialVideoId: "",
   shortClipVideoId: "",
 };
@@ -155,7 +154,6 @@ const AddExercise = () => {
       primaryIntent: existing.primary_intent,
       secondaryBenefits: existing.secondary_benefits,
       equipmentNeeded: existing.equipment_needed,
-      phase: existing.phase,
       tutorialVideoId: existing.tutorial_video_id,
       shortClipVideoId: existing.short_clip_video_id,
     });
@@ -219,7 +217,6 @@ const AddExercise = () => {
       primary_intent: form.primaryIntent.trim(),
       secondary_benefits: form.secondaryBenefits.trim(),
       equipment_needed: form.equipmentNeeded,
-      phase: form.phase,
       tutorial_video_id: form.tutorialVideoId,
       short_clip_video_id: form.shortClipVideoId,
       status,
@@ -333,27 +330,7 @@ const AddExercise = () => {
               </div>
             </div>
 
-            <div>
-              <span className="mb-3 block text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
-                Phase
-              </span>
-              <div className="grid grid-cols-3 gap-2">
-                {PHASE_OPTIONS.map((phase) => (
-                  <button
-                    type="button"
-                    key={phase}
-                    onClick={() => updateField("phase", phase)}
-                    className={`rounded-xl border px-3 py-3 text-sm font-bold capitalize ${
-                      form.phase === phase
-                        ? "border-[#38BDF8] bg-[#38BDF8]/10 text-[#38BDF8]"
-                        : "border-[#1E293B] bg-[#0A0D14] text-[#64748B]"
-                    }`}
-                  >
-                    {phase}
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             <div>
               <span className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-[#94A3B8]">
