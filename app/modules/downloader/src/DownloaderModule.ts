@@ -21,4 +21,26 @@ declare class DownloaderModule extends NativeModule<DownloaderModuleEvents> {
   resumePendingDownloadsAsync(): Promise<boolean>;
 }
 
-export default requireNativeModule<DownloaderModule>('Downloader');
+let moduleInstance: DownloaderModule;
+try {
+  moduleInstance = requireNativeModule<DownloaderModule>('Downloader');
+} catch (error) {
+  console.warn("Downloader native module is not available. Using fallback mock.", error);
+  moduleInstance = {
+    saveSessionAsync: async () => [],
+    getDownloadsAsync: async () => [],
+    getSessionsAsync: async () => [],
+    getSessionAsync: async () => null,
+    getDownloadAsync: async () => null,
+    getPlayableUriAsync: async () => null,
+    pauseDownloadAsync: async () => false,
+    resumeDownloadAsync: async () => false,
+    cancelDownloadAsync: async () => false,
+    removeSessionAsync: async () => false,
+    resumePendingDownloadsAsync: async () => false,
+    addListener: () => ({ remove: () => {} }),
+    removeAllListeners: () => {},
+  } as unknown as DownloaderModule;
+}
+
+export default moduleInstance;
