@@ -495,7 +495,7 @@ private func columnString(_ statement: OpaquePointer?, _ index: Int32) -> String
   return String(cString: chars)
 }
 
-private let SQLITE_TRANSIENT = unsafeBitCast(-1, to: sqlite3_destructor_type.self)
+private let SQLITE_TRANSIENT = unsafeBitCast(OpaquePointer(bitPattern: -1), to: sqlite3_destructor_type.self)
 
 private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URLSessionTaskDelegate {
   static let shared = DownloaderManager()
