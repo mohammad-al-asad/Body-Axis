@@ -3,11 +3,11 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'com.jointhebodyinstitute.bodyaxis'
+group = 'com.jointhebodyinstitute.bodyaxis.downloader'
 version = '0.1.0'
 
 android {
-  namespace "com.jointhebodyinstitute.bodyaxis"
+  namespace "com.jointhebodyinstitute.bodyaxis.downloader"
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
