@@ -26,9 +26,72 @@ const emptyForm = {
   shortClipVideoId: "",
 };
 
-const formatVideoDuration = (seconds, fallback = "Duration unavailable") => {
+const getValidDurationSeconds = (seconds) => {
   const value = Number(seconds);
-  if (!Number.isFinite(value) || value <= 0) return fallback;
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const readVideoUrlDurationSeconds = (url) =>
+  new Promise((resolve) => {
+    if (!url) {
+      resolve(null);
+      return;
+    }
+
+    const video = document.createElement("video");
+    const timer = window.setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 8000);
+
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      video.removeAttribute("src");
+      video.load();
+    };
+
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const duration = getValidDurationSeconds(video.duration);
+      cleanup();
+      resolve(duration);
+    };
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    video.src = url;
+  });
+
+const useVideoDuration = (video) => {
+  const storedDuration = getValidDurationSeconds(video?.duration_seconds);
+  const [duration, setDuration] = useState(storedDuration);
+
+  useEffect(() => {
+    if (storedDuration) {
+      setDuration(storedDuration);
+      return;
+    }
+
+    setDuration(null);
+    if (!video?.video_url) return;
+
+    let active = true;
+    readVideoUrlDurationSeconds(video.video_url).then((resolvedDuration) => {
+      if (active) setDuration(resolvedDuration);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [storedDuration, video?.id, video?.video_url]);
+
+  return duration;
+};
+
+const formatVideoDuration = (seconds, fallback = "Duration unavailable") => {
+  const value = getValidDurationSeconds(seconds);
+  if (!value) return fallback;
 
   const totalSeconds = Math.round(value);
   const hours = Math.floor(totalSeconds / 3600);
@@ -42,6 +105,39 @@ const formatVideoDuration = (seconds, fallback = "Duration unavailable") => {
   }
 
   return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+};
+
+const VideoPickerItem = ({ video, onSelect }) => {
+  const duration = useVideoDuration(video);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(video)}
+      className="flex items-center gap-4 rounded-xl border border-[#1E293B] bg-[#0A0D14]/70 p-3 text-left hover:border-[#38BDF8]"
+    >
+      <div className="relative shrink-0">
+        <img
+          src={video.thumbnail_url}
+          alt=""
+          className="h-16 w-24 rounded-lg object-cover"
+        />
+        <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+          {formatVideoDuration(duration, "--:--")}
+        </span>
+      </div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-bold">{video.video_name}</div>
+        <div className="mt-1 text-xs text-[#38BDF8]">
+          {video.exercise_id}
+        </div>
+        <div className="mt-1 flex items-center gap-1 text-xs text-[#94A3B8]">
+          <Clock size={12} />
+          {formatVideoDuration(duration)}
+        </div>
+      </div>
+    </button>
+  );
 };
 
 const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
@@ -85,33 +181,11 @@ const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
           </div>
           <div className="grid max-h-[52vh] gap-3 overflow-y-auto md:grid-cols-2">
             {filtered.map((video) => (
-              <button
+              <VideoPickerItem
                 key={video.id}
-                type="button"
-                onClick={() => onSelect(video)}
-                className="flex items-center gap-4 rounded-xl border border-[#1E293B] bg-[#0A0D14]/70 p-3 text-left hover:border-[#38BDF8]"
-              >
-                <div className="relative shrink-0">
-                  <img
-                    src={video.thumbnail_url}
-                    alt=""
-                    className="h-16 w-24 rounded-lg object-cover"
-                  />
-                  <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {formatVideoDuration(video.duration_seconds, "--:--")}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-bold">{video.video_name}</div>
-                  <div className="mt-1 text-xs text-[#38BDF8]">
-                    {video.exercise_id}
-                  </div>
-                  <div className="mt-1 flex items-center gap-1 text-xs text-[#94A3B8]">
-                    <Clock size={12} />
-                    {formatVideoDuration(video.duration_seconds)}
-                  </div>
-                </div>
-              </button>
+                video={video}
+                onSelect={onSelect}
+              />
             ))}
             {!filtered.length && (
               <div className="col-span-2 py-12 text-center text-sm text-[#64748B]">
@@ -125,39 +199,43 @@ const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
   );
 };
 
-const VideoSlot = ({ label, video, onOpen }) => (
-  <button
-    type="button"
-    onClick={onOpen}
-    className="flex min-h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#334155] bg-[#0A0D14] hover:border-[#38BDF8]"
-  >
-    {video ? (
-      <div className="flex w-full items-center gap-4 p-4 text-left">
-        <img
-          src={video.thumbnail_url}
-          alt=""
-          className="h-24 w-36 rounded-lg object-cover"
-        />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-bold">{video.video_name}</div>
-          <div className="mt-1 text-xs text-[#38BDF8]">{video.exercise_id}</div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94A3B8]">
-            <Clock size={13} />
-            {formatVideoDuration(video.duration_seconds)}
-          </div>
-          <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
-            Click to change
+const VideoSlot = ({ label, video, onOpen }) => {
+  const duration = useVideoDuration(video);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex min-h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#334155] bg-[#0A0D14] hover:border-[#38BDF8]"
+    >
+      {video ? (
+        <div className="flex w-full items-center gap-4 p-4 text-left">
+          <img
+            src={video.thumbnail_url}
+            alt=""
+            className="h-24 w-36 rounded-lg object-cover"
+          />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold">{video.video_name}</div>
+            <div className="mt-1 text-xs text-[#38BDF8]">{video.exercise_id}</div>
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94A3B8]">
+              <Clock size={13} />
+              {formatVideoDuration(duration)}
+            </div>
+            <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
+              Click to change
+            </div>
           </div>
         </div>
-      </div>
-    ) : (
-      <div className="text-center text-[#64748B]">
-        <PlaySquare size={26} className="mx-auto mb-3" />
-        <div className="text-xs font-bold uppercase tracking-widest">{label}</div>
-      </div>
-    )}
-  </button>
-);
+      ) : (
+        <div className="text-center text-[#64748B]">
+          <PlaySquare size={26} className="mx-auto mb-3" />
+          <div className="text-xs font-bold uppercase tracking-widest">{label}</div>
+        </div>
+      )}
+    </button>
+  );
+};
 
 const AddExercise = () => {
   const { exerciseId: routeExerciseId } = useParams();
