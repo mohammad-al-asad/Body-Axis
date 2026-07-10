@@ -83,6 +83,7 @@ async def create_video_asset(
     video_upload_parts: str | None = Form(default=None),
     video_file_name: str | None = Form(default=None),
     video_file_size: int | None = Form(default=None),
+    duration_seconds: float | None = Form(default=None),
 ) -> VideoResponse:
     return VideoResponse(
         **(
@@ -97,6 +98,7 @@ async def create_video_asset(
                 _parse_completed_parts(video_upload_parts),
                 video_file_name,
                 video_file_size,
+                duration_seconds,
             )
         )
     )
@@ -150,6 +152,7 @@ async def update_video_asset(
     video_upload_parts: str | None = Form(default=None),
     video_file_name: str | None = Form(default=None),
     video_file_size: int | None = Form(default=None),
+    duration_seconds: float | None = Form(default=None),
 ) -> VideoResponse:
     return VideoResponse(
         **(
@@ -165,6 +168,7 @@ async def update_video_asset(
                 _parse_completed_parts(video_upload_parts),
                 video_file_name,
                 video_file_size,
+                duration_seconds,
             )
         )
     )

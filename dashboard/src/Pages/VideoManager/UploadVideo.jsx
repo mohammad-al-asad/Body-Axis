@@ -17,6 +17,32 @@ const formatBytes = (bytes) => {
   return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
 };
 
+const readVideoDurationSeconds = (file) =>
+  new Promise((resolve) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    const cleanup = () => URL.revokeObjectURL(url);
+
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration)
+        ? Number(video.duration.toFixed(2))
+        : null;
+      cleanup();
+      resolve(duration && duration > 0 ? duration : null);
+    };
+    video.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+    video.src = url;
+  });
+
 const FileDrop = ({ accept, file, existingUrl, icon: Icon, label, onSelect }) => {
   const inputRef = useRef(null);
   const name = file?.name || (existingUrl ? "Current file" : "");
@@ -114,6 +140,11 @@ const UploadVideo = () => {
     setSubmitting(true);
     try {
       if (videoFile) {
+        const durationSeconds = await readVideoDurationSeconds(videoFile);
+        if (durationSeconds !== null) {
+          body.append("duration_seconds", String(durationSeconds));
+        }
+
         setUploadProgress({
           stage: "uploading",
           uploadedBytes: 0,

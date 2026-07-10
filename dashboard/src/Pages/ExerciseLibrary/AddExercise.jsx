@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
+  Clock,
   Film,
   PlaySquare,
   Save,
@@ -23,6 +24,24 @@ const emptyForm = {
   equipmentNeeded: [],
   tutorialVideoId: "",
   shortClipVideoId: "",
+};
+
+const formatVideoDuration = (seconds, fallback = "Duration unavailable") => {
+  const value = Number(seconds);
+  if (!Number.isFinite(value) || value <= 0) return fallback;
+
+  const totalSeconds = Math.round(value);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const remainingSeconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(
+      remainingSeconds,
+    ).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 };
 
 const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
@@ -72,15 +91,24 @@ const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
                 onClick={() => onSelect(video)}
                 className="flex items-center gap-4 rounded-xl border border-[#1E293B] bg-[#0A0D14]/70 p-3 text-left hover:border-[#38BDF8]"
               >
-                <img
-                  src={video.thumbnail_url}
-                  alt=""
-                  className="h-16 w-24 rounded-lg object-cover"
-                />
+                <div className="relative shrink-0">
+                  <img
+                    src={video.thumbnail_url}
+                    alt=""
+                    className="h-16 w-24 rounded-lg object-cover"
+                  />
+                  <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {formatVideoDuration(video.duration_seconds, "--:--")}
+                  </span>
+                </div>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-bold">{video.video_name}</div>
                   <div className="mt-1 text-xs text-[#38BDF8]">
                     {video.exercise_id}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1 text-xs text-[#94A3B8]">
+                    <Clock size={12} />
+                    {formatVideoDuration(video.duration_seconds)}
                   </div>
                 </div>
               </button>
@@ -110,9 +138,13 @@ const VideoSlot = ({ label, video, onOpen }) => (
           alt=""
           className="h-24 w-36 rounded-lg object-cover"
         />
-        <div>
-          <div className="text-sm font-bold">{video.video_name}</div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-bold">{video.video_name}</div>
           <div className="mt-1 text-xs text-[#38BDF8]">{video.exercise_id}</div>
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94A3B8]">
+            <Clock size={13} />
+            {formatVideoDuration(video.duration_seconds)}
+          </div>
           <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
             Click to change
           </div>
