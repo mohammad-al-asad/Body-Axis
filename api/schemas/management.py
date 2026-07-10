@@ -56,6 +56,7 @@ class VideoResponse(BaseModel):
     video_description: str
     thumbnail_url: str
     video_url: str
+    duration_seconds: float | None = None
     thumbnail_key: str | None = None
     video_key: str | None = None
     video_file_name: str | None = None
@@ -136,6 +137,7 @@ class AssociatedVideo(BaseModel):
     video_name: str
     thumbnail_url: str
     video_url: str
+    duration_seconds: float | None = None
 
 
 class ExerciseResponse(ExerciseBase):
