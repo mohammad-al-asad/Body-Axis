@@ -141,6 +141,7 @@ def _video_summary(video: dict[str, Any] | None) -> dict[str, Any] | None:
         "video_name": video["video_name"],
         "thumbnail_url": video["thumbnail_url"],
         "video_url": video["video_url"],
+        "duration_seconds": video.get("duration_seconds"),
     }
 
 

@@ -32,6 +32,7 @@ class SessionVideoResponse(BaseModel):
     video_name: str
     thumbnail_url: str
     video_url: str
+    duration_seconds: float | None = None
 
 
 class SessionExerciseResponse(BaseModel):

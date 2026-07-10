@@ -50,6 +50,7 @@ def _video_summary(video: dict[str, Any]) -> dict[str, Any]:
         "video_name": video["video_name"],
         "thumbnail_url": video["thumbnail_url"],
         "video_url": video["video_url"],
+        "duration_seconds": video.get("duration_seconds"),
     }
 
 
@@ -61,6 +62,7 @@ def serialize_video(video: dict[str, Any]) -> dict[str, Any]:
         "video_description": video["video_description"],
         "thumbnail_url": video["thumbnail_url"],
         "video_url": video["video_url"],
+        "duration_seconds": video.get("duration_seconds"),
         "thumbnail_key": video.get("thumbnail_key"),
         "video_key": video.get("video_key"),
         "video_file_name": video.get("video_file_name"),
@@ -168,6 +170,7 @@ async def create_video(
     video_upload_parts: list[dict[str, Any]] | None = None,
     video_file_name: str | None = None,
     video_file_size: int | None = None,
+    duration_seconds: float | None = None,
 ) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     thumbnail_url, thumbnail_key = await run_in_threadpool(
@@ -216,6 +219,7 @@ async def create_video(
         "video_key": video_key,
         "video_file_name": resolved_video_name,
         "video_file_size": resolved_video_size,
+        "duration_seconds": duration_seconds,
         "created_at": now,
         "updated_at": now,
     }
@@ -241,6 +245,7 @@ async def update_video(
     video_upload_parts: list[dict[str, Any]] | None = None,
     video_file_name: str | None = None,
     video_file_size: int | None = None,
+    duration_seconds: float | None = None,
 ) -> dict[str, Any]:
     object_id = _object_id(video_id, "Video")
     existing = await db.videos.find_one({"_id": object_id})
@@ -305,6 +310,7 @@ async def update_video(
                     "video_key": key,
                     "video_file_name": video_file.filename,
                     "video_file_size": video_file.size,
+                    "duration_seconds": duration_seconds,
                 }
             )
             old_keys.append(existing.get("video_key"))
@@ -322,10 +328,13 @@ async def update_video(
                     "video_key": key,
                     "video_file_name": video_file_name,
                     "video_file_size": video_file_size,
+                    "duration_seconds": duration_seconds,
                 }
             )
             old_keys.append(existing.get("video_key"))
             new_keys.append(key)
+        elif duration_seconds is not None:
+            changes["duration_seconds"] = duration_seconds
 
         await db.videos.update_one({"_id": object_id}, {"$set": changes})
     except Exception:
