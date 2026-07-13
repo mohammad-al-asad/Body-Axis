@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FileVideo, PlayCircle, Save, UploadCloud } from "lucide-react";
+import { FileVideo, Image as ImageIcon, PlayCircle, Save, UploadCloud } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
 
 const IntroductionContent = () => {
-  const inputRef = useRef(null);
+  const videoInputRef = useRef(null);
+  const thumbnailInputRef = useRef(null);
   const [messageTitle, setMessageTitle] = useState("");
   const [messageQuote, setMessageQuote] = useState("");
   const [status, setStatus] = useState("published");
   const [videoFile, setVideoFile] = useState(null);
+  const [thumbnailFile, setThumbnailFile] = useState(null);
   const [videoUrl, setVideoUrl] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+  const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -27,6 +31,7 @@ const IntroductionContent = () => {
         setMessageQuote(data.message_quote || "");
         setStatus(data.status || "published");
         setVideoUrl(data.video_url || "");
+        setThumbnailUrl(data.thumbnail_url || "");
       })
       .catch((err) => {
         if (!mounted) return;
@@ -54,6 +59,19 @@ const IntroductionContent = () => {
     };
   }, [videoFile]);
 
+  useEffect(() => {
+    if (!thumbnailFile) {
+      setThumbnailPreviewUrl("");
+      return;
+    }
+
+    const url = URL.createObjectURL(thumbnailFile);
+    setThumbnailPreviewUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [thumbnailFile]);
+
   const handleSelectVideo = (file) => {
     if (!file) return;
     if (!file.type.startsWith("video/")) {
@@ -62,6 +80,16 @@ const IntroductionContent = () => {
     }
     setError("");
     setVideoFile(file);
+  };
+
+  const handleSelectThumbnail = (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file for the thumbnail.");
+      return;
+    }
+    setError("");
+    setThumbnailFile(file);
   };
 
   const handleSave = async () => {
@@ -75,6 +103,7 @@ const IntroductionContent = () => {
     body.append("message_quote", messageQuote.trim());
     body.append("status", status);
     if (videoFile) body.append("video_file", videoFile);
+    if (thumbnailFile) body.append("thumbnail_file", thumbnailFile);
 
     setSaving(true);
     setError("");
@@ -84,7 +113,9 @@ const IntroductionContent = () => {
       setMessageQuote(updated.message_quote);
       setStatus(updated.status);
       setVideoUrl(updated.video_url);
+      setThumbnailUrl(updated.thumbnail_url);
       setVideoFile(null);
+      setThumbnailFile(null);
       alert("Introduction content saved successfully!");
     } catch (err) {
       setError(err.message || "Failed to save introduction content.");
@@ -94,6 +125,7 @@ const IntroductionContent = () => {
   };
 
   const activeVideoUrl = videoPreviewUrl || videoUrl;
+  const activeThumbnailUrl = thumbnailPreviewUrl || thumbnailUrl;
 
   return (
     <div className="min-h-screen bg-[#0A0D14] p-8 text-white">
@@ -166,11 +198,44 @@ const IntroductionContent = () => {
 
                 <div>
                   <span className="mb-2 block text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">
+                    Video Thumbnail
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => thumbnailInputRef.current?.click()}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      handleSelectThumbnail(event.dataTransfer.files[0]);
+                    }}
+                    className="flex min-h-[160px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#334155] bg-[#0A0D14]/60 p-5 text-center hover:border-[#38BDF8]"
+                  >
+                    <input
+                      ref={thumbnailInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => handleSelectThumbnail(event.target.files[0])}
+                    />
+                    <div className="mb-4 rounded-full bg-[#1E293B] p-4">
+                      <ImageIcon size={24} className={thumbnailFile ? "text-[#34D399]" : "text-[#94A3B8]"} />
+                    </div>
+                    <div className="text-sm font-bold">
+                      {thumbnailFile?.name || "Click or drag an image for the video preview"}
+                    </div>
+                    <div className="mt-2 text-xs text-[#64748B]">
+                      JPG, PNG, or WebP
+                    </div>
+                  </button>
+                </div>
+
+                <div>
+                  <span className="mb-2 block text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">
                     Introduction Video
                   </span>
                   <button
                     type="button"
-                    onClick={() => inputRef.current?.click()}
+                    onClick={() => videoInputRef.current?.click()}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
                       event.preventDefault();
@@ -179,7 +244,7 @@ const IntroductionContent = () => {
                     className="flex min-h-[170px] w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#334155] bg-[#0A0D14]/60 p-5 text-center hover:border-[#38BDF8]"
                   >
                     <input
-                      ref={inputRef}
+                      ref={videoInputRef}
                       type="file"
                       accept="video/mp4,video/quicktime,video/webm"
                       className="hidden"
@@ -202,6 +267,18 @@ const IntroductionContent = () => {
                 <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-widest text-[#94A3B8]">
                   <PlayCircle size={16} className="text-[#38BDF8]" /> Preview
                 </div>
+                {activeThumbnailUrl ? (
+                  <img
+                    src={activeThumbnailUrl}
+                    alt="Introduction thumbnail preview"
+                    className="aspect-video w-full rounded-2xl bg-[#0A0D14] object-cover"
+                  />
+                ) : (
+                  <div className="flex aspect-video w-full flex-col items-center justify-center rounded-2xl border border-[#1E293B] bg-[#0A0D14] text-[#64748B]">
+                    <ImageIcon size={28} className="mb-3" />
+                    No thumbnail selected
+                  </div>
+                )}
                 {activeVideoUrl ? (
                   <video
                     controls
