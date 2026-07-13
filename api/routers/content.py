@@ -75,6 +75,7 @@ async def update_admin_introduction_content(
     message_quote: str = Form(min_length=1, max_length=1000),
     status_value: str = Form(default="published", alias="status"),
     video_file: UploadFile | None = File(default=None),
+    thumbnail_file: UploadFile | None = File(default=None),
     current_admin: dict = Depends(get_current_admin),
 ) -> IntroductionContentResponse:
     del current_admin
@@ -83,6 +84,7 @@ async def update_admin_introduction_content(
         message_quote,
         status_value,
         video_file,
+        thumbnail_file,
     )
 
 
