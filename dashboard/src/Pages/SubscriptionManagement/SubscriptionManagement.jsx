@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, RefreshCw } from 'lucide-react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { RefreshCw } from 'lucide-react';
 
 import ActivePlans from '../../Components/Subscription/ActivePlans';
 import EntitlementManager from '../../Components/Subscription/EntitlementManager';
@@ -74,57 +72,6 @@ const SubscriptionManagement = () => {
     setCurrentPage(1);
   }, [filterStatus, filterPlanType, subscriptions.length]);
 
-  const handleExportPDF = () => {
-    if (!filteredSubscriptions.length) {
-      alert('No RevenueCat subscription data to export.');
-      return;
-    }
-
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('RevenueCat Subscription Report', 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
-
-    const columns = [
-      'User',
-      'Email',
-      'Product',
-      'Expiration',
-      'Store',
-      'Environment',
-      'Status',
-      'Lifetime Revenue',
-      'Entitlements',
-    ];
-    const rows = filteredSubscriptions.map((subscription) => [
-      subscription.name,
-      subscription.email,
-      subscription.product_id || 'Unavailable',
-      subscription.expires_at
-        ? new Date(subscription.expires_at).toLocaleDateString()
-        : 'No expiration',
-      subscription.store || 'Unavailable',
-      subscription.environment || 'Unavailable',
-      subscription.status,
-      `$${Number(subscription.total_revenue_usd || 0).toFixed(2)}`,
-      subscription.entitlements
-        .map((entitlement) => entitlement.display_name)
-        .join(', ') || 'None',
-    ]);
-
-    doc.autoTable({
-      head: [columns],
-      body: rows,
-      startY: 40,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
-    });
-    doc.save(`revenuecat_subscriptions_${Date.now()}.pdf`);
-  };
-
   return (
     <div className="min-h-screen bg-[#07090e] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#0f172a] via-[#07090e] to-[#07090e] p-6 sm:p-8 font-sans text-white">
       <div className="mx-auto max-w-[1600px] space-y-8 animate-in fade-in duration-700">
@@ -155,15 +102,6 @@ const SubscriptionManagement = () => {
               </div>
             )}
           </div>
-          
-          <button
-            onClick={handleExportPDF}
-            disabled={loading || !filteredSubscriptions.length}
-            className="group flex items-center gap-2.5 whitespace-nowrap rounded-full border border-blue-500/30 bg-gradient-to-r from-blue-600/10 via-[#1e293b]/50 to-teal-500/10 px-6 py-3 text-sm font-bold text-white shadow-[0_0_15px_rgba(59,130,246,0.1)] transition-all hover:border-blue-500/50 hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-blue-500/30"
-          >
-            <Download size={15} className="text-blue-400 group-hover:translate-y-[1px] transition-transform duration-200" />
-            Export Report
-          </button>
         </div>
 
         {/* Feedback Alerts */}
@@ -243,4 +181,3 @@ const SubscriptionManagement = () => {
 };
 
 export default SubscriptionManagement;
-

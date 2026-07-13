@@ -29,9 +29,13 @@ class IntroductionContentResponse(BaseModel):
     message_title: str
     message_quote: str
     video_url: str
+    thumbnail_url: str
     video_key: str | None = None
+    thumbnail_key: str | None = None
     video_file_name: str | None = None
     video_file_size: int | None = None
+    thumbnail_file_name: str | None = None
+    thumbnail_file_size: int | None = None
     status: str
     updated_at: datetime
     created_at: datetime

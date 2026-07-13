@@ -32,6 +32,7 @@ export default function IntroductionScreen() {
   const dispatch = useDispatch();
   const { data: introductionContent } = useGetIntroductionContentQuery();
   const videoUrl = introductionContent?.video_url || ISLAMIC_DEMO_VIDEO_URL;
+  const thumbnailUrl = introductionContent?.thumbnail_url || DEMO_VIDEO_THUMBNAIL_URL;
   const messageTitle = introductionContent?.message_title || DEFAULT_MESSAGE_TITLE;
   const messageQuote = introductionContent?.message_quote || DEFAULT_MESSAGE_QUOTE;
 
@@ -112,7 +113,7 @@ export default function IntroductionScreen() {
               >
                 <Image
                   source={{
-                    uri: DEMO_VIDEO_THUMBNAIL_URL,
+                    uri: thumbnailUrl,
                   }}
                   style={styles.videoThumbnail}
                 />

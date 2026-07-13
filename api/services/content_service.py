@@ -49,6 +49,7 @@ DEFAULT_INTRODUCTION_CONTENT = {
         "https://archive.org/download/5PillarsOfIslamShahadahBecomingAMuslimAbuHafsah/"
         "AmazingRecitationOfHolyQuran_SurahAlAhzabverse70-72_zahilZakariaAlHafiz.mp4"
     ),
+    "thumbnail_url": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=900&q=80",
 }
 
 
@@ -79,9 +80,13 @@ def _introduction_response(document: dict[str, Any]) -> IntroductionContentRespo
         message_title=document["message_title"],
         message_quote=document["message_quote"],
         video_url=document["video_url"],
+        thumbnail_url=document.get("thumbnail_url") or DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"],
         video_key=document.get("video_key"),
+        thumbnail_key=document.get("thumbnail_key"),
         video_file_name=document.get("video_file_name"),
         video_file_size=document.get("video_file_size"),
+        thumbnail_file_name=document.get("thumbnail_file_name"),
+        thumbnail_file_size=document.get("thumbnail_file_size"),
         status=document.get("status", "published"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
@@ -155,6 +160,7 @@ async def get_introduction_content(
         message_title=DEFAULT_INTRODUCTION_CONTENT["message_title"],
         message_quote=DEFAULT_INTRODUCTION_CONTENT["message_quote"],
         video_url=DEFAULT_INTRODUCTION_CONTENT["video_url"],
+        thumbnail_url=DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"],
         status="published",
         created_at=now,
         updated_at=now,
@@ -190,6 +196,7 @@ async def upsert_introduction_content(
     message_quote: str,
     status_value: str,
     video_file: UploadFile | None = None,
+    thumbnail_file: UploadFile | None = None,
 ) -> IntroductionContentResponse:
     if status_value not in {"draft", "published"}:
         raise HTTPException(
@@ -199,10 +206,17 @@ async def upsert_introduction_content(
 
     existing = await db.app_content.find_one({"slug": INTRODUCTION_SLUG})
     video_url = existing.get("video_url") if existing else DEFAULT_INTRODUCTION_CONTENT["video_url"]
+    thumbnail_url = (
+        existing.get("thumbnail_url") if existing else None
+    ) or DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"]
     video_key = existing.get("video_key") if existing else None
+    thumbnail_key = existing.get("thumbnail_key") if existing else None
     video_file_name = existing.get("video_file_name") if existing else None
     video_file_size = existing.get("video_file_size") if existing else None
+    thumbnail_file_name = existing.get("thumbnail_file_name") if existing else None
+    thumbnail_file_size = existing.get("thumbnail_file_size") if existing else None
     old_video_key = None
+    old_thumbnail_key = None
 
     if video_file:
         if video_file.content_type and not video_file.content_type.startswith("video/"):
@@ -221,15 +235,36 @@ async def upsert_introduction_content(
         video_file_size = video_file.size
         old_video_key = existing.get("video_key") if existing else None
 
+    if thumbnail_file:
+        if thumbnail_file.content_type and not thumbnail_file.content_type.startswith("image/"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Introduction thumbnail must be an image file",
+            )
+        thumbnail_url, thumbnail_key = await run_in_threadpool(
+            upload_file,
+            thumbnail_file.file,
+            thumbnail_file.filename,
+            thumbnail_file.content_type,
+            "introduction-thumbnails",
+        )
+        thumbnail_file_name = thumbnail_file.filename
+        thumbnail_file_size = thumbnail_file.size
+        old_thumbnail_key = existing.get("thumbnail_key") if existing else None
+
     now = _now()
     document = {
         "slug": INTRODUCTION_SLUG,
         "message_title": message_title.strip(),
         "message_quote": message_quote.strip(),
         "video_url": video_url,
+        "thumbnail_url": thumbnail_url,
         "video_key": video_key,
+        "thumbnail_key": thumbnail_key,
         "video_file_name": video_file_name,
         "video_file_size": video_file_size,
+        "thumbnail_file_name": thumbnail_file_name,
+        "thumbnail_file_size": thumbnail_file_size,
         "status": status_value,
         "updated_at": now,
     }
@@ -245,6 +280,8 @@ async def upsert_introduction_content(
 
     if old_video_key and old_video_key != video_key:
         await run_in_threadpool(delete_file, old_video_key)
+    if old_thumbnail_key and old_thumbnail_key != thumbnail_key:
+        await run_in_threadpool(delete_file, old_thumbnail_key)
 
     return _introduction_response(updated)
 
