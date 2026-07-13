@@ -23,6 +23,13 @@ from services.s3_service import (
     upload_file,
 )
 
+USE_CASE_DISPLAY_LABELS = {
+    "Stiff or Tight": "Move More Freely",
+    "Aches or Discomfort": "Ease Everyday Soreness",
+    "Feels Weak or Unstable": "Build Strength & Control",
+    "Just Want to Move Better": "Improve Performance",
+}
+
 
 async def ensure_management_indexes() -> None:
     await db.videos.create_index([("exercise_id", ASCENDING)])
@@ -70,6 +77,10 @@ def serialize_video(video: dict[str, Any]) -> dict[str, Any]:
         "created_at": video["created_at"],
         "updated_at": video["updated_at"],
     }
+
+
+def _display_use_case(value: str) -> str:
+    return USE_CASE_DISPLAY_LABELS.get(value, value)
 
 
 async def serialize_exercise(exercise: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +160,7 @@ async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
         "target_area": plan["target_area"],
-        "use_case": plan["use_case"],
+        "use_case": _display_use_case(plan["use_case"]),
         "equipment_needed": equipment_needed,
         "duration": plan["duration"],
         "phases": phases,

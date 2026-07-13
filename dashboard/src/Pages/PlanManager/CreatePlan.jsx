@@ -11,6 +11,7 @@ import {
   PHASE_OPTIONS,
   TARGET_AREA_OPTIONS,
   USE_CASE_OPTIONS,
+  normalizeUseCaseLabel,
 } from "../../constants/management";
 import { ExerciseContext } from "../../context/ExerciseContext";
 import { PlanContext } from "../../context/PlanContext";
@@ -55,7 +56,7 @@ const CreatePlan = () => {
       planId: existing.plan_id,
       planName: existing.plan_name,
       targetArea: existing.target_area,
-      useCase: existing.use_case,
+      useCase: normalizeUseCaseLabel(existing.use_case),
       duration: existing.duration,
     });
     setPhases({

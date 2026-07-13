@@ -16,26 +16,26 @@ interface GoalOption {
 const goalOptions: GoalOption[] = [
   {
     id: "stiff_tight",
-    title: "Stiff or Tight",
-    description: "Restricted movement or tension",
+    title: "Move More Freely",
+    description: "Improve mobility and feel less restricted.",
     icon: "bandage",
   },
   {
     id: "aches_discomfort",
-    title: "Aches or Discomfort",
-    description: "Dull or nagging sensation",
+    title: "Ease Everyday Soreness",
+    description: "Gentle movement for mild, general soreness.",
     icon: "human",
   },
   {
     id: "weak_unstable",
-    title: "Feels Weak or Unstable",
-    description: "Low strength or poor control",
+    title: "Build Strength & Control",
+    description: "Improve stability, coordination, and movement confidence.",
     icon: "human-capacity-decrease",
   },
   {
     id: "move_better",
-    title: "Just Want to Move Better",
-    description: "No pain, just improving",
+    title: "Improve Performance",
+    description: "Support better movement for exercise, sports, and daily activities.",
     icon: "run",
   },
 ];
@@ -53,11 +53,9 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
   return (
     <View style={styles.slide}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, marginTop: 24 }}>
-        <Text style={styles.title}>What would you like to
-improve?</Text>
+        <Text style={styles.title}>Choose Your Movement Goal</Text>
         <Text style={styles.subtitle}>
-          Select the primary focus for your corrective
-exercise journey.
+          {"Select what you'd like to focus on today."}
         </Text>
 
         <View style={styles.optionsList}>

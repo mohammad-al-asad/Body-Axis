@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,12 +19,21 @@ import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { completeIntroduction } from '@/redux/slice/settings';
 import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
+import { useGetIntroductionContentQuery } from '@/redux/api/contentApi';
+
+const DEFAULT_MESSAGE_TITLE = 'Precision in every movement.';
+const DEFAULT_MESSAGE_QUOTE =
+  '“I built Body Axis™ to bridge the gap between hard work and scientific mobility. We don’t just track reps; we track how your joints interact with the world.”';
 
 export default function IntroductionScreen() {
   const theme = useTheme();
   const themeState = useThemeState();
   const styles = createStyles(theme, themeState);
   const dispatch = useDispatch();
+  const { data: introductionContent } = useGetIntroductionContentQuery();
+  const videoUrl = introductionContent?.video_url || ISLAMIC_DEMO_VIDEO_URL;
+  const messageTitle = introductionContent?.message_title || DEFAULT_MESSAGE_TITLE;
+  const messageQuote = introductionContent?.message_quote || DEFAULT_MESSAGE_QUOTE;
 
   const handleHelp = () => {
     Alert.alert(
@@ -34,17 +43,30 @@ export default function IntroductionScreen() {
   };
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
-  const videoPlayer = useVideoPlayer(ISLAMIC_DEMO_VIDEO_URL);
+  const videoPlayer = useVideoPlayer(null);
+
+  useEffect(() => {
+    setIsVideoPlaying(false);
+    void videoPlayer.replaceAsync(videoUrl).catch((error) => {
+      console.error('Failed to load introduction video', error);
+    });
+  }, [videoPlayer, videoUrl]);
 
   useEventListener(videoPlayer, 'playToEnd', () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
   });
 
-  const handleWatchIntroduction = () => {
-    videoPlayer.currentTime = 0;
-    videoPlayer.play();
-    setIsVideoPlaying(true);
+  const handleWatchIntroduction = async () => {
+    try {
+      await videoPlayer.replaceAsync(videoUrl);
+      videoPlayer.currentTime = 0;
+      videoPlayer.play();
+      setIsVideoPlaying(true);
+    } catch (error) {
+      console.error('Failed to play introduction video', error);
+      Alert.alert('Video Unavailable', 'Unable to play the introduction video right now.');
+    }
   };
 
   const handleSkip = () => {
@@ -84,7 +106,9 @@ export default function IntroductionScreen() {
               <TouchableOpacity
                 style={styles.videoThumbnailButton}
                 activeOpacity={0.9}
-                onPress={handleWatchIntroduction}
+                onPress={() => {
+                  void handleWatchIntroduction();
+                }}
               >
                 <Image
                   source={{
@@ -97,9 +121,6 @@ export default function IntroductionScreen() {
                     <Feather name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
                   </View>
                 </View>
-                <View style={styles.durationBadge}>
-                  <Text style={styles.durationText}>1:13</Text>
-                </View>
               </TouchableOpacity>
             )}
           </View>
@@ -110,11 +131,8 @@ export default function IntroductionScreen() {
               <View style={styles.messageDot} />
               <Text style={styles.messageLabel}>MESSAGE FROM CHRISTINA</Text>
             </View>
-            <Text style={styles.messageTitle}>Precision in every movement.</Text>
-            <Text style={styles.messageQuote}>
-              “I built Body Axis™ to bridge the gap between hard work and scientific mobility. We
-              don’t just track reps; we track how your joints interact with the world.”
-            </Text>
+            <Text style={styles.messageTitle}>{messageTitle}</Text>
+            <Text style={styles.messageQuote}>{messageQuote}</Text>
           </View>
 
           {/* Action Buttons */}
@@ -122,7 +140,9 @@ export default function IntroductionScreen() {
             <TouchableOpacity
               style={styles.watchBtn}
               activeOpacity={0.8}
-              onPress={handleWatchIntroduction}
+              onPress={() => {
+                void handleWatchIntroduction();
+              }}
             >
               <Text style={styles.watchBtnText}>Watch Introduction</Text>
               <Feather name="play" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />

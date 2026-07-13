@@ -23,6 +23,7 @@ import AboutApp from "../Pages/AppContent/AboutApp";
 import SupportMessages from "../Pages/AppContent/SupportMessages";
 import FAQList from "../Pages/AppContent/FAQList";
 import AddFAQ from "../Pages/AppContent/AddFAQ";
+import IntroductionContent from "../Pages/AppContent/IntroductionContent";
 import Notifications from "../Pages/Notifications/Notifications";
 export const router = createBrowserRouter([
   {
@@ -70,6 +71,7 @@ export const router = createBrowserRouter([
           { path: "/privacy-policy", element: <PrivacyPolicy /> },
           { path: "/terms-and-conditions", element: <TermsAndConditions /> },
           { path: "/about-app", element: <AboutApp /> },
+          { path: "/introduction-content", element: <IntroductionContent /> },
           { path: "/support-messages", element: <SupportMessages /> },
           { path: "/faq", element: <FAQList /> },
           { path: "/add-faq", element: <AddFAQ /> },
