@@ -41,14 +41,26 @@ TARGET_AREA_ALIASES = {
 }
 
 USE_CASE_ALIASES = {
-    "stifftight": "Stiff or Tight",
-    "stiffortight": "Stiff or Tight",
-    "achesdiscomfort": "Aches or Discomfort",
-    "achesordiscomfort": "Aches or Discomfort",
-    "weakunstable": "Feels Weak or Unstable",
-    "feelsweakorunstable": "Feels Weak or Unstable",
-    "movebetter": "Just Want to Move Better",
-    "justwanttomovebetter": "Just Want to Move Better",
+    "stifftight": "Move More Freely",
+    "stiffortight": "Move More Freely",
+    "movemorefreely": "Move More Freely",
+    "achesdiscomfort": "Ease Everyday Soreness",
+    "achesordiscomfort": "Ease Everyday Soreness",
+    "easesoreness": "Ease Everyday Soreness",
+    "easeeverydaysoreness": "Ease Everyday Soreness",
+    "weakunstable": "Build Strength & Control",
+    "feelsweakorunstable": "Build Strength & Control",
+    "buildstrengthcontrol": "Build Strength & Control",
+    "movebetter": "Improve Performance",
+    "justwanttomovebetter": "Improve Performance",
+    "improveperformance": "Improve Performance",
+}
+
+USE_CASE_LEGACY_VALUES = {
+    "Move More Freely": ["Stiff or Tight"],
+    "Ease Everyday Soreness": ["Aches or Discomfort"],
+    "Build Strength & Control": ["Feels Weak or Unstable"],
+    "Improve Performance": ["Just Want to Move Better"],
 }
 
 
@@ -132,6 +144,17 @@ def _normalize_use_case(payload: SessionCreateRequest) -> str:
     )
 
 
+def _display_use_case(value: str) -> str:
+    keyed = _key(value)
+    if keyed in USE_CASE_ALIASES:
+        return USE_CASE_ALIASES[keyed]
+    return value
+
+
+def _matching_use_cases(value: str) -> list[str]:
+    return [value, *USE_CASE_LEGACY_VALUES.get(value, [])]
+
+
 def _video_summary(video: dict[str, Any] | None) -> dict[str, Any] | None:
     if not video:
         return None
@@ -213,7 +236,7 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
         "target_area": plan["target_area"],
-        "use_case": plan["use_case"],
+        "use_case": _display_use_case(plan["use_case"]),
         "equipment_needed": equipment_needed,
         "duration": plan["duration"],
         "phases": phases,
@@ -500,7 +523,7 @@ async def create_user_session(
     matching_plans = await db.plans.find(
         {
             "target_area": {"$in": target_areas},
-            "use_case": user_case,
+            "use_case": {"$in": _matching_use_cases(user_case)},
             "status": "published",
         }
     ).sort("created_at", DESCENDING).to_list(length=None)

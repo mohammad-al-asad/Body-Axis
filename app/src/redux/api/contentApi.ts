@@ -11,6 +11,17 @@ export interface ContentPage {
   updated_at: string;
 }
 
+export interface IntroductionContent {
+  message_title: string;
+  message_quote: string;
+  video_url: string;
+  video_file_name?: string | null;
+  video_file_size?: number | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface FAQItem {
   id: string;
   question: string;
@@ -37,6 +48,9 @@ export const contentApi = baseApi.injectEndpoints({
     getContentPage: builder.query<ContentPage, ContentSlug>({
       query: (slug) => `/content/${slug}`,
     }),
+    getIntroductionContent: builder.query<IntroductionContent, void>({
+      query: () => '/content/introduction',
+    }),
     getFaqs: builder.query<FAQListResponse, void>({
       query: () => '/faqs',
     }),
@@ -52,6 +66,7 @@ export const contentApi = baseApi.injectEndpoints({
 
 export const {
   useGetContentPageQuery,
+  useGetIntroductionContentQuery,
   useGetFaqsQuery,
   useSubmitSupportMessageMutation,
 } = contentApi;

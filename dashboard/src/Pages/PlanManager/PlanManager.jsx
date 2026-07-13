@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { PlanContext } from "../../context/PlanContext";
+import { normalizeUseCaseLabel } from "../../constants/management";
 
 const PlanManager = () => {
   const { plans, loading, error, deletePlan } = useContext(PlanContext);
@@ -139,7 +140,7 @@ const PlanManager = () => {
                         <td className="px-6 py-5">
                           <div className="text-sm">{plan.target_area}</div>
                           <div className="mt-1 text-xs text-[#64748B]">
-                            {plan.use_case}
+                            {normalizeUseCaseLabel(plan.use_case)}
                           </div>
                         </td>
                         <td className="px-6 py-5 text-sm text-[#94A3B8]">

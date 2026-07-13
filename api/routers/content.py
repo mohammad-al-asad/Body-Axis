@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
 
 from core.dependencies import get_current_admin, get_current_user
 from schemas.content import (
@@ -8,6 +8,7 @@ from schemas.content import (
     FAQListResponse,
     FAQRequest,
     FAQResponse,
+    IntroductionContentResponse,
     SupportMessageCreate,
     SupportMessageListResponse,
     SupportMessageResponse,
@@ -19,14 +20,21 @@ from services.content_service import (
     delete_faq,
     delete_support_message,
     get_content_page,
+    get_introduction_content,
     list_faqs,
     list_support_messages,
     update_faq,
     update_support_status,
     upsert_content_page,
+    upsert_introduction_content,
 )
 
 router = APIRouter(tags=["App Content"])
+
+
+@router.get("/content/introduction", response_model=IntroductionContentResponse)
+async def get_public_introduction_content() -> IntroductionContentResponse:
+    return await get_introduction_content()
 
 
 @router.get("/content/{slug}", response_model=ContentPageResponse)
@@ -51,6 +59,31 @@ async def submit_support_message(
     current_user: dict = Depends(get_current_user),
 ) -> SupportMessageResponse:
     return await create_support_message(current_user, payload)
+
+
+@router.get("/admin/content/introduction", response_model=IntroductionContentResponse)
+async def get_admin_introduction_content(
+    current_admin: dict = Depends(get_current_admin),
+) -> IntroductionContentResponse:
+    del current_admin
+    return await get_introduction_content(include_drafts=True)
+
+
+@router.put("/admin/content/introduction", response_model=IntroductionContentResponse)
+async def update_admin_introduction_content(
+    message_title: str = Form(min_length=1, max_length=160),
+    message_quote: str = Form(min_length=1, max_length=1000),
+    status_value: str = Form(default="published", alias="status"),
+    video_file: UploadFile | None = File(default=None),
+    current_admin: dict = Depends(get_current_admin),
+) -> IntroductionContentResponse:
+    del current_admin
+    return await upsert_introduction_content(
+        message_title,
+        message_quote,
+        status_value,
+        video_file,
+    )
 
 
 @router.get("/admin/content/{slug}", response_model=ContentPageResponse)
