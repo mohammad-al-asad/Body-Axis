@@ -91,6 +91,17 @@ export const adminApi = {
       },
       true,
     ),
+  getIntroductionContent: () =>
+    request("/admin/content/introduction", {}, true),
+  updateIntroductionContent: (payload) =>
+    request(
+      "/admin/content/introduction",
+      {
+        method: "PUT",
+        body: payload,
+      },
+      true,
+    ),
   getFaqs: (params = {}) => {
     const query = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {

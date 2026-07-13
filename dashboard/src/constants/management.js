@@ -28,8 +28,18 @@ export const TARGET_AREA_OPTIONS = [
 ];
 
 export const USE_CASE_OPTIONS = [
-  "Stiff or Tight",
-  "Aches or Discomfort",
-  "Feels Weak or Unstable",
-  "Just Want to Move Better",
+  "Move More Freely",
+  "Ease Everyday Soreness",
+  "Build Strength & Control",
+  "Improve Performance",
 ];
+
+export const USE_CASE_LABEL_MAP = {
+  "Stiff or Tight": "Move More Freely",
+  "Aches or Discomfort": "Ease Everyday Soreness",
+  "Feels Weak or Unstable": "Build Strength & Control",
+  "Just Want to Move Better": "Improve Performance",
+};
+
+export const normalizeUseCaseLabel = (value) =>
+  USE_CASE_LABEL_MAP[value] || value;

@@ -3,8 +3,9 @@ from typing import Any
 
 from bson import ObjectId
 from bson.errors import InvalidId
-from fastapi import HTTPException, status
+from fastapi import HTTPException, UploadFile, status
 from pymongo import ASCENDING, DESCENDING
+from starlette.concurrency import run_in_threadpool
 
 from database import db
 from schemas.content import (
@@ -14,10 +15,12 @@ from schemas.content import (
     FAQListResponse,
     FAQRequest,
     FAQResponse,
+    IntroductionContentResponse,
     SupportMessageCreate,
     SupportMessageListResponse,
     SupportMessageResponse,
 )
+from services.s3_service import delete_file, upload_file
 
 DEFAULT_CONTENT: dict[str, dict[str, str]] = {
     "about": {
@@ -32,6 +35,20 @@ DEFAULT_CONTENT: dict[str, dict[str, str]] = {
         "title": "Privacy Policy",
         "content": "We collect account and movement-session data to personalize your experience. We do not sell your personal data.",
     },
+}
+
+INTRODUCTION_SLUG = "introduction"
+
+DEFAULT_INTRODUCTION_CONTENT = {
+    "message_title": "Precision in every movement.",
+    "message_quote": (
+        "“I built Body Axis™ to bridge the gap between hard work and scientific mobility. "
+        "We don’t just track reps; we track how your joints interact with the world.”"
+    ),
+    "video_url": (
+        "https://archive.org/download/5PillarsOfIslamShahadahBecomingAMuslimAbuHafsah/"
+        "AmazingRecitationOfHolyQuran_SurahAlAhzabverse70-72_zahilZakariaAlHafiz.mp4"
+    ),
 }
 
 
@@ -51,6 +68,20 @@ def _content_response(document: dict[str, Any]) -> ContentPageResponse:
         slug=document["slug"],
         title=document["title"],
         content=document["content"],
+        status=document.get("status", "published"),
+        created_at=document["created_at"],
+        updated_at=document["updated_at"],
+    )
+
+
+def _introduction_response(document: dict[str, Any]) -> IntroductionContentResponse:
+    return IntroductionContentResponse(
+        message_title=document["message_title"],
+        message_quote=document["message_quote"],
+        video_url=document["video_url"],
+        video_key=document.get("video_key"),
+        video_file_name=document.get("video_file_name"),
+        video_file_size=document.get("video_file_size"),
         status=document.get("status", "published"),
         created_at=document["created_at"],
         updated_at=document["updated_at"],
@@ -108,6 +139,28 @@ async def get_content_page(
     )
 
 
+async def get_introduction_content(
+    include_drafts: bool = False,
+) -> IntroductionContentResponse:
+    query: dict[str, Any] = {"slug": INTRODUCTION_SLUG}
+    if not include_drafts:
+        query["status"] = "published"
+
+    document = await db.app_content.find_one(query)
+    if document:
+        return _introduction_response(document)
+
+    now = _now()
+    return IntroductionContentResponse(
+        message_title=DEFAULT_INTRODUCTION_CONTENT["message_title"],
+        message_quote=DEFAULT_INTRODUCTION_CONTENT["message_quote"],
+        video_url=DEFAULT_INTRODUCTION_CONTENT["video_url"],
+        status="published",
+        created_at=now,
+        updated_at=now,
+    )
+
+
 async def upsert_content_page(
     slug: ContentSlug,
     payload: ContentPageRequest,
@@ -130,6 +183,70 @@ async def upsert_content_page(
     result = await db.app_content.insert_one(document)
     document["_id"] = result.inserted_id
     return _content_response(document)
+
+
+async def upsert_introduction_content(
+    message_title: str,
+    message_quote: str,
+    status_value: str,
+    video_file: UploadFile | None = None,
+) -> IntroductionContentResponse:
+    if status_value not in {"draft", "published"}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Status must be draft or published",
+        )
+
+    existing = await db.app_content.find_one({"slug": INTRODUCTION_SLUG})
+    video_url = existing.get("video_url") if existing else DEFAULT_INTRODUCTION_CONTENT["video_url"]
+    video_key = existing.get("video_key") if existing else None
+    video_file_name = existing.get("video_file_name") if existing else None
+    video_file_size = existing.get("video_file_size") if existing else None
+    old_video_key = None
+
+    if video_file:
+        if video_file.content_type and not video_file.content_type.startswith("video/"):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Introduction upload must be a video file",
+            )
+        video_url, video_key = await run_in_threadpool(
+            upload_file,
+            video_file.file,
+            video_file.filename,
+            video_file.content_type,
+            "introduction",
+        )
+        video_file_name = video_file.filename
+        video_file_size = video_file.size
+        old_video_key = existing.get("video_key") if existing else None
+
+    now = _now()
+    document = {
+        "slug": INTRODUCTION_SLUG,
+        "message_title": message_title.strip(),
+        "message_quote": message_quote.strip(),
+        "video_url": video_url,
+        "video_key": video_key,
+        "video_file_name": video_file_name,
+        "video_file_size": video_file_size,
+        "status": status_value,
+        "updated_at": now,
+    }
+
+    if existing:
+        await db.app_content.update_one({"_id": existing["_id"]}, {"$set": document})
+        updated = await db.app_content.find_one({"_id": existing["_id"]})
+    else:
+        document["created_at"] = now
+        result = await db.app_content.insert_one(document)
+        document["_id"] = result.inserted_id
+        updated = document
+
+    if old_video_key and old_video_key != video_key:
+        await run_in_threadpool(delete_file, old_video_key)
+
+    return _introduction_response(updated)
 
 
 async def list_faqs(

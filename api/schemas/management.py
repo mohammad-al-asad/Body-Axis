@@ -43,10 +43,10 @@ class TargetArea(str, Enum):
 
 
 class UseCase(str, Enum):
-    stiff_or_tight = "Stiff or Tight"
-    aches_or_discomfort = "Aches or Discomfort"
-    feels_weak_or_unstable = "Feels Weak or Unstable"
-    move_better = "Just Want to Move Better"
+    move_more_freely = "Move More Freely"
+    ease_everyday_soreness = "Ease Everyday Soreness"
+    build_strength_control = "Build Strength & Control"
+    improve_performance = "Improve Performance"
 
 
 class VideoResponse(BaseModel):

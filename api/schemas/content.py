@@ -25,6 +25,18 @@ class ContentPageResponse(BaseModel):
     created_at: datetime
 
 
+class IntroductionContentResponse(BaseModel):
+    message_title: str
+    message_quote: str
+    video_url: str
+    video_key: str | None = None
+    video_file_name: str | None = None
+    video_file_size: int | None = None
+    status: str
+    updated_at: datetime
+    created_at: datetime
+
+
 class FAQRequest(BaseModel):
     question: str = Field(min_length=1, max_length=500)
     answer: str = Field(min_length=1, max_length=5000)
