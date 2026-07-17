@@ -103,7 +103,7 @@ export function HomeOnboarding() {
           </View>
           <Text style={styles.stepTitle}>Get Plan</Text>
           <Text style={styles.stepDescription}>
-            Change wording below: Get personalized plans with steps you can follow.
+            Get personalized plans with steps you can follow.
           </Text>
         </View>
       </View>
@@ -147,75 +147,6 @@ export function HomeOnboarding() {
           </View>
         </View>
       </View>
-
-      {/* Explore Plans Section */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Explore Movement Sessions</Text>
-        <TouchableOpacity onPress={()=>router.push("/sessions")}>
-          <Text style={styles.viewAllLink}>View All</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Swipable Plans Horizontal Row */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.horizontalScrollContent}>
-        
-        {/* Plan Card A */}
-        <TouchableOpacity style={styles.planCard} activeOpacity={0.9}>
-          <View style={styles.planImageContainer}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=300&q=80' }}
-              style={styles.planImage}
-            />
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>12 MIN</Text>
-            </View>
-            <View style={styles.playButton}>
-              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
-            </View>
-          </View>
-          <Text style={styles.planTitle} numberOfLines={2}>Lower Back Decompression</Text>
-          <Text style={styles.planCategory}>Focus: Spinal Mobility & Relief</Text>
-        </TouchableOpacity>
-
-        {/* Plan Card B */}
-        <TouchableOpacity style={styles.planCard} activeOpacity={0.9}>
-          <View style={styles.planImageContainer}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=300&q=80' }}
-              style={styles.planImage}
-            />
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>14 MIN</Text>
-            </View>
-            <View style={styles.playButton}>
-              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
-            </View>
-          </View>
-          <Text style={styles.planTitle} numberOfLines={2}>Hip Capsule Flow</Text>
-          <Text style={styles.planCategory}>Focus: Functional Range & Mobility</Text>
-        </TouchableOpacity>
-
-        {/* Plan Card C */}
-        <TouchableOpacity style={styles.planCard} activeOpacity={0.9}>
-          <View style={styles.planImageContainer}>
-            <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=300&q=80' }}
-              style={styles.planImage}
-            />
-            <View style={styles.durationBadge}>
-              <Text style={styles.durationText}>15 MIN</Text>
-            </View>
-            <View style={styles.playButton}>
-              <Feather name="play" size={12} color="#050B14" style={{ marginLeft: 2 }} />
-            </View>
-          </View>
-          <Text style={styles.planTitle} numberOfLines={2}>Spinal Articulation</Text>
-          <Text style={styles.planCategory}>Focus: Nervous System Integration</Text>
-        </TouchableOpacity>
-      </ScrollView>
 
     </ScrollView>
   );

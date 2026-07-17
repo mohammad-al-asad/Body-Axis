@@ -244,8 +244,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       paddingVertical: 18,
     },
     questionText: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: 15,
+      fontWeight: '800',
       color: theme.text,
       flex: 1,
       paddingRight: 16,
@@ -274,7 +274,8 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
     },
     answerText: {
       fontSize: 13,
-      color: theme.textSecondary,
+      fontWeight: '500',
+      color: theme.text,
       lineHeight: 20,
     },
     card: {
