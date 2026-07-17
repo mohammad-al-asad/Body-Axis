@@ -32,7 +32,7 @@ TARGET_AREA_ALIASES = {
     "footankle": "FOOT/ANKLE",
     "neckupperback": "NECK/UPPER BACK",
     "middleback": "MIDDLE BACK",
-    "sidelowerback": "SIDE LOWER BACK",
+    "sidelowerback": "LOWER BACK",
     "lowerback": "LOWER BACK",
     "glutes": "GLUTES",
     "backhip": "BACK HIP",
@@ -56,6 +56,14 @@ USE_CASE_ALIASES = {
     "improveperformance": "Improve Performance",
 }
 
+TARGET_AREA_LEGACY_VALUES = {
+    "LOWER BACK": ["SIDE LOWER BACK"],
+}
+
+TARGET_AREA_DISPLAY_LABELS = {
+    "SIDE LOWER BACK": "LOWER BACK",
+}
+
 USE_CASE_LEGACY_VALUES = {
     "Move More Freely": ["Stiff or Tight"],
     "Ease Everyday Soreness": ["Aches or Discomfort"],
@@ -67,6 +75,14 @@ USE_CASE_LEGACY_VALUES = {
 async def ensure_session_indexes() -> None:
     await db.sessions.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
     await db.sessions.create_index([("target_areas", ASCENDING), ("user_case", ASCENDING)])
+    await db.plans.create_index(
+        [
+            ("target_area", ASCENDING),
+            ("use_case", ASCENDING),
+            ("duration", ASCENDING),
+            ("status", ASCENDING),
+        ]
+    )
     await db.session_progress.create_index(
         [("user_id", ASCENDING), ("session_id", ASCENDING)],
         unique=True,
@@ -93,6 +109,19 @@ def _normalize_target_area(value: str) -> str | None:
             return target_area.value
 
     return None
+
+
+def _display_target_area(value: str) -> str:
+    return TARGET_AREA_DISPLAY_LABELS.get(value, value)
+
+
+def _matching_target_areas(values: list[str]) -> list[str]:
+    matches: list[str] = []
+    for value in values:
+        for target_area in (value, *TARGET_AREA_LEGACY_VALUES.get(value, [])):
+            if target_area not in matches:
+                matches.append(target_area)
+    return matches
 
 
 def _normalize_target_areas(payload: SessionCreateRequest) -> list[str]:
@@ -153,6 +182,18 @@ def _display_use_case(value: str) -> str:
 
 def _matching_use_cases(value: str) -> list[str]:
     return [value, *USE_CASE_LEGACY_VALUES.get(value, [])]
+
+
+def _matching_plan_durations(value: int | None) -> list[str]:
+    if value is None:
+        return []
+    return [
+        f"{value} Minutes",
+        f"{value} Minute",
+        f"{value} min",
+        f"{value} mins",
+        str(value),
+    ]
 
 
 def _video_summary(video: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -235,7 +276,7 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "id": str(plan["_id"]),
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
-        "target_area": plan["target_area"],
+        "target_area": _display_target_area(plan["target_area"]),
         "use_case": _display_use_case(plan["use_case"]),
         "equipment_needed": equipment_needed,
         "duration": plan["duration"],
@@ -520,13 +561,19 @@ async def create_user_session(
     target_areas = _normalize_target_areas(payload)
     user_case = _normalize_use_case(payload)
 
-    matching_plans = await db.plans.find(
-        {
-            "target_area": {"$in": target_areas},
-            "use_case": {"$in": _matching_use_cases(user_case)},
-            "status": "published",
-        }
-    ).sort("created_at", DESCENDING).to_list(length=None)
+    plan_query: dict[str, Any] = {
+        "target_area": {"$in": _matching_target_areas(target_areas)},
+        "use_case": {"$in": _matching_use_cases(user_case)},
+        "status": "published",
+    }
+    matching_durations = _matching_plan_durations(payload.session_duration)
+    if matching_durations:
+        plan_query["duration"] = {"$in": matching_durations}
+
+    matching_plans = await db.plans.find(plan_query).sort(
+        "created_at",
+        DESCENDING,
+    ).to_list(length=None)
 
     now = datetime.now(timezone.utc)
     document = {

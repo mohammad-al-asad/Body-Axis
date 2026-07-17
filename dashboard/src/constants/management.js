@@ -19,7 +19,6 @@ export const TARGET_AREA_OPTIONS = [
   "FOOT/ANKLE",
   "NECK/UPPER BACK",
   "MIDDLE BACK",
-  "SIDE LOWER BACK",
   "LOWER BACK",
   "GLUTES",
   "BACK HIP",
@@ -41,5 +40,12 @@ export const USE_CASE_LABEL_MAP = {
   "Just Want to Move Better": "Improve Performance",
 };
 
+export const TARGET_AREA_LABEL_MAP = {
+  "SIDE LOWER BACK": "LOWER BACK",
+};
+
 export const normalizeUseCaseLabel = (value) =>
   USE_CASE_LABEL_MAP[value] || value;
+
+export const normalizeTargetAreaLabel = (value) =>
+  TARGET_AREA_LABEL_MAP[value] || value;

@@ -6,6 +6,20 @@ from pydantic import BaseModel, Field, model_validator
 from schemas.management import Equipment, Phase, PublishStatus
 
 
+TARGET_AREA_DISPLAY_LABELS = {
+    "SIDE LOWER BACK": "LOWER BACK",
+}
+
+
+def _display_target_areas(values: list[str]) -> list[str]:
+    normalized: list[str] = []
+    for value in values:
+        label = TARGET_AREA_DISPLAY_LABELS.get(value, value)
+        if label not in normalized:
+            normalized.append(label)
+    return normalized
+
+
 class SessionCreateRequest(BaseModel):
     target_area: str | None = Field(default=None, max_length=80)
     target_areas: list[str] = Field(default_factory=list)
@@ -142,7 +156,7 @@ def movement_session_from_document(document: dict[str, Any]) -> dict[str, Any]:
         "id": str(document["_id"]),
         "user_id": str(document["user_id"]),
         "session_name": document["session_name"],
-        "target_areas": document.get("target_areas", []),
+        "target_areas": _display_target_areas(document.get("target_areas", [])),
         "user_case": document["user_case"],
         "schedule_days": document.get("schedule_days"),
         "schedule_weeks": document.get("schedule_weeks"),
