@@ -30,6 +30,10 @@ USE_CASE_DISPLAY_LABELS = {
     "Just Want to Move Better": "Improve Performance",
 }
 
+TARGET_AREA_DISPLAY_LABELS = {
+    "SIDE LOWER BACK": "LOWER BACK",
+}
+
 
 async def ensure_management_indexes() -> None:
     await db.videos.create_index([("exercise_id", ASCENDING)])
@@ -81,6 +85,10 @@ def serialize_video(video: dict[str, Any]) -> dict[str, Any]:
 
 def _display_use_case(value: str) -> str:
     return USE_CASE_DISPLAY_LABELS.get(value, value)
+
+
+def _display_target_area(value: str) -> str:
+    return TARGET_AREA_DISPLAY_LABELS.get(value, value)
 
 
 async def serialize_exercise(exercise: dict[str, Any]) -> dict[str, Any]:
@@ -159,7 +167,7 @@ async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
         "id": str(plan["_id"]),
         "plan_id": plan["plan_id"],
         "plan_name": plan["plan_name"],
-        "target_area": plan["target_area"],
+        "target_area": _display_target_area(plan["target_area"]),
         "use_case": _display_use_case(plan["use_case"]),
         "equipment_needed": equipment_needed,
         "duration": plan["duration"],
