@@ -34,7 +34,6 @@ class TargetArea(str, Enum):
     foot_ankle = "FOOT/ANKLE"
     neck_upper_back = "NECK/UPPER BACK"
     middle_back = "MIDDLE BACK"
-    side_lower_back = "SIDE LOWER BACK"
     lower_back = "LOWER BACK"
     glutes = "GLUTES"
     back_hip = "BACK HIP"

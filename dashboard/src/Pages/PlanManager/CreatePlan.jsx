@@ -11,6 +11,7 @@ import {
   PHASE_OPTIONS,
   TARGET_AREA_OPTIONS,
   USE_CASE_OPTIONS,
+  normalizeTargetAreaLabel,
   normalizeUseCaseLabel,
 } from "../../constants/management";
 import { ExerciseContext } from "../../context/ExerciseContext";
@@ -55,7 +56,7 @@ const CreatePlan = () => {
     setMetadata({
       planId: existing.plan_id,
       planName: existing.plan_name,
-      targetArea: existing.target_area,
+      targetArea: normalizeTargetAreaLabel(existing.target_area),
       useCase: normalizeUseCaseLabel(existing.use_case),
       duration: existing.duration,
     });
