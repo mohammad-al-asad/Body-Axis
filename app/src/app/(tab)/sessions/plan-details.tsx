@@ -188,7 +188,6 @@ export default function PlanDetailsScreen() {
               benefits: dynamicExercise?.secondary_benefits || dynamicExercise?.primary_intent || null,
               targetRegions: sessionPlan?.target_area ? [sessionPlan.target_area] : [],
               equipment: dynamicExercise?.equipment_needed ?? [],
-              avoidIf: null,
               sets: dynamicExercise ? String(dynamicExercise.sets) : 'N/A',
               reps: dynamicExercise?.reps ?? 'N/A',
             };
@@ -280,14 +279,6 @@ export default function PlanDetailsScreen() {
                       )) : <Text style={styles.emptyFieldText}>Not provided</Text>}
                     </View>
 
-                    {/* Avoid If warning */}
-                    <View style={styles.avoidIfContainer}>
-                      <View style={styles.avoidIfTitleRow}>
-                        <Feather name="alert-triangle" size={13} color={theme.error} style={{ marginRight: 6 }} />
-                        <Text style={styles.avoidIfTitle}>AVOID IF</Text>
-                      </View>
-                      <Text style={styles.avoidIfText}>{details.avoidIf ?? 'Not provided'}</Text>
-                    </View>
                   </View>
                 )}
 
@@ -570,30 +561,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       fontSize: 12,
       fontWeight: '600',
       color: theme.textSecondary,
-    },
-    avoidIfContainer: {
-      backgroundColor: theme.error + '10',
-      borderColor: theme.error + '25',
-      borderRadius: 12,
-      borderWidth: 1,
-      padding: 12,
-      marginBottom: 20,
-    },
-    avoidIfTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    avoidIfTitle: {
-      fontSize: 10,
-      fontWeight: '800',
-      color: theme.error,
-      letterSpacing: 1.0,
-    },
-    avoidIfText: {
-      fontSize: 13,
-      color: theme.text,
-      lineHeight: 18,
     },
     gridContainer: {
       flexDirection: 'row',
