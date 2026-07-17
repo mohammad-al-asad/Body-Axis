@@ -31,7 +31,6 @@ const backHotspots: PainHotspot[] = [
   { id: "shoulder_back", label: "SHOULDER", top: "29%", left: "42%" },
   { id: "neck_upper_back", label: "NECK/UPPER BACK", top: "26%", left: "51%" },
   { id: "middle_back", label: "MIDDLE BACK", top: "33%", left: "51%" },
-  { id: "side_lower_back", label: "SIDE LOWER BACK", top: "40%", left: "45%" },
   { id: "lower_back", label: "LOWER BACK", top: "40%", left: "52%" },
   { id: "glutes", label: "GLUTES", top: "46%", left: "45%" },
   { id: "back_hip", label: "BACK HIP", top: "43%", left: "60%" },

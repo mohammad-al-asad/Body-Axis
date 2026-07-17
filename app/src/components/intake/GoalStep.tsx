@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
 import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme, useThemeState } from "@/hooks/use-theme";
 import { CustomButton } from "@/components/ui/CustomButton";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -48,7 +48,9 @@ interface GoalStepProps {
 
 export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps) {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const themeState = useThemeState();
+  const styles = createStyles(theme, themeState);
+  const infoIconColor = themeState === "dark" ? "#8EF1FF" : "#087D70";
 
   return (
     <View style={styles.slide}>
@@ -90,15 +92,20 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
         </View>
 
         <View style={styles.infoCard}>
-          <Feather name="info" size={16} color={theme.secondary} style={styles.infoIcon} />
-          <Text style={styles.infoText}>
-            These protocols are designed for general movement improvement and are
-            not a substitute for medical advice. If you are experiencing sharp,
-            shooting, or severe pain, numbness, tingling, or have a recent
-            injury or diagnosis, please consult a healthcare professional before
-            starting. This app is not intended to treat or diagnose any medical
-            condition.
-          </Text>
+          <View style={styles.infoIconContainer}>
+            <Feather name="info" size={18} color={infoIconColor} />
+          </View>
+          <View style={styles.infoContent}>
+            <Text style={styles.infoTitle}>Movement Plan Notice</Text>
+            <Text style={styles.infoText}>
+              These movement plans are designed for general movement improvement
+              and are not a substitute for medical advice. If you are experiencing
+              sharp, shooting, or severe pain, numbness, tingling, or have a
+              recent injury or diagnosis, please consult a healthcare professional
+              before starting. This app is not intended to treat or diagnose any
+              medical condition.
+            </Text>
+          </View>
         </View>
 
         {/* Footer inside scroll */}
@@ -115,7 +122,7 @@ export function GoalStep({ primaryGoal, setPrimaryGoal, onNext }: GoalStepProps)
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>) =>
+const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType<typeof useThemeState>) =>
   StyleSheet.create({
     slide: {
       width: SCREEN_WIDTH,
@@ -221,29 +228,45 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       width: "100%",
     },
     infoCard: {
-      backgroundColor: theme.backgroundElement,
-      borderWidth: 1,
-      borderColor: theme.cardBorder,
+      backgroundColor: themeState === "dark" ? "#102032" : "#EAFBFF",
+      borderWidth: 1.5,
+      borderColor: themeState === "dark" ? "#5DE6FF80" : "#2cb09d99",
       borderRadius: 18,
       padding: 16,
       flexDirection: "row",
       alignItems: "flex-start",
-      marginTop: 12,
+      marginTop: 16,
       marginBottom: 16,
-      elevation: 1,
-      shadowColor: theme.text,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.15,
-      shadowRadius: 4,
+      elevation: 3,
+      shadowColor: themeState === "dark" ? "#5DE6FF" : "#2cb09d",
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: themeState === "dark" ? 0.18 : 0.16,
+      shadowRadius: 8,
     },
-    infoIcon: {
+    infoIconContainer: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: themeState === "dark" ? "rgba(93, 230, 255, 0.14)" : "rgba(44, 176, 157, 0.14)",
+      justifyContent: "center",
+      alignItems: "center",
       marginRight: 12,
-      marginTop: 2,
+      marginTop: 1,
+    },
+    infoContent: {
+      flex: 1,
+    },
+    infoTitle: {
+      fontSize: 13,
+      fontWeight: "800",
+      color: themeState === "dark" ? "#E9FBFF" : "#063E3A",
+      marginBottom: 6,
+      letterSpacing: 0.2,
     },
     infoText: {
-      flex: 1,
-      fontSize: 11,
-      color: theme.textSecondary,
-      lineHeight: 16,
+      fontSize: 12.5,
+      fontWeight: "600",
+      color: themeState === "dark" ? "#D5E4EF" : "#1F3E46",
+      lineHeight: 19,
     },
   });

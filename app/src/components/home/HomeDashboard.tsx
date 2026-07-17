@@ -52,6 +52,19 @@ const currentWeekDates = () => {
 const clampWeeklyTarget = (value?: number | null) =>
   Math.min(Math.max(value ?? 7, 1), 7);
 
+const getSessionThumbnailUrl = (session: MovementSession) => {
+  const firstPlan = session.plans[0];
+  if (!firstPlan) return null;
+
+  const firstExercise = (
+    firstPlan.phases.reset[0] ??
+    firstPlan.phases.control[0] ??
+    firstPlan.phases.integrate[0]
+  );
+
+  return firstExercise?.tutorial_video?.thumbnail_url ?? null;
+};
+
 const getTargetWeekDates = (
   weekDates: ReturnType<typeof currentWeekDates>,
   completedDates: string[],
@@ -319,27 +332,38 @@ export function HomeDashboard() {
             <ActivityIndicator color={theme.secondary} />
           </View>
         ) : (
-          (sessionsData?.items ?? []).map((session) => (
-            <TouchableOpacity
-              key={session.id}
-              style={styles.exploreCard}
-              activeOpacity={0.9}
-              onPress={() =>
-                router.push({
-                  pathname: '/sessions/session-details',
-                  params: { sessionId: session.id },
-                })
-              }
-            >
-              <View style={styles.exploreImagePlaceholder}>
-                <Feather name="activity" size={22} color={theme.secondary} />
-              </View>
-              <Text style={styles.exploreTitle}>{session.session_name}</Text>
-              <Text style={styles.exploreMeta}>
-                {session.completed_exercise_count} / {session.total_exercise_count} exercises
-              </Text>
-            </TouchableOpacity>
-          ))
+          (sessionsData?.items ?? []).map((session) => {
+            const thumbnailUrl = getSessionThumbnailUrl(session);
+            return (
+              <TouchableOpacity
+                key={session.id}
+                style={styles.exploreCard}
+                activeOpacity={0.9}
+                onPress={() =>
+                  router.push({
+                    pathname: '/sessions/session-details',
+                    params: { sessionId: session.id },
+                  })
+                }
+              >
+                {thumbnailUrl ? (
+                  <Image
+                    source={{ uri: thumbnailUrl }}
+                    style={styles.exploreImage}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View style={styles.exploreImagePlaceholder}>
+                    <Feather name="activity" size={22} color={theme.secondary} />
+                  </View>
+                )}
+                <Text style={styles.exploreTitle}>{session.session_name}</Text>
+                <Text style={styles.exploreMeta}>
+                  {session.completed_exercise_count} / {session.total_exercise_count} exercises
+                </Text>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
     </ScrollView>
@@ -606,6 +630,15 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     exploreCard: {
       width: 156,
       marginRight: 16,
+    },
+    exploreImage: {
+      width: '100%',
+      height: 104,
+      borderRadius: 16,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      backgroundColor: themeState === 'dark' ? '#111A2A' : '#EDF3FF',
     },
     exploreImagePlaceholder: {
       width: '100%',

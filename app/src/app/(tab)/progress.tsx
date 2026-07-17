@@ -13,7 +13,7 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
-import { useGetProgressSummaryQuery } from '@/redux/api/sessionApi';
+import { SessionPlan, useGetProgressSummaryQuery } from '@/redux/api/sessionApi';
 
 interface NextStepCard {
   id: string;
@@ -50,6 +50,18 @@ const getCurrentWeekDates = () => {
   });
 };
 
+const getPlanThumbnailUrl = (plan?: SessionPlan | null) => {
+  if (!plan) return null;
+
+  const firstExercise = (
+    plan.phases.reset[0] ??
+    plan.phases.control[0] ??
+    plan.phases.integrate[0]
+  );
+
+  return firstExercise?.tutorial_video?.thumbnail_url ?? null;
+};
+
 export default function ProgressScreen() {
   const theme = useTheme();
   const styles = createStyles(theme);
@@ -69,6 +81,7 @@ export default function ProgressScreen() {
     activeSession?.plans.find((plan) => plan.plan_id === activeSession.next_exercise?.plan_id) ??
     activeSession?.plans.find((plan) => plan.progress_status !== 'completed') ??
     null;
+  const activePlanThumbnailUrl = getPlanThumbnailUrl(activePlan);
   const weekDates = getCurrentWeekDates();
   const nextSteps: NextStepCard[] = activeSession?.next_exercise
     ? [
@@ -195,8 +208,11 @@ export default function ProgressScreen() {
 
           <View style={styles.activeProgramCard}>
             <Image
-              source={{ uri: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=600&q=80' }}
+              source={{
+                uri: activePlanThumbnailUrl ?? 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=600&q=80',
+              }}
               style={styles.programImage}
+              contentFit="cover"
             />
             {/* Dark gradient shadow overlay */}
             <View style={styles.programOverlay} />

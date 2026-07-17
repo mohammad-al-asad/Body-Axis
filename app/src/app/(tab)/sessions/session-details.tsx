@@ -314,7 +314,7 @@ export default function SessionDetailsScreen() {
             {/* Back Button Container */}
             <TouchableOpacity
               style={styles.backContainer}
-              onPress={() => router.back()}
+              onPress={() => router.replace("/sessions")}
               activeOpacity={0.7}
             >
               <Feather name="arrow-left" size={16} color={theme.tertiary} style={styles.backIcon} />
