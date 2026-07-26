@@ -668,6 +668,70 @@ async def get_user_session(
     return MovementSessionResponse(**await _hydrate_session(document))
 
 
+async def _rebuild_user_progress_summary(user_id: str) -> None:
+    progress_documents = await db.session_progress.find({"user_id": user_id}).to_list(length=None)
+    completed_dates = sorted(
+        {
+            completed_date
+            for progress in progress_documents
+            for completed_date in progress.get("completed_dates", [])
+        }
+    )
+    sessions_completed_total = sum(
+        1 for progress in progress_documents
+        if progress.get("status") == "completed"
+    )
+    total_exercises_completed = sum(
+        progress.get("completed_exercise_count", 0)
+        for progress in progress_documents
+    )
+
+    await db.user_progress_summaries.update_one(
+        {"user_id": user_id},
+        {
+            "$set": {
+                "completed_dates": completed_dates,
+                "current_streak_days": _calculate_streak_from_dates(completed_dates),
+                "sessions_completed_total": sessions_completed_total,
+                "total_exercises_completed": total_exercises_completed,
+                "updated_at": datetime.now(timezone.utc),
+            },
+            "$setOnInsert": {
+                "user_id": user_id,
+            },
+        },
+        upsert=True,
+    )
+
+
+async def delete_user_session(
+    current_user: dict[str, Any],
+    session_id: str,
+) -> None:
+    try:
+        session_object_id = ObjectId(session_id)
+    except InvalidId:
+        raise HTTPException(status_code=404, detail="Session not found") from None
+
+    user_id = str(current_user["_id"])
+    result = await db.sessions.delete_one(
+        {
+            "_id": session_object_id,
+            "user_id": user_id,
+        }
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    await db.session_progress.delete_many(
+        {
+            "user_id": user_id,
+            "session_id": session_id,
+        }
+    )
+    await _rebuild_user_progress_summary(user_id)
+
+
 async def complete_session_exercise(
     current_user: dict[str, Any],
     session_id: str,

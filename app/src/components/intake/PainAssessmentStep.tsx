@@ -84,7 +84,7 @@ export function PainAssessmentStep({
   return (
     <View style={styles.slide}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24, marginTop: 24 }}>
-        <Text style={styles.title}>Where are you experiencing discomfort?</Text>
+        <Text style={styles.title}>Where would you like to focus?</Text>
         <Text style={styles.subtitle}>
           Tap the areas on the 3D visualizer to pinpoint your pain points.
         </Text>

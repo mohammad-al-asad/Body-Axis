@@ -18,14 +18,18 @@ export interface SessionCardProps {
   session: SessionData;
   onStartPress: () => void;
   onCreateNewPress?: () => void;
+  onDeletePress?: () => void;
   startButtonText?: string;
+  isDeleting?: boolean;
 }
 
 export function SessionCard({
   session,
   onStartPress,
   onCreateNewPress,
+  onDeletePress,
   startButtonText = 'Start This Session',
+  isDeleting = false,
 }: SessionCardProps) {
   const theme = useTheme();
   const themeState = useThemeState();
@@ -43,11 +47,25 @@ export function SessionCard({
       {/* Title & Active Badge Row */}
       <View style={styles.titleRow}>
         <Text style={styles.planTitle}>{session.title}</Text>
-        {session.isActive && (
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeBadgeText}>ACTIVE</Text>
-          </View>
-        )}
+        <View style={styles.titleActions}>
+          {session.isActive && (
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>ACTIVE</Text>
+            </View>
+          )}
+          {onDeletePress && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel={`Delete ${session.title} session`}
+              disabled={isDeleting}
+              onPress={onDeletePress}
+              style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
+              activeOpacity={0.7}
+            >
+              <Feather name="trash-2" size={18} color={theme.warning} />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Info Grid (Phase & Schedule) */}
@@ -122,6 +140,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       alignItems: 'center',
       marginBottom: 20,
     },
+    titleActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
     activeBadge: {
       backgroundColor: 'rgba(93, 230, 255, 0.1)',
       borderRadius: 6,
@@ -135,6 +158,19 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       fontWeight: '800',
       color: theme.secondary,
       letterSpacing: 0.5,
+    },
+    deleteButton: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      borderWidth: 1,
+      borderColor: theme.warning,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: themeState === 'dark' ? 'rgba(255, 77, 79, 0.08)' : 'rgba(255, 77, 79, 0.06)',
+    },
+    deleteButtonDisabled: {
+      opacity: 0.5,
     },
     planLabel: {
       fontSize: 10,
