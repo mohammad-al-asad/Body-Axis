@@ -145,6 +145,16 @@ export const sessionApi = baseApi.injectEndpoints({
         { type: 'Sessions' as const, id: sessionId },
       ],
     }),
+    deleteSession: builder.mutation<void, string>({
+      query: (sessionId) => ({
+        url: `/sessions/${sessionId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_result, _error, sessionId) => [
+        'Sessions',
+        { type: 'Sessions' as const, id: sessionId },
+      ],
+    }),
     completeExercise: builder.mutation<MovementSession, CompleteExerciseRequest>({
       query: ({ sessionId, exerciseId, ...body }) => ({
         url: `/sessions/${sessionId}/exercises/${exerciseId}/complete`,
@@ -167,6 +177,7 @@ export const {
   useCreateSessionMutation,
   useGetSessionsQuery,
   useGetSessionQuery,
+  useDeleteSessionMutation,
   useCompleteExerciseMutation,
   useGetProgressSummaryQuery,
 } = sessionApi;
