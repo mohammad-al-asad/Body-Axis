@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,8 +7,9 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { SessionCard } from '@/components/SessionCard';
-import { MovementSession, useGetSessionsQuery } from '@/redux/api/sessionApi';
-import { getSavedOfflineSessions } from '@/services/offlineDownloads';
+import { MovementSession, useDeleteSessionMutation, useGetSessionsQuery } from '@/redux/api/sessionApi';
+import { getSavedOfflineSessions, removeOfflineSession } from '@/services/offlineDownloads';
+import { getApiErrorMessage } from '@/utils/apiError';
 
 const getCompletedPlanCount = (session: MovementSession) =>
   session.plans.filter(
@@ -48,10 +49,20 @@ export default function SessionsScreen() {
   const themeState = useThemeState();
   const styles = createStyles(theme, themeState);
   const { data, isLoading, isError, refetch } = useGetSessionsQuery();
+  const [deleteSession] = useDeleteSessionMutation();
   const [offlineSessions, setOfflineSessions] = useState<MovementSession[]>([]);
+  const [deletingSessionIds, setDeletingSessionIds] = useState<Set<string>>(new Set());
+  const [locallyDeletedSessionIds, setLocallyDeletedSessionIds] = useState<Set<string>>(new Set());
+  const onlineSessionIds = useMemo(
+    () => new Set((data?.items ?? []).map((session) => session.id)),
+    [data?.items],
+  );
   const sessions = useMemo(
-    () => mergeSessions(data?.items ?? [], offlineSessions),
-    [data?.items, offlineSessions],
+    () =>
+      mergeSessions(data?.items ?? [], offlineSessions).filter(
+        (session) => !locallyDeletedSessionIds.has(session.id),
+      ),
+    [data?.items, offlineSessions, locallyDeletedSessionIds],
   );
 
   useFocusEffect(
@@ -77,6 +88,68 @@ export default function SessionsScreen() {
         isActive = false;
       };
     }, []),
+  );
+
+  const markDeleting = useCallback((sessionId: string, isDeletingSession: boolean) => {
+    setDeletingSessionIds((current) => {
+      const next = new Set(current);
+      if (isDeletingSession) {
+        next.add(sessionId);
+      } else {
+        next.delete(sessionId);
+      }
+      return next;
+    });
+  }, []);
+
+  const performDeleteSession = useCallback(
+    async (session: MovementSession) => {
+      const isOnlineSession = onlineSessionIds.has(session.id);
+      markDeleting(session.id, true);
+
+      try {
+        if (isOnlineSession) {
+          await deleteSession(session.id).unwrap();
+        }
+
+        try {
+          await removeOfflineSession(session.id);
+        } catch (offlineError) {
+          if (!isOnlineSession) {
+            throw offlineError;
+          }
+          console.warn('Failed to remove offline session copy', offlineError);
+        }
+
+        setOfflineSessions((current) => current.filter((item) => item.id !== session.id));
+        setLocallyDeletedSessionIds((current) => new Set(current).add(session.id));
+      } catch (error) {
+        Alert.alert('Delete Failed', getApiErrorMessage(error));
+      } finally {
+        markDeleting(session.id, false);
+      }
+    },
+    [deleteSession, markDeleting, onlineSessionIds],
+  );
+
+  const confirmDeleteSession = useCallback(
+    (session: MovementSession) => {
+      Alert.alert(
+        'Delete Session?',
+        'If you delete this session, the progress related to this session will be removed. You will not be able to see it again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              void performDeleteSession(session);
+            },
+          },
+        ],
+      );
+    },
+    [performDeleteSession],
   );
 
   return (
@@ -139,6 +212,8 @@ export default function SessionsScreen() {
                 })
               }
               onCreateNewPress={index === 0 ? () => router.push('/intake') : undefined}
+              onDeletePress={() => confirmDeleteSession(session)}
+              isDeleting={deletingSessionIds.has(session.id)}
             />
           ))}
         </ScrollView>

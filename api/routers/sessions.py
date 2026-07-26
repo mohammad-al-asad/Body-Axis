@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 
 from core.dependencies import get_current_user
 from schemas.sessions import (
@@ -11,6 +11,7 @@ from schemas.sessions import (
 from services.session_service import (
     complete_session_exercise,
     create_user_session,
+    delete_user_session,
     get_user_session,
     get_user_progress_summary,
     list_user_sessions,
@@ -49,6 +50,15 @@ async def complete_exercise(
     current_user: dict = Depends(get_current_user),
 ) -> MovementSessionResponse:
     return await complete_session_exercise(current_user, session_id, exercise_id, payload)
+
+
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+) -> Response:
+    await delete_user_session(current_user, session_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{session_id}", response_model=MovementSessionResponse)
