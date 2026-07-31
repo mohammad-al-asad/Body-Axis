@@ -20,7 +20,7 @@ from schemas.content import (
     SupportMessageListResponse,
     SupportMessageResponse,
 )
-from services.s3_service import delete_file, upload_file
+from services.s3_service import complete_multipart_upload, delete_file, upload_file
 
 DEFAULT_CONTENT: dict[str, dict[str, str]] = {
     "about": {
@@ -197,6 +197,11 @@ async def upsert_introduction_content(
     status_value: str,
     video_file: UploadFile | None = None,
     thumbnail_file: UploadFile | None = None,
+    video_upload_key: str | None = None,
+    video_upload_id: str | None = None,
+    video_upload_parts: list[dict[str, Any]] | None = None,
+    uploaded_video_file_name: str | None = None,
+    uploaded_video_file_size: int | None = None,
 ) -> IntroductionContentResponse:
     if status_value not in {"draft", "published"}:
         raise HTTPException(
@@ -233,6 +238,16 @@ async def upsert_introduction_content(
         )
         video_file_name = video_file.filename
         video_file_size = video_file.size
+        old_video_key = existing.get("video_key") if existing else None
+    elif video_upload_key and video_upload_id and video_upload_parts:
+        video_url, video_key = await run_in_threadpool(
+            complete_multipart_upload,
+            video_upload_key,
+            video_upload_id,
+            video_upload_parts,
+        )
+        video_file_name = uploaded_video_file_name
+        video_file_size = uploaded_video_file_size
         old_video_key = existing.get("video_key") if existing else None
 
     if thumbnail_file:
