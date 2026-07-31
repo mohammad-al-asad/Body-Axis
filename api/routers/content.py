@@ -1,4 +1,9 @@
+import json
+
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile, status
+from fastapi import HTTPException
+from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 
 from core.dependencies import get_current_admin, get_current_user
 from schemas.content import (
@@ -14,6 +19,12 @@ from schemas.content import (
     SupportMessageResponse,
     SupportMessageStatusUpdate,
 )
+from schemas.management import (
+    VideoMultipartAbortRequest,
+    VideoMultipartCompletedPart,
+    VideoMultipartInitiateRequest,
+    VideoMultipartInitiateResponse,
+)
 from services.content_service import (
     create_faq,
     create_support_message,
@@ -28,8 +39,25 @@ from services.content_service import (
     upsert_content_page,
     upsert_introduction_content,
 )
+from services.s3_service import abort_multipart_upload, create_multipart_upload
 
 router = APIRouter(tags=["App Content"])
+
+
+def _parse_completed_parts(value: str | None) -> list[dict[str, str | int]] | None:
+    if not value:
+        return None
+    try:
+        parsed = json.loads(value)
+        return [
+            item.model_dump()
+            for item in [VideoMultipartCompletedPart.model_validate(part) for part in parsed]
+        ]
+    except (json.JSONDecodeError, ValidationError, ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid multipart upload parts payload",
+        ) from None
 
 
 @router.get("/content/introduction", response_model=IntroductionContentResponse)
@@ -76,6 +104,11 @@ async def update_admin_introduction_content(
     status_value: str = Form(default="published", alias="status"),
     video_file: UploadFile | None = File(default=None),
     thumbnail_file: UploadFile | None = File(default=None),
+    video_upload_key: str | None = Form(default=None),
+    video_upload_id: str | None = Form(default=None),
+    video_upload_parts: str | None = Form(default=None),
+    video_file_name: str | None = Form(default=None),
+    video_file_size: int | None = Form(default=None),
     current_admin: dict = Depends(get_current_admin),
 ) -> IntroductionContentResponse:
     del current_admin
@@ -85,7 +118,52 @@ async def update_admin_introduction_content(
         status_value,
         video_file,
         thumbnail_file,
+        video_upload_key,
+        video_upload_id,
+        _parse_completed_parts(video_upload_parts),
+        video_file_name,
+        video_file_size,
     )
+
+
+@router.post(
+    "/admin/content/introduction/uploads/multipart/initiate",
+    response_model=VideoMultipartInitiateResponse,
+)
+async def initiate_introduction_video_multipart_upload(
+    payload: VideoMultipartInitiateRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> VideoMultipartInitiateResponse:
+    del current_admin
+    if not payload.content_type.startswith("video/"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Introduction upload must be a video file",
+        )
+    return VideoMultipartInitiateResponse(
+        **(
+            await run_in_threadpool(
+                create_multipart_upload,
+                payload.file_name,
+                payload.content_type,
+                payload.file_size,
+                "introduction",
+            )
+        )
+    )
+
+
+@router.post(
+    "/admin/content/introduction/uploads/multipart/abort",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def abort_introduction_video_multipart_upload(
+    payload: VideoMultipartAbortRequest,
+    current_admin: dict = Depends(get_current_admin),
+) -> Response:
+    del current_admin
+    await run_in_threadpool(abort_multipart_upload, payload.key, payload.upload_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/admin/content/{slug}", response_model=ContentPageResponse)
