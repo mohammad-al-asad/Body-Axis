@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FileVideo, Image as ImageIcon, PlayCircle, Save, UploadCloud } from "lucide-react";
 import { adminApi } from "../../services/adminApi";
+import { uploadIntroductionVideoMultipart } from "../../services/introductionUpload";
+
+const formatBytes = (bytes) => {
+  if (!bytes) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 3);
+  return `${(bytes / 1024 ** index).toFixed(index ? 1 : 0)} ${units[index]}`;
+};
 
 const IntroductionContent = () => {
   const videoInputRef = useRef(null);
@@ -16,6 +24,7 @@ const IntroductionContent = () => {
   const [thumbnailPreviewUrl, setThumbnailPreviewUrl] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -102,12 +111,39 @@ const IntroductionContent = () => {
     body.append("message_title", messageTitle.trim());
     body.append("message_quote", messageQuote.trim());
     body.append("status", status);
-    if (videoFile) body.append("video_file", videoFile);
     if (thumbnailFile) body.append("thumbnail_file", thumbnailFile);
 
     setSaving(true);
     setError("");
     try {
+      if (videoFile) {
+        setUploadProgress({
+          stage: "uploading",
+          uploadedBytes: 0,
+          totalBytes: videoFile.size,
+          percent: 0,
+        });
+        const uploadFields = await uploadIntroductionVideoMultipart(videoFile, {
+          onProgress: ({ uploadedBytes, totalBytes, percent }) => {
+            setUploadProgress({
+              stage: "uploading",
+              uploadedBytes,
+              totalBytes,
+              percent,
+            });
+          },
+        });
+        Object.entries(uploadFields).forEach(([key, value]) => {
+          body.append(key, value);
+        });
+        setUploadProgress({
+          stage: "finalizing",
+          uploadedBytes: videoFile.size,
+          totalBytes: videoFile.size,
+          percent: 100,
+        });
+      }
+
       const updated = await adminApi.updateIntroductionContent(body);
       setMessageTitle(updated.message_title);
       setMessageQuote(updated.message_quote);
@@ -121,6 +157,7 @@ const IntroductionContent = () => {
       setError(err.message || "Failed to save introduction content.");
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -149,6 +186,28 @@ const IntroductionContent = () => {
         {error && (
           <div className="mb-5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             {error}
+          </div>
+        )}
+
+        {uploadProgress && (
+          <div className="mb-5 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3 text-sm text-[#BFDBFE]">
+            <div className="flex items-center justify-between gap-4">
+              <span>
+                {uploadProgress.stage === "finalizing"
+                  ? "Finalizing uploaded introduction video..."
+                  : `Uploading introduction video to S3: ${uploadProgress.percent}%`}
+              </span>
+              <span>
+                {formatBytes(uploadProgress.uploadedBytes)} /{" "}
+                {formatBytes(uploadProgress.totalBytes)}
+              </span>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#0A0D14]">
+              <div
+                className="h-full rounded-full bg-[#38BDF8] transition-all"
+                style={{ width: `${uploadProgress.percent}%` }}
+              />
+            </div>
           </div>
         )}
 

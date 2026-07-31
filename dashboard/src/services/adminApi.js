@@ -93,6 +93,24 @@ export const adminApi = {
     ),
   getIntroductionContent: () =>
     request("/admin/content/introduction", {}, true),
+  initiateIntroductionVideoMultipartUpload: (payload) =>
+    request(
+      "/admin/content/introduction/uploads/multipart/initiate",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
+  abortIntroductionVideoMultipartUpload: (payload) =>
+    request(
+      "/admin/content/introduction/uploads/multipart/abort",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      true,
+    ),
   updateIntroductionContent: (payload) =>
     request(
       "/admin/content/introduction",
