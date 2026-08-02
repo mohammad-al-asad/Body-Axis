@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Modal,
   ScrollView,
@@ -43,8 +43,7 @@ export default function ExerciseTrackerScreen() {
     ? params.initialPhaseIndex[0]
     : params.initialPhaseIndex;
   const { data: onlineSession } = useGetSessionQuery(sessionId ?? '', { skip: !sessionId });
-  const [completeExercise, { isLoading: isCompletingExercise }] =
-    useCompleteExerciseMutation();
+  const [completeExercise] = useCompleteExerciseMutation();
   const [offlineSession, setOfflineSession] = useState<MovementSession | null>(null);
   const session = onlineSession ?? offlineSession;
 
@@ -106,6 +105,7 @@ export default function ExerciseTrackerScreen() {
   const [currentSet, setCurrentSet] = useState(1);
   const [repsCount, setRepsCount] = useState(10);
   const [completedExerciseKey, setCompletedExerciseKey] = useState<string | null>(null);
+  const completingExerciseKeyRef = useRef<string | null>(null);
 
   const totalSets = useMemo(() => {
     const dynamicExercise = dynamicExercises[currentIdx];
@@ -121,6 +121,7 @@ export default function ExerciseTrackerScreen() {
   const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>(() => {
     return Array.from({ length: totalSets }, () => ({ reps: 0, completed: false }));
   });
+  const isExerciseComplete = totalSets > 0 && setsData.every((set) => set.completed);
 
   // Timer states
   const [isTimerVisible, setIsTimerVisible] = useState(false);
@@ -173,6 +174,7 @@ export default function ExerciseTrackerScreen() {
     setIsTimerRunning(false);
     setIsTimerStartedYet(false);
     setCompletedExerciseKey(null);
+    completingExerciseKeyRef.current = null;
   }, [currentIdx, totalSets, targetReps]);
 
   useEffect(() => {
@@ -301,10 +303,12 @@ export default function ExerciseTrackerScreen() {
     };
   }, [shortClipUrl, session, sessionPlan, videoPlayer]);
 
-  useEffect(() => {
+  const saveCompletedExerciseProgress = useCallback(() => {
     if (!session?.id || !sessionPlan || !dynamicExercise) return;
-    if (currentSet <= totalSets || totalSets === 0) return;
     if (completedExerciseKey === currentExerciseKey) return;
+    if (completingExerciseKeyRef.current === currentExerciseKey) return;
+
+    completingExerciseKeyRef.current = currentExerciseKey;
 
     const now = new Date();
     void completeExercise({
@@ -319,21 +323,29 @@ export default function ExerciseTrackerScreen() {
         setCompletedExerciseKey(currentExerciseKey);
       })
       .catch((error) => {
+        if (completingExerciseKeyRef.current === currentExerciseKey) {
+          completingExerciseKeyRef.current = null;
+        }
         console.error('Failed to complete exercise', error);
       });
   }, [
     completeExercise,
     completedExerciseKey,
     currentExerciseKey,
-    currentSet,
     dynamicExercise,
     session?.id,
     sessionPlan,
-    totalSets,
   ]);
+
+  useEffect(() => {
+    if (isExerciseComplete) {
+      saveCompletedExerciseProgress();
+    }
+  }, [isExerciseComplete, saveCompletedExerciseProgress]);
 
   const handleLogSetPress = () => {
     if (currentSet > totalSets) return;
+    const isLastSet = currentSet >= totalSets;
 
     // Log reps for the current set
     setSetsData((prev) => {
@@ -341,6 +353,16 @@ export default function ExerciseTrackerScreen() {
       next[currentSet - 1] = { reps: repsCount, completed: true };
       return next;
     });
+
+    if (isLastSet) {
+      saveCompletedExerciseProgress();
+      setCurrentSet(totalSets + 1);
+      setTimerSeconds(timerDuration);
+      setIsTimerVisible(false);
+      setIsTimerRunning(false);
+      setIsTimerStartedYet(false);
+      return;
+    }
 
     // Make timer visible in stopped mode, and set to selected duration
     setTimerSeconds(timerDuration);
@@ -872,21 +894,19 @@ export default function ExerciseTrackerScreen() {
               styles.nextExerciseBtn,
               (!hasExerciseContent ||
                 isTimerRunning ||
-                currentSet <= totalSets ||
-                isCompletingExercise) &&
+                !isExerciseComplete) &&
                 styles.nextExerciseBtnDisabled,
             ]}
             disabled={
               !hasExerciseContent ||
               isTimerRunning ||
-              currentSet <= totalSets ||
-              isCompletingExercise
+              !isExerciseComplete
             }
             onPress={handleNextExercise}
             activeOpacity={0.8}
           >
             <Text style={styles.nextExerciseBtnText}>
-              {isCompletingExercise ? 'Saving Progress...' : nextButtonText}
+              {nextButtonText}
             </Text>
           </TouchableOpacity>
         </View>

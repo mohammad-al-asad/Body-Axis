@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import React, { useMemo } from 'react';
 import {
-  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +13,7 @@ import { router } from 'expo-router';
 
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { SessionCard } from '@/components/SessionCard';
+import { ExploreSessionsSkeleton, HomeDashboardSkeleton } from '@/components/skeletons/HomeDashboardSkeleton';
 import { RootState } from '@/redux/store';
 import {
   MovementSession,
@@ -160,10 +160,7 @@ export function HomeDashboard() {
       </View>
 
       {isSummaryLoading && !summary ? (
-        <View style={styles.stateCard}>
-          <ActivityIndicator color={theme.secondary} />
-          <Text style={styles.stateText}>Loading your movement summary…</Text>
-        </View>
+        <HomeDashboardSkeleton />
       ) : currentSessionCard ? (
         <SessionCard
           session={currentSessionCard}
@@ -328,9 +325,7 @@ export function HomeDashboard() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.horizontalScrollContent}>
         {isSessionsLoading && !sessionsData ? (
-          <View style={styles.explorePlaceholder}>
-            <ActivityIndicator color={theme.secondary} />
-          </View>
+          <ExploreSessionsSkeleton />
         ) : (
           (sessionsData?.items ?? []).map((session) => {
             const thumbnailUrl = getSessionThumbnailUrl(session);
@@ -616,16 +611,6 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     horizontalScrollContent: {
       paddingRight: 24,
       marginBottom: 24,
-    },
-    explorePlaceholder: {
-      width: 120,
-      height: 104,
-      borderRadius: 16,
-      backgroundColor: theme.cardBackground,
-      borderWidth: 1,
-      borderColor: theme.cardBorder,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     exploreCard: {
       width: 156,

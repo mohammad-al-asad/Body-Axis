@@ -3,6 +3,7 @@ import { Appearance } from 'react-native';
 
 interface SettingsState {
   theme: 'light' | 'dark';
+  measurementUnit: 'metric' | 'imperial';
   firstTime: boolean;
   hasSeenIntroduction: boolean;
   localIsPremium: boolean;
@@ -10,6 +11,7 @@ interface SettingsState {
 
 const initialState: SettingsState = {
   theme: Appearance.getColorScheme() === 'light' ? 'light' : 'dark',
+  measurementUnit: 'metric',
   firstTime: true,
   hasSeenIntroduction: false,
   localIsPremium: false,
@@ -25,6 +27,9 @@ export const settingsSlice = createSlice({
     toggleTheme: (state) => {
       state.theme = state.theme === 'light' ? 'dark' : 'light';
     },
+    setMeasurementUnit: (state, action: PayloadAction<'metric' | 'imperial'>) => {
+      state.measurementUnit = action.payload;
+    },
     completeOnboarding: (state) => {
       state.firstTime = false;
     },
@@ -37,5 +42,12 @@ export const settingsSlice = createSlice({
   },
 });
 
-export const { setTheme, toggleTheme, completeOnboarding, completeIntroduction, setLocalIsPremium } = settingsSlice.actions;
+export const {
+  setTheme,
+  toggleTheme,
+  setMeasurementUnit,
+  completeOnboarding,
+  completeIntroduction,
+  setLocalIsPremium,
+} = settingsSlice.actions;
 export default settingsSlice.reducer;

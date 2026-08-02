@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
@@ -39,32 +40,52 @@ export default function IntroductionScreen() {
   const handleHelp = () => {
     Alert.alert(
       'Introduction Info',
-      'This short overview explains how Body Axis™ analyzes your biomechanics to help you optimize movement efficiency and prevent injury.'
+      'This short overview introduces Body Axis™ and how it helps you build personalized movement sessions based on your body, goals, and progress.',
     );
   };
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const videoPlayer = useVideoPlayer(null);
 
   useEffect(() => {
     setIsVideoPlaying(false);
-    void videoPlayer.replaceAsync(videoUrl).catch((error) => {
-      console.error('Failed to load introduction video', error);
-    });
+    setIsVideoLoading(true);
+    void videoPlayer
+      .replaceAsync(videoUrl)
+      .catch((error) => {
+        console.error('Failed to load introduction video', error);
+      })
+      .finally(() => {
+        setIsVideoLoading(false);
+      });
   }, [videoPlayer, videoUrl]);
+
+  useEventListener(videoPlayer, 'statusChange', ({ status }) => {
+    setIsVideoLoading(status === 'loading');
+  });
+
+  useEventListener(videoPlayer, 'playingChange', ({ isPlaying }) => {
+    if (isPlaying) {
+      setIsVideoLoading(false);
+    }
+  });
 
   useEventListener(videoPlayer, 'playToEnd', () => {
     videoPlayer.pause();
     setIsVideoPlaying(false);
+    setIsVideoLoading(false);
   });
 
   const handleWatchIntroduction = async () => {
     try {
-      await videoPlayer.replaceAsync(videoUrl);
+      setIsVideoLoading(true);
+      setIsVideoPlaying(true);
       videoPlayer.currentTime = 0;
       videoPlayer.play();
-      setIsVideoPlaying(true);
     } catch (error) {
+      setIsVideoLoading(false);
+      setIsVideoPlaying(false);
       console.error('Failed to play introduction video', error);
       Alert.alert('Video Unavailable', 'Unable to play the introduction video right now.');
     }
@@ -97,12 +118,19 @@ export default function IntroductionScreen() {
           {/* Inline Video Preview */}
           <View style={styles.videoCard}>
             {isVideoPlaying ? (
-              <VideoView
-                player={videoPlayer}
-                contentFit="cover"
-                nativeControls={false}
-                style={styles.inlineVideo}
-              />
+              <>
+                <VideoView
+                  player={videoPlayer}
+                  contentFit="cover"
+                  nativeControls={false}
+                  style={styles.inlineVideo}
+                />
+                {isVideoLoading && (
+                  <View style={styles.videoLoadingOverlay}>
+                    <ActivityIndicator color="#FFFFFF" />
+                  </View>
+                )}
+              </>
             ) : (
               <TouchableOpacity
                 style={styles.videoThumbnailButton}
@@ -118,9 +146,15 @@ export default function IntroductionScreen() {
                   style={styles.videoThumbnail}
                 />
                 <View style={styles.playButtonWrapper}>
-                  <View style={styles.playButtonInner}>
-                    <Feather name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
-                  </View>
+                  {isVideoLoading ? (
+                    <View style={styles.playButtonInner}>
+                      <ActivityIndicator color="#FFFFFF" />
+                    </View>
+                  ) : (
+                    <View style={styles.playButtonInner}>
+                      <Feather name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             )}
@@ -317,5 +351,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     inlineVideo: {
       width: '100%',
       height: '100%',
+    },
+    videoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(5, 11, 20, 0.35)',
     },
   });
