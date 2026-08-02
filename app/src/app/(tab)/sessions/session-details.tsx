@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { PlanCard, ResetPlan, RoutineEquipment, RoutinePhase } from '@/components/PlanCard';
+import { SessionDetailsSkeleton } from '@/components/skeletons/SessionDetailsSkeleton';
 import { MovementSession, SessionPlan, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { phaseOrder } from '@/utils/phase';
 import {
@@ -321,22 +321,18 @@ export default function SessionDetailsScreen() {
               <Text style={styles.backText}>Go Back</Text>
             </TouchableOpacity>
 
-            {/* Movement Library Header Titles */}
-            <View style={styles.titleContainer}>
-              <Text style={styles.mainTitle}>
-                {session ? `All Plans for : ${session.session_name}` : 'Session details unavailable'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {session
-                  ? `${session.plan_count} matching plan${session.plan_count === 1 ? '' : 's'} for ${session.target_areas.join(', ')} · ${session.user_case}`
-                  : 'We could not load session-backed plans for this screen.'}
-              </Text>
-            </View>
-
-            {isLoading && !session && (
-              <View style={styles.stateCard}>
-                <ActivityIndicator color={theme.secondary} />
-                <Text style={styles.stateText}>Loading plans…</Text>
+            {isLoading && !session ? (
+              <SessionDetailsSkeleton />
+            ) : (
+              <View style={styles.titleContainer}>
+                <Text style={styles.mainTitle}>
+                  {session ? `All Plans for : ${session.session_name}` : 'Session details unavailable'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {session
+                    ? `${session.plan_count} matching plan${session.plan_count === 1 ? '' : 's'} for ${session.target_areas.join(', ')} · ${session.user_case}`
+                    : 'We could not load session-backed plans for this screen.'}
+                </Text>
               </View>
             )}
 

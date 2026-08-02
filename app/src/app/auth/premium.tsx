@@ -202,7 +202,7 @@ export default function PremiumScreen() {
   };
 
   const handleHelp = () => {
-    Alert.alert('Subscription Info', 'Axis Premium gives you full, unrestricted access to all corrective routines, biological calibration protocols, and AI movement analytics.');
+    Alert.alert('Subscription Info', 'Body Axis Premium gives you access to personalized movement sessions, exercise guidance, progress tracking, and offline plan downloads.');
   };
 
   const handleBack = () => {

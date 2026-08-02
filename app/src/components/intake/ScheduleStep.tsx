@@ -69,7 +69,7 @@ export function ScheduleStep({
     <View style={styles.slide}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Main Header */}
-        <Text style={styles.title}>You Movement Schedule</Text>
+        <Text style={styles.title}>Your Movement Schedule</Text>
         <Text style={styles.subtitle}>
           Pick what works for your life and we&apos;ll build around it.
         </Text>
