@@ -18,7 +18,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleTheme } from '@/redux/slice/settings';
+import { setMeasurementUnit, toggleTheme } from '@/redux/slice/settings';
 import { logout } from '@/redux/slice/auth';
 import { RootState } from '@/redux/store';
 import { 
@@ -51,9 +51,53 @@ const measurementOptions = [
   { label: 'Imperial (lbs, in, mi)', value: 'imperial' },
 ];
 
+type MeasurementUnit = 'metric' | 'imperial';
+
+const CM_PER_INCH = 2.54;
+const LBS_PER_KG = 2.20462;
+
+const hasMeasurementValue = (value: number | null | undefined) =>
+  value !== null && value !== undefined;
+
+const formatMeasurementInput = (value: number | null | undefined, unit: MeasurementUnit, kind: 'height' | 'weight') => {
+  if (!hasMeasurementValue(value)) return '';
+  if (kind === 'height') {
+    return String(unit === 'metric' ? value : Math.round(value / CM_PER_INCH));
+  }
+  return String(unit === 'metric' ? value : Math.round(value * LBS_PER_KG));
+};
+
+const convertHeightInputToCm = (value: number, unit: MeasurementUnit) =>
+  Math.round(unit === 'metric' ? value : value * CM_PER_INCH);
+
+const convertWeightInputToKg = (value: number, unit: MeasurementUnit) =>
+  Math.round(unit === 'metric' ? value : value / LBS_PER_KG);
+
+const convertMeasurementInput = (
+  value: string,
+  fromUnit: MeasurementUnit,
+  toUnit: MeasurementUnit,
+  kind: 'height' | 'weight',
+) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || fromUnit === toUnit) return value;
+  if (kind === 'height') {
+    const cmValue = convertHeightInputToCm(numericValue, fromUnit);
+    return formatMeasurementInput(cmValue, toUnit, 'height');
+  }
+  const kgValue = convertWeightInputToKg(numericValue, fromUnit);
+  return formatMeasurementInput(kgValue, toUnit, 'weight');
+};
+
+type AvatarOption = {
+  text: string;
+  onPress: () => void | Promise<void>;
+};
+
 export default function ProfileScreen() {
   const dispatch = useDispatch();
   const currentThemeMode = useSelector((state: RootState) => state.settings.theme);
+  const measurementUnit = useSelector((state: RootState) => state.settings.measurementUnit ?? 'metric');
   const user = useSelector((state: RootState) => state.auth.user);
   useGetProfileQuery();
   const [deleteAccount, { isLoading: isDeletingAccount }] = useDeleteAccountMutation();
@@ -121,7 +165,7 @@ export default function ProfileScreen() {
   };
 
   const handleEditAvatar = () => {
-    const options = [
+    const options: AvatarOption[] = [
       { text: 'Take Photo', onPress: () => handleSelectImage(true) },
       { text: 'Choose from Library', onPress: () => handleSelectImage(false) },
     ];
@@ -203,6 +247,16 @@ export default function ProfileScreen() {
   const [editHeight, setEditHeight] = useState('');
   const [editWeight, setEditWeight] = useState('');
   const [showEditGenderPicker, setShowEditGenderPicker] = useState(false);
+  const previousMeasurementUnit = useRef<MeasurementUnit>(measurementUnit);
+
+  useEffect(() => {
+    const previousUnit = previousMeasurementUnit.current;
+    if (previousUnit !== measurementUnit && isEditProfileVisible) {
+      setEditHeight((value) => convertMeasurementInput(value, previousUnit, measurementUnit, 'height'));
+      setEditWeight((value) => convertMeasurementInput(value, previousUnit, measurementUnit, 'weight'));
+    }
+    previousMeasurementUnit.current = measurementUnit;
+  }, [isEditProfileVisible, measurementUnit]);
 
   // Change Password Modal States
   const [isChangePasswordVisible, setIsChangePasswordVisible] = useState(false);
@@ -255,8 +309,8 @@ export default function ProfileScreen() {
     setEditEmail(user?.email || '');
     setEditGender(user?.gender || 'female');
     setEditDob(user?.date_of_birth || '');
-    setEditHeight(user?.height_cm ? String(user.height_cm) : '');
-    setEditWeight(user?.weight_kg ? String(user.weight_kg) : '');
+    setEditHeight(formatMeasurementInput(user?.height_cm, measurementUnit, 'height'));
+    setEditWeight(formatMeasurementInput(user?.weight_kg, measurementUnit, 'weight'));
     setIsEditProfileVisible(true);
   };
 
@@ -284,15 +338,31 @@ export default function ProfileScreen() {
       return;
     }
 
-    const heightNum = parseInt(editHeight, 10);
-    if (isNaN(heightNum) || heightNum <= 50 || heightNum >= 300) {
-      Alert.alert('Validation Error', 'Please enter a valid height between 50 and 300 cm.');
+    const heightInput = Number(editHeight);
+    const heightCm = Number.isFinite(heightInput)
+      ? convertHeightInputToCm(heightInput, measurementUnit)
+      : NaN;
+    if (!Number.isFinite(heightCm) || heightCm < 50 || heightCm > 300) {
+      Alert.alert(
+        'Validation Error',
+        measurementUnit === 'metric'
+          ? 'Please enter a valid height between 50 and 300 cm.'
+          : 'Please enter a valid height between 20 and 118 in.',
+      );
       return;
     }
 
-    const weightNum = parseInt(editWeight, 10);
-    if (isNaN(weightNum) || weightNum <= 10 || weightNum >= 500) {
-      Alert.alert('Validation Error', 'Please enter a valid weight between 10 and 500 kg.');
+    const weightInput = Number(editWeight);
+    const weightKg = Number.isFinite(weightInput)
+      ? convertWeightInputToKg(weightInput, measurementUnit)
+      : NaN;
+    if (!Number.isFinite(weightKg) || weightKg < 10 || weightKg > 500) {
+      Alert.alert(
+        'Validation Error',
+        measurementUnit === 'metric'
+          ? 'Please enter a valid weight between 10 and 500 kg.'
+          : 'Please enter a valid weight between 22 and 1102 lbs.',
+      );
       return;
     }
 
@@ -302,8 +372,8 @@ export default function ProfileScreen() {
         email: editEmail.trim(),
         gender: editGender,
         date_of_birth: editDob.trim(),
-        height_cm: heightNum,
-        weight_kg: weightNum,
+        height_cm: heightCm,
+        weight_kg: weightKg,
       }).unwrap();
       Alert.alert('Success', 'Profile updated successfully.');
       setIsEditProfileVisible(false);
@@ -343,7 +413,6 @@ export default function ProfileScreen() {
   };
   const [language, setLanguage] = useState('en');
   const [showMeasurementPicker, setShowMeasurementPicker] = useState(false);
-  const [measurementUnit, setMeasurementUnit] = useState('metric');
 
   const displayName = user?.full_name || '-';
   const displayGender = user?.gender
@@ -364,24 +433,24 @@ export default function ProfileScreen() {
 
   const displayHeightValue = () => {
     const val = user?.height_cm;
-    if (val === null || val === undefined || val === '') return '-';
-    return String(measurementUnit === 'metric' ? val : Math.round(Number(val) / 2.54));
+    if (!hasMeasurementValue(val)) return '-';
+    return formatMeasurementInput(val, measurementUnit, 'height');
   };
   const displayHeightUnit = () => {
     const val = user?.height_cm;
-    if (val === null || val === undefined || val === '') return '';
+    if (!hasMeasurementValue(val)) return '';
     return measurementUnit === 'metric' ? 'cm' : 'in';
   };
 
   const displayWeightValue = () => {
     const val = user?.weight_kg;
-    if (val === null || val === undefined || val === '') return '-';
-    return String(measurementUnit === 'metric' ? val : Math.round(Number(val) * 2.20462));
+    if (!hasMeasurementValue(val)) return '-';
+    return formatMeasurementInput(val, measurementUnit, 'weight');
   };
   const displayWeightUnit = () => {
     const val = user?.weight_kg;
-    if (val === null || val === undefined || val === '') return '';
-    return measurementUnit === 'metric' ? 'kgs' : 'lbs';
+    if (!hasMeasurementValue(val)) return '';
+    return measurementUnit === 'metric' ? 'kg' : 'lbs';
   };
 
   const selectedLanguageLabel = languageOptions.find((option) => option.value === language)?.label || 'English (United States)';
@@ -733,7 +802,11 @@ export default function ProfileScreen() {
           title="Select Measurement Unit"
           options={measurementOptions}
           selectedValue={measurementUnit}
-          onSelect={(val) => setMeasurementUnit(val)}
+          onSelect={(val) => {
+            if (val === 'metric' || val === 'imperial') {
+              dispatch(setMeasurementUnit(val));
+            }
+          }}
         />
 
         {/* Edit Profile Modal */}
@@ -850,7 +923,9 @@ export default function ProfileScreen() {
                 {/* Height & Weight */}
                 <View style={styles.gridRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
-                    <Text style={styles.modalLabel}>HEIGHT (CM)</Text>
+                    <Text style={styles.modalLabel}>
+                      HEIGHT ({measurementUnit === 'metric' ? 'CM' : 'IN'})
+                    </Text>
                     <View style={styles.inputWrapper}>
                       <MaterialCommunityIcons name="ruler" size={18} color={theme.textSecondary} style={styles.inputIcon} />
                       <TextInput
@@ -865,7 +940,9 @@ export default function ProfileScreen() {
                   </View>
 
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
-                    <Text style={styles.modalLabel}>WEIGHT (KG)</Text>
+                    <Text style={styles.modalLabel}>
+                      WEIGHT ({measurementUnit === 'metric' ? 'KG' : 'LBS'})
+                    </Text>
                     <View style={styles.inputWrapper}>
                       <Feather name="activity" size={18} color={theme.textSecondary} style={styles.inputIcon} />
                       <TextInput
