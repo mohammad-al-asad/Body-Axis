@@ -73,6 +73,38 @@ const convertHeightInputToCm = (value: number, unit: MeasurementUnit) =>
 const convertWeightInputToKg = (value: number, unit: MeasurementUnit) =>
   Math.round(unit === 'metric' ? value : value / LBS_PER_KG);
 
+const splitCmToFeetAndInches = (value: number | null | undefined) => {
+  if (!hasMeasurementValue(value)) {
+    return { feet: '', inches: '' };
+  }
+  const totalInches = Math.round(value / CM_PER_INCH);
+  return {
+    feet: String(Math.floor(totalInches / 12)),
+    inches: String(totalInches % 12),
+  };
+};
+
+const parseFeetAndInches = (feet: string, inches: string) => {
+  if (!feet.trim()) {
+    return null;
+  }
+  const feetValue = Number(feet);
+  const inchesValue = inches.trim() ? Number(inches) : 0;
+  if (
+    !Number.isFinite(feetValue) ||
+    !Number.isFinite(inchesValue) ||
+    !Number.isInteger(feetValue) ||
+    !Number.isInteger(inchesValue)
+  ) {
+    return null;
+  }
+  return {
+    feet: feetValue,
+    inches: inchesValue,
+    totalInches: feetValue * 12 + inchesValue,
+  };
+};
+
 const convertMeasurementInput = (
   value: string,
   fromUnit: MeasurementUnit,
@@ -245,6 +277,8 @@ export default function ProfileScreen() {
   const [editGender, setEditGender] = useState('female');
   const [editDob, setEditDob] = useState('');
   const [editHeight, setEditHeight] = useState('');
+  const [editHeightFeet, setEditHeightFeet] = useState('');
+  const [editHeightInches, setEditHeightInches] = useState('');
   const [editWeight, setEditWeight] = useState('');
   const [showEditGenderPicker, setShowEditGenderPicker] = useState(false);
   const previousMeasurementUnit = useRef<MeasurementUnit>(measurementUnit);
@@ -252,11 +286,24 @@ export default function ProfileScreen() {
   useEffect(() => {
     const previousUnit = previousMeasurementUnit.current;
     if (previousUnit !== measurementUnit && isEditProfileVisible) {
-      setEditHeight((value) => convertMeasurementInput(value, previousUnit, measurementUnit, 'height'));
+      if (previousUnit === 'metric' && measurementUnit === 'imperial') {
+        const heightCm = Number(editHeight);
+        const converted = Number.isFinite(heightCm)
+          ? splitCmToFeetAndInches(heightCm)
+          : { feet: '', inches: '' };
+        setEditHeightFeet(converted.feet);
+        setEditHeightInches(converted.inches);
+      }
+      if (previousUnit === 'imperial' && measurementUnit === 'metric') {
+        const parsedHeight = parseFeetAndInches(editHeightFeet, editHeightInches);
+        setEditHeight(
+          parsedHeight ? String(convertHeightInputToCm(parsedHeight.totalInches, 'imperial')) : '',
+        );
+      }
       setEditWeight((value) => convertMeasurementInput(value, previousUnit, measurementUnit, 'weight'));
     }
     previousMeasurementUnit.current = measurementUnit;
-  }, [isEditProfileVisible, measurementUnit]);
+  }, [editHeight, editHeightFeet, editHeightInches, isEditProfileVisible, measurementUnit]);
 
   // Change Password Modal States
   const [isChangePasswordVisible, setIsChangePasswordVisible] = useState(false);
@@ -310,6 +357,9 @@ export default function ProfileScreen() {
     setEditGender(user?.gender || 'female');
     setEditDob(user?.date_of_birth || '');
     setEditHeight(formatMeasurementInput(user?.height_cm, measurementUnit, 'height'));
+    const imperialHeight = splitCmToFeetAndInches(user?.height_cm);
+    setEditHeightFeet(imperialHeight.feet);
+    setEditHeightInches(imperialHeight.inches);
     setEditWeight(formatMeasurementInput(user?.weight_kg, measurementUnit, 'weight'));
     setIsEditProfileVisible(true);
   };
@@ -338,17 +388,33 @@ export default function ProfileScreen() {
       return;
     }
 
-    const heightInput = Number(editHeight);
-    const heightCm = Number.isFinite(heightInput)
-      ? convertHeightInputToCm(heightInput, measurementUnit)
-      : NaN;
+    const imperialHeightInput = parseFeetAndInches(editHeightFeet, editHeightInches);
+    const metricHeightInput = Number(editHeight);
+    const heightCm =
+      measurementUnit === 'metric'
+        ? Number.isFinite(metricHeightInput)
+          ? convertHeightInputToCm(metricHeightInput, 'metric')
+          : NaN
+        : imperialHeightInput
+          ? convertHeightInputToCm(imperialHeightInput.totalInches, 'imperial')
+          : NaN;
     if (!Number.isFinite(heightCm) || heightCm < 50 || heightCm > 300) {
       Alert.alert(
         'Validation Error',
         measurementUnit === 'metric'
           ? 'Please enter a valid height between 50 and 300 cm.'
-          : 'Please enter a valid height between 20 and 118 in.',
+          : 'Please enter a valid height between 1 ft 8 in and 9 ft 10 in.',
       );
+      return;
+    }
+    if (
+      measurementUnit === 'imperial' &&
+      imperialHeightInput &&
+      (imperialHeightInput.feet < 0 ||
+        imperialHeightInput.inches < 0 ||
+        imperialHeightInput.inches >= 12)
+    ) {
+      Alert.alert('Validation Error', 'Please enter inches between 0 and 11.');
       return;
     }
 
@@ -434,12 +500,16 @@ export default function ProfileScreen() {
   const displayHeightValue = () => {
     const val = user?.height_cm;
     if (!hasMeasurementValue(val)) return '-';
+    if (measurementUnit === 'imperial') {
+      const { feet, inches } = splitCmToFeetAndInches(val);
+      return `${feet} ft ${inches} in`;
+    }
     return formatMeasurementInput(val, measurementUnit, 'height');
   };
   const displayHeightUnit = () => {
     const val = user?.height_cm;
     if (!hasMeasurementValue(val)) return '';
-    return measurementUnit === 'metric' ? 'cm' : 'in';
+    return measurementUnit === 'metric' ? 'cm' : '';
   };
 
   const displayWeightValue = () => {
@@ -924,19 +994,46 @@ export default function ProfileScreen() {
                 <View style={styles.gridRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
                     <Text style={styles.modalLabel}>
-                      HEIGHT ({measurementUnit === 'metric' ? 'CM' : 'IN'})
+                      HEIGHT ({measurementUnit === 'metric' ? 'CM' : 'FT / IN'})
                     </Text>
-                    <View style={styles.inputWrapper}>
-                      <MaterialCommunityIcons name="ruler" size={18} color={theme.textSecondary} style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.input}
-                        placeholder="174"
-                        placeholderTextColor={theme.textSecondary}
-                        keyboardType="numeric"
-                        value={editHeight}
-                        onChangeText={setEditHeight}
-                      />
-                    </View>
+                    {measurementUnit === 'metric' ? (
+                      <View style={styles.inputWrapper}>
+                        <MaterialCommunityIcons name="ruler" size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.input}
+                          placeholder="174"
+                          placeholderTextColor={theme.textSecondary}
+                          keyboardType="numeric"
+                          value={editHeight}
+                          onChangeText={setEditHeight}
+                        />
+                      </View>
+                    ) : (
+                      <View style={styles.imperialHeightRow}>
+                        <View style={styles.compactInputWrapper}>
+                          <TextInput
+                            style={styles.compactInput}
+                            placeholder="5"
+                            placeholderTextColor={theme.textSecondary}
+                            keyboardType="numeric"
+                            value={editHeightFeet}
+                            onChangeText={setEditHeightFeet}
+                          />
+                          <Text style={styles.compactInputUnit}>ft</Text>
+                        </View>
+                        <View style={styles.compactInputWrapper}>
+                          <TextInput
+                            style={styles.compactInput}
+                            placeholder="9"
+                            placeholderTextColor={theme.textSecondary}
+                            keyboardType="numeric"
+                            value={editHeightInches}
+                            onChangeText={setEditHeightInches}
+                          />
+                          <Text style={styles.compactInputUnit}>in</Text>
+                        </View>
+                      </View>
+                    )}
                   </View>
 
                   <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -1409,6 +1506,34 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontSize: 15,
       height: '100%',
       textAlignVertical: 'center',
+    },
+    imperialHeightRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    compactInputWrapper: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.inputBackground,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.inputBorder,
+      height: 52,
+      paddingHorizontal: 10,
+    },
+    compactInput: {
+      flex: 1,
+      color: theme.text,
+      fontSize: 15,
+      height: '100%',
+      textAlignVertical: 'center',
+    },
+    compactInputUnit: {
+      color: theme.textSecondary,
+      fontSize: 12,
+      fontWeight: '800',
+      marginLeft: 4,
     },
     gridRow: {
       flexDirection: 'row',

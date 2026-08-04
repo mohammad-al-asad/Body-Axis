@@ -19,8 +19,9 @@ import { useDispatch } from 'react-redux';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
 import { AuthHeader } from '@/components/ui/AuthHeader';
 import { completeIntroduction } from '@/redux/slice/settings';
-import { DEMO_VIDEO_THUMBNAIL_URL, ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
+import { ISLAMIC_DEMO_VIDEO_URL } from '@/constants/videos';
 import { useGetIntroductionContentQuery } from '@/redux/api/contentApi';
+import { createVideoSource, FAST_START_BUFFER_OPTIONS } from '@/utils/videoPlayback';
 
 const DEFAULT_MESSAGE_TITLE = 'Precision in every movement.';
 const DEFAULT_MESSAGE_QUOTE =
@@ -33,7 +34,7 @@ export default function IntroductionScreen() {
   const dispatch = useDispatch();
   const { data: introductionContent } = useGetIntroductionContentQuery();
   const videoUrl = introductionContent?.video_url || ISLAMIC_DEMO_VIDEO_URL;
-  const thumbnailUrl = introductionContent?.thumbnail_url || DEMO_VIDEO_THUMBNAIL_URL;
+  const thumbnailUrl = introductionContent?.thumbnail_url;
   const messageTitle = introductionContent?.message_title || DEFAULT_MESSAGE_TITLE;
   const messageQuote = introductionContent?.message_quote || DEFAULT_MESSAGE_QUOTE;
 
@@ -46,13 +47,15 @@ export default function IntroductionScreen() {
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const videoPlayer = useVideoPlayer(null);
+  const videoPlayer = useVideoPlayer(null, (player) => {
+    player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+  });
 
   useEffect(() => {
     setIsVideoPlaying(false);
     setIsVideoLoading(true);
     void videoPlayer
-      .replaceAsync(videoUrl)
+      .replaceAsync(createVideoSource(videoUrl))
       .catch((error) => {
         console.error('Failed to load introduction video', error);
       })
@@ -73,6 +76,7 @@ export default function IntroductionScreen() {
 
   useEventListener(videoPlayer, 'playToEnd', () => {
     videoPlayer.pause();
+    videoPlayer.currentTime = 0;
     setIsVideoPlaying(false);
     setIsVideoLoading(false);
   });
@@ -139,12 +143,16 @@ export default function IntroductionScreen() {
                   void handleWatchIntroduction();
                 }}
               >
-                <Image
-                  source={{
-                    uri: thumbnailUrl,
-                  }}
-                  style={styles.videoThumbnail}
-                />
+                {thumbnailUrl ? (
+                  <Image
+                    source={{
+                      uri: thumbnailUrl,
+                    }}
+                    style={styles.videoThumbnail}
+                  />
+                ) : (
+                  <View style={styles.videoThumbnailPlaceholder} />
+                )}
                 <View style={styles.playButtonWrapper}>
                   {isVideoLoading ? (
                     <View style={styles.playButtonInner}>
@@ -244,6 +252,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       width: '100%',
       height: '100%',
       opacity: 0.85,
+    },
+    videoThumbnailPlaceholder: {
+      width: '100%',
+      height: '100%',
+      backgroundColor: '#1E2633',
     },
     playButtonWrapper: {
       ...StyleSheet.absoluteFillObject,

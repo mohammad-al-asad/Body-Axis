@@ -49,7 +49,6 @@ DEFAULT_INTRODUCTION_CONTENT = {
         "https://archive.org/download/5PillarsOfIslamShahadahBecomingAMuslimAbuHafsah/"
         "AmazingRecitationOfHolyQuran_SurahAlAhzabverse70-72_zahilZakariaAlHafiz.mp4"
     ),
-    "thumbnail_url": "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=900&q=80",
 }
 
 
@@ -80,7 +79,7 @@ def _introduction_response(document: dict[str, Any]) -> IntroductionContentRespo
         message_title=document["message_title"],
         message_quote=document["message_quote"],
         video_url=document["video_url"],
-        thumbnail_url=document.get("thumbnail_url") or DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"],
+        thumbnail_url=document.get("thumbnail_url"),
         video_key=document.get("video_key"),
         thumbnail_key=document.get("thumbnail_key"),
         video_file_name=document.get("video_file_name"),
@@ -160,7 +159,7 @@ async def get_introduction_content(
         message_title=DEFAULT_INTRODUCTION_CONTENT["message_title"],
         message_quote=DEFAULT_INTRODUCTION_CONTENT["message_quote"],
         video_url=DEFAULT_INTRODUCTION_CONTENT["video_url"],
-        thumbnail_url=DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"],
+        thumbnail_url=None,
         status="published",
         created_at=now,
         updated_at=now,
@@ -211,9 +210,7 @@ async def upsert_introduction_content(
 
     existing = await db.app_content.find_one({"slug": INTRODUCTION_SLUG})
     video_url = existing.get("video_url") if existing else DEFAULT_INTRODUCTION_CONTENT["video_url"]
-    thumbnail_url = (
-        existing.get("thumbnail_url") if existing else None
-    ) or DEFAULT_INTRODUCTION_CONTENT["thumbnail_url"]
+    thumbnail_url = existing.get("thumbnail_url") if existing else None
     video_key = existing.get("video_key") if existing else None
     thumbnail_key = existing.get("thumbnail_key") if existing else None
     video_file_name = existing.get("video_file_name") if existing else None
