@@ -29,7 +29,7 @@ class IntroductionContentResponse(BaseModel):
     message_title: str
     message_quote: str
     video_url: str
-    thumbnail_url: str
+    thumbnail_url: str | None = None
     video_key: str | None = None
     thumbnail_key: str | None = None
     video_file_name: str | None = None

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   ScrollView,
   StyleSheet,
@@ -17,6 +18,7 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { Header } from '@/components/Header';
 import { useTheme } from '@/hooks/use-theme';
 import { getPhaseNumber } from '@/utils/phase';
+import { createVideoSource, FAST_START_BUFFER_OPTIONS } from '@/utils/videoPlayback';
 import { sessionPlanToResetPlan } from './session-details';
 import {
   MovementSession,
@@ -132,34 +134,62 @@ export default function ExerciseTrackerScreen() {
   const [isDurationDropdownVisible, setIsDurationDropdownVisible] = useState(false);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [activeVideoType, setActiveVideoType] = useState<'short' | 'full'>('short');
-  const videoPlayer = useVideoPlayer(null);
+  const loadedVideoUrlRef = useRef<string | null>(null);
+  const videoPlayer = useVideoPlayer(null, (player) => {
+    player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+  });
 
-  const resolvePlayableVideoUrl = async (url: string) => {
+  const resolvePlayableVideoUrl = useCallback(async (url: string) => {
     if (!session || !sessionPlan) return url;
     const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, url);
     return localUri ?? url;
-  };
+  }, [session, sessionPlan]);
+
+  const loadPlayableVideo = useCallback(async (url: string) => {
+    const playableUrl = await resolvePlayableVideoUrl(url);
+    if (loadedVideoUrlRef.current !== playableUrl) {
+      await videoPlayer.replaceAsync(createVideoSource(playableUrl));
+      loadedVideoUrlRef.current = playableUrl;
+    }
+    return playableUrl;
+  }, [resolvePlayableVideoUrl, videoPlayer]);
 
   const handleCloseVideo = () => {
     videoPlayer.pause();
+    videoPlayer.currentTime = 0;
     setIsVideoPlaying(false);
-    const activeVideoUrl = activeVideoType === 'full' ? tutorialVideoUrl : shortClipUrl;
-    if (!activeVideoUrl) return;
-    void resolvePlayableVideoUrl(activeVideoUrl).then((playableUrl) => {
-      return videoPlayer.replaceAsync(playableUrl);
-    });
+    setIsVideoLoading(false);
   };
 
   const handleOpenVideo = async (url?: string, videoType: 'short' | 'full' = 'short') => {
-    if (url) {
-      setActiveVideoType(videoType);
-      await videoPlayer.replaceAsync(await resolvePlayableVideoUrl(url));
+    try {
+      setIsVideoLoading(true);
+      if (url) {
+        setActiveVideoType(videoType);
+        setIsVideoPlaying(true);
+        await loadPlayableVideo(url);
+      }
+      videoPlayer.currentTime = 0;
+      videoPlayer.play();
+    } catch (error) {
+      setIsVideoPlaying(false);
+      console.error('Failed to play exercise video', error);
+    } finally {
+      setIsVideoLoading(false);
     }
-    videoPlayer.currentTime = 0;
-    videoPlayer.play();
-    setIsVideoPlaying(true);
   };
+
+  useEventListener(videoPlayer, 'statusChange', ({ status }) => {
+    setIsVideoLoading(status === 'loading');
+  });
+
+  useEventListener(videoPlayer, 'playingChange', ({ isPlaying }) => {
+    if (isPlaying) {
+      setIsVideoLoading(false);
+    }
+  });
 
   useEventListener(videoPlayer, 'playToEnd', handleCloseVideo);
 
@@ -283,25 +313,33 @@ export default function ExerciseTrackerScreen() {
     let isMounted = true;
 
     const replaceWithPlayableUrl = async () => {
-      if (!shortClipUrl || !session || !sessionPlan) return;
-      const playableUrl =
-        (await resolveOfflineVideoUri(session.id, sessionPlan, shortClipUrl)) ?? shortClipUrl;
+      if (!shortClipUrl) {
+        loadedVideoUrlRef.current = null;
+        return;
+      }
 
       if (!isMounted) return;
-      await videoPlayer.replaceAsync(playableUrl);
+      setIsVideoLoading(true);
+      await loadPlayableVideo(shortClipUrl);
       if (!isMounted) return;
       setActiveVideoType('short');
       videoPlayer.currentTime = 0;
       videoPlayer.pause();
       setIsVideoPlaying(false);
+      setIsVideoLoading(false);
     };
 
-    void replaceWithPlayableUrl();
+    void replaceWithPlayableUrl().catch((error) => {
+      if (isMounted) {
+        setIsVideoLoading(false);
+      }
+      console.error('Failed to load exercise video', error);
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [shortClipUrl, session, sessionPlan, videoPlayer]);
+  }, [loadPlayableVideo, shortClipUrl, videoPlayer]);
 
   const saveCompletedExerciseProgress = useCallback(() => {
     if (!session?.id || !sessionPlan || !dynamicExercise) return;
@@ -629,13 +667,20 @@ export default function ExerciseTrackerScreen() {
           {/* Video Preview Card */}
           <View style={styles.videoCard}>
             {isVideoPlaying && shortClipUrl ? (
-              <VideoView
-                player={videoPlayer}
-                contentFit="cover"
-                nativeControls
-                fullscreenOptions={{ enable: true }}
-                style={styles.video}
-              />
+              <>
+                <VideoView
+                  player={videoPlayer}
+                  contentFit="cover"
+                  nativeControls
+                  fullscreenOptions={{ enable: true }}
+                  style={styles.video}
+                />
+                {isVideoLoading && (
+                  <View style={styles.videoLoadingOverlay}>
+                    <ActivityIndicator color="#FFFFFF" />
+                  </View>
+                )}
+              </>
             ) : shortClipUrl && thumbnailUrl ? (
               <TouchableOpacity
                 style={styles.videoThumbnailButton}
@@ -648,12 +693,16 @@ export default function ExerciseTrackerScreen() {
                 />
                 <View style={styles.videoOverlay}>
                   <View style={styles.playButtonCircle}>
-                    <Feather
-                      name="play"
-                      size={20}
-                      color="#FFF"
-                      style={{ marginLeft: 2 }}
-                    />
+                    {isVideoLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <Feather
+                        name="play"
+                        size={20}
+                        color="#FFF"
+                        style={{ marginLeft: 2 }}
+                      />
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>
@@ -1039,6 +1088,12 @@ const createStyles = (theme: ReturnType<typeof useTheme>, isTimerRunning: boolea
       backgroundColor: 'rgba(0, 0, 0, 0.45)',
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    videoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(5, 11, 20, 0.35)',
     },
     playButtonCircle: {
       width: 44,

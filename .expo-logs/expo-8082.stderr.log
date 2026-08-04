@@ -1,0 +1,34 @@
+The following packages should be updated for best compatibility with the installed expo version:
+  expo@55.0.24 - expected version: ~55.0.28
+  expo-apple-authentication@55.0.13 - expected version: ~55.0.15
+  expo-blur@55.0.14 - expected version: ~55.0.16
+  expo-build-properties@55.0.14 - expected version: ~55.0.16
+  expo-constants@55.0.16 - expected version: ~55.0.17
+  expo-device@55.0.17 - expected version: ~55.0.19
+  expo-font@55.0.7 - expected version: ~55.0.8
+  expo-image@55.0.10 - expected version: ~55.0.11
+  expo-image-picker@55.0.21 - expected version: ~55.0.22
+  expo-linear-gradient@55.0.14 - expected version: ~55.0.16
+  expo-linking@55.0.15 - expected version: ~55.0.16
+  expo-router@55.0.14 - expected version: ~55.0.17
+  expo-splash-screen@55.0.21 - expected version: ~55.0.23
+  expo-symbols@55.0.8 - expected version: ~55.0.9
+  expo-system-ui@55.0.18 - expected version: ~55.0.20
+  expo-video@55.0.17 - expected version: ~55.0.19
+  expo-web-browser@55.0.16 - expected version: ~55.0.18
+  react-native@0.83.6 - expected version: 0.83.10
+  react-native-svg@15.15.5 - expected version: 15.15.3
+Your project may not work correctly until you install the expected versions of the packages.
+"shadow*" style props are deprecated. Use "boxShadow".
+RNGoogleSignIn: you are calling a not-implemented method on web platform. Web support is only available to sponsors. 
+If you are a sponsor, please follow the installation instructions carefully to obtain the implementation.
+Error storing data ReferenceError: window is not defined
+    at getValue (C:\Users\maasa\monorepos\BodyAxis\app\node_modules\@react-native-async-storage\async-storage\lib\commonjs\AsyncStorage.js:69:52)
+    at C:\Users\maasa\monorepos\BodyAxis\app\node_modules\@react-native-async-storage\async-storage\lib\commonjs\AsyncStorage.js:39:21
+    at new Promise (<anonymous>)
+    at createPromise (C:\Users\maasa\monorepos\BodyAxis\app\node_modules\@react-native-async-storage\async-storage\lib\commonjs\AsyncStorage.js:37:10)
+    at Object.setItem (C:\Users\maasa\monorepos\BodyAxis\app\node_modules\@react-native-async-storage\async-storage\lib\commonjs\AsyncStorage.js:69:12)
+    at writeStagedState (C:\Users\maasa\monorepos\BodyAxis\app\node_modules\redux-persist\lib\createPersistoid.js:98:28)
+    at Timeout.processNextKey [as _onTimeout] (C:\Users\maasa\monorepos\BodyAxis\app\node_modules\redux-persist\lib\createPersistoid.js:87:7)
+    at listOnTimeout (node:internal/timers:605:17)
+    at processTimers (node:internal/timers:541:7)
