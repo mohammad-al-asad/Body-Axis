@@ -15,7 +15,7 @@ export interface IntroductionContent {
   message_title: string;
   message_quote: string;
   video_url: string;
-  thumbnail_url: string;
+  thumbnail_url?: string | null;
   video_file_name?: string | null;
   video_file_size?: number | null;
   thumbnail_file_name?: string | null;

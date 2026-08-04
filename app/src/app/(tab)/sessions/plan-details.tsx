@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   View,
   Text,
@@ -20,6 +21,7 @@ import { RootState } from '@/redux/store';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
+import { createVideoSource, FAST_START_BUFFER_OPTIONS } from '@/utils/videoPlayback';
 
 export default function PlanDetailsScreen() {
   const theme = useTheme();
@@ -89,32 +91,111 @@ export default function PlanDetailsScreen() {
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [isDemoVideoStarted, setIsDemoVideoStarted] = useState(false);
-  const demoVideoPlayer = useVideoPlayer(null);
+  const [isDemoVideoLoading, setIsDemoVideoLoading] = useState(false);
+  const loadedDemoVideoUrlRef = useRef<string | null>(null);
+  const demoVideoPlayer = useVideoPlayer(null, (player) => {
+    player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+  });
+
+  const expandedVideoUrl = useMemo(() => {
+    if (expandedIndex === null) return null;
+    const exercise = dynamicExercises[expandedIndex];
+    return (
+      exercise?.tutorial_video?.video_url ||
+      exercise?.short_clip_video?.video_url ||
+      null
+    );
+  }, [dynamicExercises, expandedIndex]);
+
+  const resolvePlayableVideoUrl = useCallback(async (videoUrl: string) => {
+    if (!session || !sessionPlan) return videoUrl;
+    const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, videoUrl);
+    return localUri ?? videoUrl;
+  }, [session, sessionPlan]);
+
+  const loadDemoVideo = useCallback(async (videoUrl: string) => {
+    const playableUrl = await resolvePlayableVideoUrl(videoUrl);
+    if (loadedDemoVideoUrlRef.current !== playableUrl) {
+      await demoVideoPlayer.replaceAsync(createVideoSource(playableUrl));
+      loadedDemoVideoUrlRef.current = playableUrl;
+    }
+    return playableUrl;
+  }, [demoVideoPlayer, resolvePlayableVideoUrl]);
+
+  useEventListener(demoVideoPlayer, 'statusChange', ({ status }) => {
+    setIsDemoVideoLoading(status === 'loading');
+  });
+
+  useEventListener(demoVideoPlayer, 'playingChange', ({ isPlaying }) => {
+    if (isPlaying) {
+      setIsDemoVideoLoading(false);
+    }
+  });
 
   useEventListener(demoVideoPlayer, 'playToEnd', () => {
     demoVideoPlayer.pause();
+    demoVideoPlayer.currentTime = 0;
     setIsDemoVideoStarted(false);
+    setIsDemoVideoLoading(false);
   });
 
   const toggleExpand = (index: number) => {
     demoVideoPlayer.pause();
     demoVideoPlayer.currentTime = 0;
     setIsDemoVideoStarted(false);
+    setIsDemoVideoLoading(false);
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
   const handlePlayDemo = async (videoUrl: string) => {
-    if (!session || !sessionPlan) return;
-    const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, videoUrl);
-    await demoVideoPlayer.replaceAsync(localUri ?? videoUrl);
-    demoVideoPlayer.currentTime = 0;
-    demoVideoPlayer.play();
-    setIsDemoVideoStarted(true);
+    try {
+      setIsDemoVideoLoading(true);
+      setIsDemoVideoStarted(true);
+      await loadDemoVideo(videoUrl);
+      demoVideoPlayer.currentTime = 0;
+      demoVideoPlayer.play();
+    } catch (error) {
+      setIsDemoVideoStarted(false);
+      console.error('Failed to play exercise tutorial video', error);
+    } finally {
+      setIsDemoVideoLoading(false);
+    }
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const preloadExpandedVideo = async () => {
+      if (!expandedVideoUrl) {
+        loadedDemoVideoUrlRef.current = null;
+        return;
+      }
+
+      setIsDemoVideoLoading(true);
+      await loadDemoVideo(expandedVideoUrl);
+      if (!isMounted) return;
+      demoVideoPlayer.currentTime = 0;
+      demoVideoPlayer.pause();
+      setIsDemoVideoStarted(false);
+      setIsDemoVideoLoading(false);
+    };
+
+    void preloadExpandedVideo().catch((error) => {
+      if (isMounted) {
+        setIsDemoVideoLoading(false);
+      }
+      console.error('Failed to load exercise tutorial video', error);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [demoVideoPlayer, expandedVideoUrl, loadDemoVideo]);
 
   const handleStartProtocol = () => {
     if (!plan) return;
     demoVideoPlayer.pause();
+    setIsDemoVideoLoading(false);
     router.push({
       pathname: '/sessions/exercise-tracker',
       params: {
@@ -126,6 +207,7 @@ export default function PlanDetailsScreen() {
 
   const handleBack = () => {
     demoVideoPlayer.pause();
+    setIsDemoVideoLoading(false);
     router.back();
   };
 
@@ -222,13 +304,20 @@ export default function PlanDetailsScreen() {
                     {/* Video Player */}
                     <View style={styles.videoPlayer}>
                       {isDemoVideoStarted && videoUrl ? (
-                        <VideoView
-                          player={demoVideoPlayer}
-                          contentFit="cover"
-                          nativeControls
-                          fullscreenOptions={{ enable: true }}
-                          style={styles.video}
-                        />
+                        <>
+                          <VideoView
+                            player={demoVideoPlayer}
+                            contentFit="cover"
+                            nativeControls
+                            fullscreenOptions={{ enable: true }}
+                            style={styles.video}
+                          />
+                          {isDemoVideoLoading && (
+                            <View style={styles.videoLoadingOverlay}>
+                              <ActivityIndicator color="#FFFFFF" />
+                            </View>
+                          )}
+                        </>
                       ) : videoUrl && thumbnailUrl ? (
                         <TouchableOpacity
                           style={styles.videoThumbnailButton}
@@ -241,12 +330,16 @@ export default function PlanDetailsScreen() {
                           />
                           <View style={styles.videoOverlay}>
                             <View style={styles.playButtonCircle}>
-                              <Feather
-                                name="play"
-                                size={20}
-                                color="#FFF"
-                                style={{ marginLeft: 2 }}
-                              />
+                              {isDemoVideoLoading ? (
+                                <ActivityIndicator color="#FFFFFF" />
+                              ) : (
+                                <Feather
+                                  name="play"
+                                  size={20}
+                                  color="#FFF"
+                                  style={{ marginLeft: 2 }}
+                                />
+                              )}
                             </View>
                           </View>
                         </TouchableOpacity>
@@ -503,6 +596,12 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themePreference?: stri
       backgroundColor: 'rgba(0, 0, 0, 0.25)',
       justifyContent: 'center',
       alignItems: 'center',
+    },
+    videoLoadingOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'rgba(5, 11, 20, 0.35)',
     },
     playButtonCircle: {
       width: 48,
