@@ -32,7 +32,7 @@ const formatExerciseLabel = (exercise) =>
 
 const filterExercises = (exercises, query) => {
   const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return exercises.slice(0, 8);
+  if (!normalizedQuery) return [];
 
   return exercises
     .filter((exercise) =>
@@ -53,9 +53,12 @@ const ExerciseSearchPicker = ({
   available,
   selectedExerciseId,
   searchValue,
+  isOpen,
   onSearchChange,
   onSelect,
   onAdd,
+  onOpen,
+  onClose,
 }) => {
   const selectedExercise = available.find(
     (exercise) => exercise.exercise_id === selectedExerciseId,
@@ -73,6 +76,7 @@ const ExerciseSearchPicker = ({
     if (event.key === "Escape") {
       onSearchChange("");
       onSelect(null);
+      onClose();
     }
   };
 
@@ -85,9 +89,15 @@ const ExerciseSearchPicker = ({
         />
         <input
           value={searchValue}
+          onFocus={() => {
+            if (hasSearch) onOpen();
+          }}
           onChange={(event) => {
-            onSearchChange(event.target.value);
+            const nextValue = event.target.value;
+            onSearchChange(nextValue);
             onSelect(null);
+            if (nextValue.trim()) onOpen();
+            else onClose();
           }}
           onKeyDown={handleKeyDown}
           placeholder={`Search ${phase} exercises by name or ID...`}
@@ -99,6 +109,7 @@ const ExerciseSearchPicker = ({
             onClick={() => {
               onSearchChange("");
               onSelect(null);
+              onClose();
             }}
             className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#64748B] hover:bg-white/5 hover:text-white"
             aria-label={`Clear ${phase} exercise search`}
@@ -114,44 +125,47 @@ const ExerciseSearchPicker = ({
         </div>
       )}
 
-      <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-[#1E293B] bg-[#0A0D14]">
-        {results.length ? (
-          results.map((exercise) => {
-            const selected = exercise.exercise_id === selectedExerciseId;
-            return (
-              <button
-                type="button"
-                key={exercise.exercise_id}
-                onClick={() => {
-                  onSelect(exercise);
-                  onSearchChange(formatExerciseLabel(exercise));
-                }}
-                className={`flex w-full items-start justify-between gap-3 px-4 py-3 text-left text-sm transition hover:bg-[#131B2F] ${
-                  selected ? "bg-[#1D4ED8]/20 text-[#BFDBFE]" : "text-white"
-                }`}
-              >
-                <span className="min-w-0">
-                  <span className="block truncate font-bold">
-                    {exercise.exercise_name}
+      {isOpen && hasSearch && (
+        <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-[#1E293B] bg-[#0A0D14]">
+          {results.length ? (
+            results.map((exercise) => {
+              const selected = exercise.exercise_id === selectedExerciseId;
+              return (
+                <button
+                  type="button"
+                  key={exercise.exercise_id}
+                  onClick={() => {
+                    onSelect(exercise);
+                    onSearchChange(formatExerciseLabel(exercise));
+                    onClose();
+                  }}
+                  className={`flex w-full items-start justify-between gap-3 px-4 py-3 text-left text-sm transition hover:bg-[#131B2F] ${
+                    selected ? "bg-[#1D4ED8]/20 text-[#BFDBFE]" : "text-white"
+                  }`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate font-bold">
+                      {exercise.exercise_name}
+                    </span>
+                    <span className="mt-1 block text-xs text-[#64748B]">
+                      {exercise.exercise_id}
+                    </span>
                   </span>
-                  <span className="mt-1 block text-xs text-[#64748B]">
-                    {exercise.exercise_id}
-                  </span>
-                </span>
-                {selected && (
-                  <span className="shrink-0 rounded-full bg-[#3B82F6]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#93C5FD]">
-                    Picked
-                  </span>
-                )}
-              </button>
-            );
-          })
-        ) : (
-          <div className="px-4 py-3 text-sm text-[#64748B]">
-            No available exercise matches this search.
-          </div>
-        )}
-      </div>
+                  {selected && (
+                    <span className="shrink-0 rounded-full bg-[#3B82F6]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#93C5FD]">
+                      Picked
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          ) : (
+            <div className="px-4 py-3 text-sm text-[#64748B]">
+              No available exercise matches this search.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -184,6 +198,7 @@ const CreatePlan = () => {
     control: "",
     integrate: "",
   });
+  const [activeSearchPhase, setActiveSearchPhase] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -240,6 +255,7 @@ const CreatePlan = () => {
     }));
     setPending((current) => ({ ...current, [phase]: "" }));
     setExerciseSearch((current) => ({ ...current, [phase]: "" }));
+    setActiveSearchPhase("");
   };
 
   const removeExercise = (phase, exerciseId) => {
@@ -541,6 +557,7 @@ const CreatePlan = () => {
                         available={available}
                         selectedExerciseId={pending[phase]}
                         searchValue={exerciseSearch[phase]}
+                        isOpen={activeSearchPhase === phase}
                         onSearchChange={(value) =>
                           setExerciseSearch((current) => ({
                             ...current,
@@ -554,6 +571,12 @@ const CreatePlan = () => {
                           }))
                         }
                         onAdd={() => addExercise(phase)}
+                        onOpen={() => setActiveSearchPhase(phase)}
+                        onClose={() =>
+                          setActiveSearchPhase((current) =>
+                            current === phase ? "" : current,
+                          )
+                        }
                       />
                       <button
                         disabled={!pending[phase]}
