@@ -5,7 +5,9 @@ import {
   Layers3,
   PlusCircle,
   Save,
+  Search,
   Trash2,
+  X,
 } from "lucide-react";
 import {
   PHASE_OPTIONS,
@@ -24,6 +26,135 @@ const phaseColors = {
 };
 
 const emptyPhases = { reset: [], control: [], integrate: [] };
+
+const formatExerciseLabel = (exercise) =>
+  `${exercise.exercise_name} (${exercise.exercise_id})`;
+
+const filterExercises = (exercises, query) => {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return exercises.slice(0, 8);
+
+  return exercises
+    .filter((exercise) =>
+      [
+        exercise.exercise_name,
+        exercise.exercise_id,
+        formatExerciseLabel(exercise),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedQuery),
+    )
+    .slice(0, 8);
+};
+
+const ExerciseSearchPicker = ({
+  phase,
+  available,
+  selectedExerciseId,
+  searchValue,
+  onSearchChange,
+  onSelect,
+  onAdd,
+}) => {
+  const selectedExercise = available.find(
+    (exercise) => exercise.exercise_id === selectedExerciseId,
+  );
+  const results = filterExercises(available, searchValue);
+  const hasSearch = Boolean(searchValue.trim());
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      if (selectedExerciseId) onAdd();
+      else if (results[0]) onSelect(results[0]);
+    }
+
+    if (event.key === "Escape") {
+      onSearchChange("");
+      onSelect(null);
+    }
+  };
+
+  return (
+    <div className="min-w-0 flex-1">
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-[#64748B]"
+        />
+        <input
+          value={searchValue}
+          onChange={(event) => {
+            onSearchChange(event.target.value);
+            onSelect(null);
+          }}
+          onKeyDown={handleKeyDown}
+          placeholder={`Search ${phase} exercises by name or ID...`}
+          className="w-full rounded-xl border border-[#1E293B] bg-[#0A0D14] py-3 pl-11 pr-11 text-sm outline-none focus:border-[#38BDF8]"
+        />
+        {(hasSearch || selectedExerciseId) && (
+          <button
+            type="button"
+            onClick={() => {
+              onSearchChange("");
+              onSelect(null);
+            }}
+            className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-lg text-[#64748B] hover:bg-white/5 hover:text-white"
+            aria-label={`Clear ${phase} exercise search`}
+          >
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
+      {selectedExercise && (
+        <div className="mt-2 rounded-lg border border-[#2563EB]/40 bg-[#2563EB]/10 px-3 py-2 text-xs font-bold text-[#93C5FD]">
+          Selected: {formatExerciseLabel(selectedExercise)}
+        </div>
+      )}
+
+      <div className="mt-2 max-h-52 overflow-y-auto rounded-xl border border-[#1E293B] bg-[#0A0D14]">
+        {results.length ? (
+          results.map((exercise) => {
+            const selected = exercise.exercise_id === selectedExerciseId;
+            return (
+              <button
+                type="button"
+                key={exercise.exercise_id}
+                onClick={() => {
+                  onSelect(exercise);
+                  onSearchChange(formatExerciseLabel(exercise));
+                }}
+                className={`flex w-full items-start justify-between gap-3 px-4 py-3 text-left text-sm transition hover:bg-[#131B2F] ${
+                  selected ? "bg-[#1D4ED8]/20 text-[#BFDBFE]" : "text-white"
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate font-bold">
+                    {exercise.exercise_name}
+                  </span>
+                  <span className="mt-1 block text-xs text-[#64748B]">
+                    {exercise.exercise_id}
+                  </span>
+                </span>
+                {selected && (
+                  <span className="shrink-0 rounded-full bg-[#3B82F6]/20 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-[#93C5FD]">
+                    Picked
+                  </span>
+                )}
+              </button>
+            );
+          })
+        ) : (
+          <div className="px-4 py-3 text-sm text-[#64748B]">
+            No available exercise matches this search.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const CreatePlan = () => {
   const { planId: routePlanId } = useParams();
@@ -44,6 +175,11 @@ const CreatePlan = () => {
   });
   const [phases, setPhases] = useState(emptyPhases);
   const [pending, setPending] = useState({
+    reset: "",
+    control: "",
+    integrate: "",
+  });
+  const [exerciseSearch, setExerciseSearch] = useState({
     reset: "",
     control: "",
     integrate: "",
@@ -88,7 +224,7 @@ const CreatePlan = () => {
     const exercise = exercises.find(
       (item) => item.exercise_id === pending[phase],
     );
-    if (!exercise) return;
+    if (!exercise || selectedIds.has(exercise.exercise_id)) return;
     setPhases((current) => ({
       ...current,
       [phase]: [
@@ -103,6 +239,7 @@ const CreatePlan = () => {
       ],
     }));
     setPending((current) => ({ ...current, [phase]: "" }));
+    setExerciseSearch((current) => ({ ...current, [phase]: "" }));
   };
 
   const removeExercise = (phase, exerciseId) => {
@@ -398,31 +535,30 @@ const CreatePlan = () => {
                       ))}
                     </div>
 
-                    <div className="mt-4 flex gap-3">
-                      <select
-                        value={pending[phase]}
-                        onChange={(event) =>
-                          setPending((current) => ({
+                    <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start">
+                      <ExerciseSearchPicker
+                        phase={phase}
+                        available={available}
+                        selectedExerciseId={pending[phase]}
+                        searchValue={exerciseSearch[phase]}
+                        onSearchChange={(value) =>
+                          setExerciseSearch((current) => ({
                             ...current,
-                            [phase]: event.target.value,
+                            [phase]: value,
                           }))
                         }
-                        className="min-w-0 flex-1 rounded-xl border border-[#1E293B] bg-[#0A0D14] px-4 py-3 text-sm outline-none"
-                      >
-                        <option value="">Select a {phase} exercise…</option>
-                        {available.map((exercise) => (
-                          <option
-                            key={exercise.exercise_id}
-                            value={exercise.exercise_id}
-                          >
-                            {exercise.exercise_name} ({exercise.exercise_id})
-                          </option>
-                        ))}
-                      </select>
+                        onSelect={(exercise) =>
+                          setPending((current) => ({
+                            ...current,
+                            [phase]: exercise?.exercise_id || "",
+                          }))
+                        }
+                        onAdd={() => addExercise(phase)}
+                      />
                       <button
                         disabled={!pending[phase]}
                         onClick={() => addExercise(phase)}
-                        className="flex items-center gap-2 rounded-xl border border-[#3B82F6] px-4 py-3 text-xs font-bold text-[#60A5FA] hover:bg-[#3B82F6] hover:text-white disabled:opacity-40"
+                        className="flex items-center justify-center gap-2 rounded-xl border border-[#3B82F6] px-4 py-3 text-xs font-bold text-[#60A5FA] hover:bg-[#3B82F6] hover:text-white disabled:opacity-40 lg:min-w-[164px]"
                       >
                         Add Exercise <PlusCircle size={15} />
                       </button>
