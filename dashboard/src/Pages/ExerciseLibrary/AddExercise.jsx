@@ -199,41 +199,56 @@ const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
   );
 };
 
-const VideoSlot = ({ label, video, onOpen }) => {
+const VideoSlot = ({ label, video, onOpen, onRemove }) => {
   const duration = useVideoDuration(video);
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className="flex min-h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#334155] bg-[#0A0D14] hover:border-[#38BDF8]"
-    >
-      {video ? (
-        <div className="flex w-full items-center gap-4 p-4 text-left">
-          <img
-            src={video.thumbnail_url}
-            alt=""
-            className="h-24 w-36 rounded-lg object-cover"
-          />
-          <div className="min-w-0">
-            <div className="truncate text-sm font-bold">{video.video_name}</div>
-            <div className="mt-1 text-xs text-[#38BDF8]">{video.exercise_id}</div>
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94A3B8]">
-              <Clock size={13} />
-              {formatVideoDuration(duration)}
-            </div>
-            <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
-              Click to change
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex min-h-[150px] w-full items-center justify-center overflow-hidden rounded-xl border border-dashed border-[#334155] bg-[#0A0D14] hover:border-[#38BDF8]"
+      >
+        {video ? (
+          <div className="flex w-full items-center gap-4 p-4 text-left">
+            <img
+              src={video.thumbnail_url}
+              alt=""
+              className="h-24 w-36 rounded-lg object-cover"
+            />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-bold">{video.video_name}</div>
+              <div className="mt-1 text-xs text-[#38BDF8]">{video.exercise_id}</div>
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-[#94A3B8]">
+                <Clock size={13} />
+                {formatVideoDuration(duration)}
+              </div>
+              <div className="mt-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
+                Click to change
+              </div>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="text-center text-[#64748B]">
-          <PlaySquare size={26} className="mx-auto mb-3" />
-          <div className="text-xs font-bold uppercase tracking-widest">{label}</div>
-        </div>
+        ) : (
+          <div className="text-center text-[#64748B]">
+            <PlaySquare size={26} className="mx-auto mb-3" />
+            <div className="text-xs font-bold uppercase tracking-widest">{label}</div>
+          </div>
+        )}
+      </button>
+      {video && onRemove && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          className="absolute -right-2 -top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-white shadow-lg transition-colors hover:bg-red-600"
+          title="Remove video"
+        >
+          <X size={14} />
+        </button>
       )}
-    </button>
+    </div>
   );
 };
 
@@ -450,6 +465,7 @@ const AddExercise = () => {
                 label="Select Tutorial Video"
                 video={tutorialVideo}
                 onOpen={() => setPicker("tutorial")}
+                onRemove={() => updateField("tutorialVideoId", "")}
               />
             </div>
             <div>
@@ -460,6 +476,7 @@ const AddExercise = () => {
                 label="Select Short Clip Video"
                 video={shortClipVideo}
                 onOpen={() => setPicker("clip")}
+                onRemove={() => updateField("shortClipVideoId", "")}
               />
             </div>
           </div>
