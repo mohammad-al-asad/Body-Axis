@@ -13,6 +13,7 @@ import {
 import { EQUIPMENT_OPTIONS } from "../../constants/management";
 import { ExerciseContext } from "../../context/ExerciseContext";
 import { VideoContext } from "../../context/VideoContext";
+import { managementApi } from "../../services/managementApi";
 
 const emptyForm = {
   exerciseId: "",
@@ -140,16 +141,37 @@ const VideoPickerItem = ({ video, onSelect }) => {
   );
 };
 
-const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
+const VideoPicker = ({ title, excludedId, onClose, onSelect }) => {
   const [search, setSearch] = useState("");
-  const filtered = videos.filter((video) => {
-    const query = search.toLowerCase();
-    return (
-      video.id !== excludedId &&
-      (video.video_name.toLowerCase().includes(query) ||
-        video.exercise_id.toLowerCase().includes(query))
-    );
-  });
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await managementApi.listVideos({
+          search: search.trim(),
+          limit: 50,
+        });
+        if (!ignore) {
+          setVideos(res.items || []);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [search]);
+
+  const filtered = videos.filter((video) => video.id !== excludedId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm">
@@ -180,14 +202,19 @@ const VideoPicker = ({ title, videos, excludedId, onClose, onSelect }) => {
             />
           </div>
           <div className="grid max-h-[52vh] gap-3 overflow-y-auto md:grid-cols-2">
-            {filtered.map((video) => (
-              <VideoPickerItem
-                key={video.id}
-                video={video}
-                onSelect={onSelect}
-              />
-            ))}
-            {!filtered.length && (
+            {loading ? (
+              <div className="col-span-2 py-12 text-center text-sm text-[#64748B]">
+                Loading videos...
+              </div>
+            ) : filtered.length ? (
+              filtered.map((video) => (
+                <VideoPickerItem
+                  key={video.id}
+                  video={video}
+                  onSelect={onSelect}
+                />
+              ))
+            ) : (
               <div className="col-span-2 py-12 text-center text-sm text-[#64748B]">
                 No matching videos.
               </div>
@@ -284,12 +311,43 @@ const AddExercise = () => {
     });
   }, [existing]);
 
-  const tutorialVideo = videos.find(
-    (video) => video.id === form.tutorialVideoId,
-  );
-  const shortClipVideo = videos.find(
-    (video) => video.id === form.shortClipVideoId,
-  );
+  const [selectedTutorialVideo, setSelectedTutorialVideo] = useState(null);
+  const [selectedShortClipVideo, setSelectedShortClipVideo] = useState(null);
+
+  useEffect(() => {
+    if (form.tutorialVideoId) {
+      const cached = (videos || []).find((v) => v.id === form.tutorialVideoId);
+      if (cached) {
+        setSelectedTutorialVideo(cached);
+      } else {
+        managementApi
+          .getVideo(form.tutorialVideoId)
+          .then((v) => setSelectedTutorialVideo(v))
+          .catch(() => {});
+      }
+    } else {
+      setSelectedTutorialVideo(null);
+    }
+  }, [form.tutorialVideoId, videos]);
+
+  useEffect(() => {
+    if (form.shortClipVideoId) {
+      const cached = (videos || []).find((v) => v.id === form.shortClipVideoId);
+      if (cached) {
+        setSelectedShortClipVideo(cached);
+      } else {
+        managementApi
+          .getVideo(form.shortClipVideoId)
+          .then((v) => setSelectedShortClipVideo(v))
+          .catch(() => {});
+      }
+    } else {
+      setSelectedShortClipVideo(null);
+    }
+  }, [form.shortClipVideoId, videos]);
+
+  const tutorialVideo = selectedTutorialVideo;
+  const shortClipVideo = selectedShortClipVideo;
 
   const updateField = (field, value) =>
     setForm((current) => ({ ...current, [field]: value }));
@@ -496,7 +554,6 @@ const AddExercise = () => {
               ? "Select Tutorial Video"
               : "Select Short Clip Video"
           }
-          videos={videos}
           excludedId={
             picker === "tutorial"
               ? form.shortClipVideoId
