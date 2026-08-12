@@ -108,7 +108,7 @@ async def create_video_asset(
 async def get_video_list(
     search: str = Query(default="", max_length=160),
     skip: int = Query(default=0, ge=0),
-    limit: int = Query(default=50, ge=1, le=200),
+    limit: int = Query(default=50, ge=1, le=1000),
 ) -> VideoListResponse:
     query = {}
     if search:

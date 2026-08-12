@@ -87,7 +87,7 @@ const UploadVideo = () => {
   const { videos, createVideo, updateVideo } = useContext(VideoContext);
   const navigate = useNavigate();
   const existing = useMemo(
-    () => videos.find((video) => video.id === videoId),
+    () => (videos || []).find((video) => video.id === videoId),
     [videoId, videos],
   );
   const [form, setForm] = useState({
@@ -115,13 +115,29 @@ const UploadVideo = () => {
   }, [videoFile]);
 
   useEffect(() => {
-    if (!existing) return;
-    setForm({
-      exerciseId: existing.exercise_id,
-      videoName: existing.video_name,
-      videoDescription: existing.video_description,
-    });
-  }, [existing]);
+    if (!videoId) return;
+    if (existing) {
+      setForm({
+        exerciseId: existing.exercise_id || "",
+        videoName: existing.video_name || "",
+        videoDescription: existing.video_description || "",
+      });
+      return;
+    }
+    // Fetch video directly from API if not in context
+    managementApi
+      .getVideo(videoId)
+      .then((video) => {
+        if (video) {
+          setForm({
+            exerciseId: video.exercise_id || "",
+            videoName: video.video_name || "",
+            videoDescription: video.video_description || "",
+          });
+        }
+      })
+      .catch((err) => setError(err.message || "Failed to load video details."));
+  }, [existing, videoId]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
