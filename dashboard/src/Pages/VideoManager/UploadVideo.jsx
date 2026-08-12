@@ -8,6 +8,7 @@ import {
   Save,
 } from "lucide-react";
 import { VideoContext } from "../../context/VideoContext";
+import { managementApi } from "../../services/managementApi";
 import { uploadVideoMultipart } from "../../services/videoUpload";
 
 const formatBytes = (bytes) => {
