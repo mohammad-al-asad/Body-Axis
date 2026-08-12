@@ -147,8 +147,19 @@ export const managementApi = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  listVideos: (search = "") =>
-    request(`/videos?limit=200&search=${encodeURIComponent(search)}`),
+  listVideos: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    if (typeof params === "string") {
+      if (params) searchParams.set("search", params);
+    } else if (params && typeof params === "object") {
+      const { search = "", skip, limit } = params;
+      if (search) searchParams.set("search", search);
+      if (skip !== undefined && skip !== null) searchParams.set("skip", String(skip));
+      if (limit !== undefined && limit !== null) searchParams.set("limit", String(limit));
+    }
+    const query = searchParams.toString();
+    return request(`/videos${query ? `?${query}` : ""}`);
+  },
   getVideo: (id) => request(`/videos/${encodeURIComponent(id)}`),
   createVideo: (formData) =>
     request("/videos", { method: "POST", body: formData }),

@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -10,6 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { VideoContext } from "../../context/VideoContext";
+import { managementApi } from "../../services/managementApi";
 
 const formatBytes = (bytes) => {
   if (!bytes) return "—";
@@ -19,35 +20,61 @@ const formatBytes = (bytes) => {
 };
 
 const VideoManager = () => {
-  const { videos, loading, error, deleteVideo } = useContext(VideoContext);
+  const { deleteVideo } = useContext(VideoContext);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [videos, setVideos] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const navigate = useNavigate();
   const pageSize = 8;
 
-  const filteredVideos = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query) return videos;
-    return videos.filter(
-      (video) =>
-        video.video_name.toLowerCase().includes(query) ||
-        video.exercise_id.toLowerCase().includes(query),
-    );
-  }, [search, videos]);
+  // Debounce search input by 300ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredVideos.length / pageSize));
+  const fetchVideos = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const skip = (currentPage - 1) * pageSize;
+      const data = await managementApi.listVideos({
+        search: debouncedSearch,
+        skip,
+        limit: pageSize,
+      });
+      setVideos(data.items || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      setError(err.message || "Failed to load videos.");
+      setVideos([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, currentPage, pageSize]);
+
+  useEffect(() => {
+    fetchVideos();
+  }, [fetchVideos]);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const safePage = Math.min(currentPage, totalPages);
-  const visibleVideos = filteredVideos.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
 
   const handleDelete = async (video) => {
     if (!window.confirm(`Delete "${video.video_name}"?`)) return;
     setActionError("");
     try {
       await deleteVideo(video.id);
+      fetchVideos();
     } catch (requestError) {
       setActionError(requestError.message);
     }
@@ -71,10 +98,7 @@ const VideoManager = () => {
               />
               <input
                 value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={(event) => setSearch(event.target.value)}
                 placeholder="Search videos..."
                 className="w-[240px] rounded-xl border border-[#1E293B] bg-[#131B2F] py-2.5 pl-10 pr-4 text-[13px] outline-none focus:border-[#3B82F6]"
               />
@@ -114,8 +138,8 @@ const VideoManager = () => {
                       Loading videos…
                     </td>
                   </tr>
-                ) : visibleVideos.length ? (
-                  visibleVideos.map((video) => (
+                ) : videos.length ? (
+                  videos.map((video) => (
                     <tr key={video.id} className="hover:bg-[#1E293B]/30">
                       <td className="px-7 py-4">
                         <img
@@ -174,11 +198,11 @@ const VideoManager = () => {
           </div>
           <div className="flex items-center justify-between border-t border-[#1E293B] px-7 py-5">
             <span className="text-xs text-[#64748B]">
-              {filteredVideos.length} video{filteredVideos.length === 1 ? "" : "s"}
+              {total} video{total === 1 ? "" : "s"}
             </span>
             <div className="flex items-center gap-3">
               <button
-                disabled={safePage === 1}
+                disabled={safePage <= 1}
                 onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                 className="rounded-lg p-2 text-[#94A3B8] disabled:opacity-30"
               >
@@ -188,7 +212,7 @@ const VideoManager = () => {
                 {safePage} / {totalPages}
               </span>
               <button
-                disabled={safePage === totalPages}
+                disabled={safePage >= totalPages}
                 onClick={() =>
                   setCurrentPage((page) => Math.min(totalPages, page + 1))
                 }
