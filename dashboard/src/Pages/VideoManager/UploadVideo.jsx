@@ -87,10 +87,13 @@ const UploadVideo = () => {
   const editing = Boolean(videoId);
   const { videos, createVideo, updateVideo } = useContext(VideoContext);
   const navigate = useNavigate();
-  const existing = useMemo(
+  const existingFromContext = useMemo(
     () => (videos || []).find((video) => video.id === videoId),
     [videoId, videos],
   );
+  const [fetchedVideo, setFetchedVideo] = useState(null);
+  const existing = existingFromContext || fetchedVideo;
+
   const [form, setForm] = useState({
     exerciseId: "",
     videoName: "",
@@ -117,11 +120,11 @@ const UploadVideo = () => {
 
   useEffect(() => {
     if (!videoId) return;
-    if (existing) {
+    if (existingFromContext) {
       setForm({
-        exerciseId: existing.exercise_id || "",
-        videoName: existing.video_name || "",
-        videoDescription: existing.video_description || "",
+        exerciseId: existingFromContext.exercise_id || "",
+        videoName: existingFromContext.video_name || "",
+        videoDescription: existingFromContext.video_description || "",
       });
       return;
     }
@@ -130,6 +133,7 @@ const UploadVideo = () => {
       .getVideo(videoId)
       .then((video) => {
         if (video) {
+          setFetchedVideo(video);
           setForm({
             exerciseId: video.exercise_id || "",
             videoName: video.video_name || "",
@@ -138,7 +142,7 @@ const UploadVideo = () => {
         }
       })
       .catch((err) => setError(err.message || "Failed to load video details."));
-  }, [existing, videoId]);
+  }, [existingFromContext, videoId]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
