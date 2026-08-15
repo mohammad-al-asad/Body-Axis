@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+import * as Notifications from 'expo-notifications';
 
 import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
@@ -15,6 +16,21 @@ export default function HomeScreen() {
   
   const user = useSelector((state: RootState) => state.auth.user);
   const isIntakeCompleted = user?.is_intake_completed ?? false;
+
+  React.useEffect(() => {
+    async function requestNotificationPermissions() {
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        if (existingStatus !== 'granted') {
+          await Notifications.requestPermissionsAsync();
+        }
+      } catch (error) {
+        console.warn('Error requesting notification permission:', error);
+      }
+    }
+    
+    requestNotificationPermissions();
+  }, []);
 
   return (
     <View style={styles.container}>

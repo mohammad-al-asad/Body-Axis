@@ -6,10 +6,8 @@ export default function ProfileStackLayout() {
       <Stack.Screen name="index" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="about" />
-      <Stack.Screen name="privacy" />
       <Stack.Screen name="subscription" />
       <Stack.Screen name="support" />
-      <Stack.Screen name="terms" />
     </Stack>
   );
 }

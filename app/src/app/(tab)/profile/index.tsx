@@ -810,7 +810,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Terms of Service */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/profile/terms')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/terms')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
                 <Feather name="file-text" size={16} color={theme.quaternary} />
               </View>
@@ -822,7 +822,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
 
             {/* Privacy Policy */}
-            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/profile/privacy')}>
+            <TouchableOpacity style={[styles.cardItemRowNoBorder, styles.rowBorderTop]} activeOpacity={0.8} onPress={() => router.push('/privacy')}>
               <View style={[styles.itemIconBox, { backgroundColor: 'rgba(98, 250, 227, 0.08)' }]}>
                 <Feather name="shield" size={16} color={theme.quaternary} />
               </View>

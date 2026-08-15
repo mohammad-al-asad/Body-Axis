@@ -50,6 +50,10 @@ function RootStack() {
       <Stack.Protected guard={isFullyReady}>
         <Stack.Screen name="(tab)" />
       </Stack.Protected>
+
+      {/* Public routes — accessible to anyone at any stage */}
+      <Stack.Screen name="privacy" />
+      <Stack.Screen name="terms" />
     </Stack>
   );
 }

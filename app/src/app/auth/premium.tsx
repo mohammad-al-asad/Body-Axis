@@ -223,7 +223,7 @@ export default function PremiumScreen() {
           {/* Main Titles */}
           <View style={styles.titleContainer}>
             <Text style={styles.mainTitle}>
-              Axis Premium
+              Body Axis Premium
             </Text>
             <Text style={styles.subtitle}>
               One plan. Unlimited performance.{"\n"}Unlock every protocol in our library.
@@ -346,17 +346,25 @@ export default function PremiumScreen() {
 
           {/* Bottom Dual Grid */}
           <View style={styles.gridContainer}>
-            <View style={styles.gridCard}>
-              <Feather name="zap" size={18} color={theme.secondary} style={styles.gridIcon} />
-              <Text style={styles.gridTitle}>Instant Unlock</Text>
-              <Text style={styles.gridSubtitle}>500+ premium sessions.</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.gridCard}
+              activeOpacity={0.8}
+              onPress={() => router.push('/terms')}
+            >
+              <Feather name="file-text" size={18} color={theme.secondary} style={styles.gridIcon} />
+              <Text style={styles.gridTitle}>Terms of Use</Text>
+              <Text style={styles.gridSubtitle}>Read our terms & conditions.</Text>
+            </TouchableOpacity>
 
-            <View style={styles.gridCard}>
+            <TouchableOpacity
+              style={styles.gridCard}
+              activeOpacity={0.8}
+              onPress={() => router.push('/privacy')}
+            >
               <Feather name="shield" size={18} color={theme.secondary} style={styles.gridIcon} />
-              <Text style={styles.gridTitle}>Secure Axis</Text>
-              <Text style={styles.gridSubtitle}>Biometric encryption.</Text>
-            </View>
+              <Text style={styles.gridTitle}>Privacy Policy</Text>
+              <Text style={styles.gridSubtitle}>Read our data & privacy policy.</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
