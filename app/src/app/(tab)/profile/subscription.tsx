@@ -536,11 +536,11 @@ export default function SubscriptionScreen() {
           </Text>
 
           <View style={styles.footerLinksRow}>
-            <TouchableOpacity onPress={() => router.push('/profile/privacy')}>
+            <TouchableOpacity onPress={() => router.push('/privacy')}>
               <Text style={styles.footerLinkText}>Privacy Policy</Text>
             </TouchableOpacity>
             <Text style={styles.footerDot}>•</Text>
-            <TouchableOpacity onPress={() => router.push('/profile/terms')}>
+            <TouchableOpacity onPress={() => router.push('/terms')}>
               <Text style={styles.footerLinkText}>Terms of Use</Text>
             </TouchableOpacity>
           </View>

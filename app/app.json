@@ -15,7 +15,8 @@
       "icon": "./assets/images/app/logo.png",
       "bundleIdentifier": "com.jointhebodyinstitute.bodyaxis",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserNotificationsUsageDescription": "Body Axis needs notification permission to send you workout reminders, progress updates, and activity alerts."
       }
     },
     "android": {
@@ -32,6 +33,7 @@
     },
     "plugins": [
       "expo-router",
+      "expo-notifications",
       [
         "expo-splash-screen",
         {
