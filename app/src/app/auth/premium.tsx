@@ -212,7 +212,11 @@ export default function PremiumScreen() {
 
   const priceText = selectedPackage?.product.priceString;
   const periodText = billingPeriod === 'monthly' ? '/month' : '/year';
-  const ctaTitle = hasPremium ? 'Continue' : `Start ${billingPeriod === 'monthly' ? 'Monthly' : 'Yearly'} Plan`;
+  const ctaTitle = hasPremium
+    ? 'Continue'
+    : billingPeriod === 'monthly'
+      ? 'Start Premium Monthly Plan'
+      : 'Start Premium Yearly Plan';
 
   return (
     <View style={styles.container}>
@@ -254,7 +258,7 @@ export default function PremiumScreen() {
             ) : (
               <View style={styles.priceContainer}>
                 <Text style={styles.accessLabel}>
-                  {billingPeriod === 'monthly' ? 'MONTHLY ACCESS' : 'ANNUAL ACCESS'}
+                  {billingPeriod === 'monthly' ? 'PREMIUM MONTHLY • 1 MONTH' : 'PREMIUM YEARLY • 1 YEAR'}
                 </Text>
                 <View style={styles.priceRow}>
                   <Text
@@ -271,6 +275,11 @@ export default function PremiumScreen() {
                     {yearlyPackage.product.pricePerMonthString}/month billed annually
                   </Text>
                 )}
+                <Text style={styles.renewalNotice}>
+                  {billingPeriod === 'monthly'
+                    ? '1 Month auto-renewing subscription. Renews monthly.'
+                    : '1 Year auto-renewing subscription. Renews annually.'}
+                </Text>
               </View>
             )}
 
@@ -342,6 +351,9 @@ export default function PremiumScreen() {
             </TouchableOpacity>
 
             <Text style={styles.cancelAnytimeLabel}>CANCEL ANYTIME</Text>
+            <Text style={styles.legalNoticeText}>
+              Payment will be charged to your store account at confirmation of purchase. Subscriptions automatically renew unless auto-renew is turned off at least 24 hours before the end of the current billing period. Manage or cancel anytime in account settings.
+            </Text>
           </View>
 
           {/* Bottom Dual Grid */}
@@ -352,8 +364,8 @@ export default function PremiumScreen() {
               onPress={() => router.push('/terms')}
             >
               <Feather name="file-text" size={18} color={theme.secondary} style={styles.gridIcon} />
-              <Text style={styles.gridTitle}>Terms of Use</Text>
-              <Text style={styles.gridSubtitle}>Read our terms & conditions.</Text>
+              <Text style={styles.gridTitle}>Terms of Use (EULA)</Text>
+              <Text style={styles.gridSubtitle}>Read our terms & EULA.</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -456,6 +468,13 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontWeight: '600',
       marginTop: 4,
     },
+    renewalNotice: {
+      fontSize: 11,
+      color: theme.textSecondary,
+      fontWeight: '500',
+      marginTop: 6,
+      textAlign: 'center',
+    },
     featuresList: {
       gap: 16,
       marginBottom: 28,
@@ -516,6 +535,13 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       color: theme.textSecondary,
       textAlign: 'center',
       letterSpacing: 1.0,
+    },
+    legalNoticeText: {
+      fontSize: 10,
+      color: theme.textSecondary,
+      textAlign: 'center',
+      lineHeight: 14,
+      marginTop: 10,
     },
     gridContainer: {
       flexDirection: 'row',

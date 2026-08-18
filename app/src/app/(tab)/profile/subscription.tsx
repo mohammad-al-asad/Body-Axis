@@ -457,18 +457,36 @@ export default function SubscriptionScreen() {
                 <View style={styles.currentBadge}>
                   <Text style={styles.currentBadgeText}>BEST VALUE</Text>
                 </View>
-                <View style={styles.optionHeaderRow}>
-                  <Text style={styles.optionPlanName}>Upgrade to Yearly</Text>
-                  <Text style={styles.optionPlanPrice}>
-                    {isLoadingPlans
-                      ? 'Loading'
-                      : yearlyPackage?.product.priceString ?? 'Unavailable'}
-                    <Text style={styles.pricePeriod}>/yr</Text>
-                  </Text>
+
+                <View style={styles.optionTopSection}>
+                  <Text style={styles.optionPlanName}>Premium Yearly</Text>
+                  <Text style={styles.optionPlanDuration}>Length: 1 Year (Annual Auto-Renewable)</Text>
                 </View>
+
+                <View style={styles.optionPriceBlock}>
+                  <View style={styles.optionPriceRow}>
+                    <Text
+                      style={styles.optionPlanPrice}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                    >
+                      {isLoadingPlans
+                        ? 'Loading'
+                        : yearlyPackage?.product.priceString ?? 'Unavailable'}
+                    </Text>
+                    <Text style={styles.pricePeriod}>/yr</Text>
+                  </View>
+                  {yearlyPackage?.product.pricePerMonthString && (
+                    <Text style={styles.optionPricePerMonth}>
+                      {yearlyPackage.product.pricePerMonthString}/month billed annually
+                    </Text>
+                  )}
+                </View>
+
                 <Text style={styles.optionPlanDescription}>
-                  Switch from monthly to yearly billing. RevenueCat and your app store will handle the subscription change.
+                  Switch from monthly to yearly billing with Premium Yearly. Auto-renews annually for {yearlyPackage?.product.priceString ?? 'the yearly price'} until cancelled. RevenueCat and your app store will handle the subscription change.
                 </Text>
+
                 <View style={styles.upgradeButton}>
                   <Text style={styles.upgradeButtonText}>
                     {isUpgrading
@@ -476,7 +494,7 @@ export default function SubscriptionScreen() {
                       : isLoadingPlans
                         ? 'Loading plan...'
                         : yearlyPackage
-                          ? 'Upgrade to Yearly'
+                          ? 'Upgrade to Premium Yearly'
                           : 'Yearly Plan Unavailable'}
                   </Text>
                 </View>
@@ -490,7 +508,7 @@ export default function SubscriptionScreen() {
               <View style={styles.infoCard}>
                 <Feather name="check-circle" size={18} color={theme.quaternary} />
                 <Text style={styles.infoCardText}>
-                  You are already on the best plan with the best value.
+                  You are already on the Premium Yearly plan with the best value.
                 </Text>
               </View>
             </>
@@ -532,7 +550,7 @@ export default function SubscriptionScreen() {
 
           {/* Legal Info and Links */}
           <Text style={styles.legalText}>
-            Payments will be charged to your store account at confirmation of purchase. Subscription automatically renews unless auto-renew is turned off at least 24 hours before the end of the current period. You can manage or cancel your subscription at any time in your store account settings.
+            Payments will be charged to your store account at confirmation of purchase. Subscriptions (Premium Monthly for 1 month, Premium Yearly for 1 year) automatically renew unless auto-renew is turned off at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours prior to the end of the current period. You can manage or cancel your subscription anytime in your store account settings.
           </Text>
 
           <View style={styles.footerLinksRow}>
@@ -541,7 +559,7 @@ export default function SubscriptionScreen() {
             </TouchableOpacity>
             <Text style={styles.footerDot}>•</Text>
             <TouchableOpacity onPress={() => router.push('/terms')}>
-              <Text style={styles.footerLinkText}>Terms of Use</Text>
+              <Text style={styles.footerLinkText}>Terms of Use (EULA)</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -769,31 +787,58 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       fontWeight: '800',
       letterSpacing: 0.5,
     },
-    optionHeaderRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
+    optionTopSection: {
+      marginBottom: 12,
+      paddingRight: 88,
     },
     optionPlanName: {
-      fontSize: 17,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    optionPlanPrice: {
-      fontSize: 19,
+      fontSize: 18,
       fontWeight: '800',
+      color: theme.text,
+      marginBottom: 3,
+    },
+    optionPlanDuration: {
+      fontSize: 12,
+      fontWeight: '700',
       color: theme.quaternary,
     },
+    optionPriceBlock: {
+      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      borderWidth: 1,
+      borderColor: theme.cardBorder,
+      borderRadius: 14,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      marginBottom: 12,
+    },
+    optionPriceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      flexWrap: 'nowrap',
+    },
+    optionPlanPrice: {
+      fontSize: 24,
+      fontWeight: '900',
+      color: theme.quaternary,
+      letterSpacing: -0.5,
+      flexShrink: 1,
+    },
     pricePeriod: {
-      fontSize: 14,
-      fontWeight: '500',
+      fontSize: 15,
+      fontWeight: '700',
       color: theme.textSecondary,
+      marginLeft: 4,
+    },
+    optionPricePerMonth: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.textSecondary,
+      marginTop: 3,
     },
     optionPlanDescription: {
-      fontSize: 14,
+      fontSize: 13,
       color: theme.textSecondary,
-      lineHeight: 20,
+      lineHeight: 19,
     },
     upgradeButton: {
       height: 46,
