@@ -1,19 +1,26 @@
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { Alert } from 'react-native';const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+import { Alert, Platform } from 'react-native';
+
+const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
-if (webClientId) {
-  GoogleSignin.configure({
-    webClientId,
-    iosClientId,
-    offlineAccess: true,
-  });
-} else {
-  console.warn(
-    'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set in environment variables. Google Sign-In will not be configured.'
-  );
+export function configureGoogleSignIn() {
+  if (webClientId) {
+    GoogleSignin.configure({
+      webClientId,
+      iosClientId: iosClientId || undefined,
+      offlineAccess: true,
+    });
+  } else {
+    console.warn(
+      'EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID is not set in environment variables. Google Sign-In will not be configured.'
+    );
+  }
 }
+
+// Initial configuration
+configureGoogleSignIn();
 
 export interface GoogleSignInResult {
   idToken: string;
@@ -41,9 +48,14 @@ export async function signInWithGoogle(): Promise<GoogleSignInResult | null> {
   }
 
   try {
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    configureGoogleSignIn();
+
+    if (Platform.OS === 'android') {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
+
     const response = await GoogleSignin.signIn();
-    
+
     if (response.type === 'cancelled') {
       return null;
     }
