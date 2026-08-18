@@ -16,7 +16,17 @@
       "bundleIdentifier": "com.jointhebodyinstitute.bodyaxis",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSUserNotificationsUsageDescription": "Body Axis needs notification permission to send you workout reminders, progress updates, and activity alerts."
+        "NSUserNotificationsUsageDescription": "Body Axis needs notification permission to send you workout reminders, progress updates, and activity alerts.",
+        "NSCameraUsageDescription": "Body Axis requires access to your camera to take a photo for your profile picture.",
+        "NSPhotoLibraryUsageDescription": "Body Axis requires access to your photo library to select and upload a photo for your profile picture.",
+        "NSPhotoLibraryAddUsageDescription": "Body Axis requires access to save photos to your photo library.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.72135584288-gf3v957fae48osqpucl7061co7v4vf57"
+            ]
+          }
+        ]
       }
     },
     "android": {
@@ -35,6 +45,13 @@
       "expo-router",
       "expo-notifications",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Body Axis requires access to your photo library to select and upload a photo for your profile picture.",
+          "cameraPermission": "Body Axis requires access to your camera to take a photo for your profile picture."
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#0B0E15",
@@ -44,7 +61,12 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.72135584288-gf3v957fae48osqpucl7061co7v4vf57"
+        }
+      ],
       "expo-apple-authentication",
       "expo-video",
       [
