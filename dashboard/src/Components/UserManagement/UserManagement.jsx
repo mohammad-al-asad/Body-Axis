@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Filter, Calendar, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Filter, ChevronDown, Download, Loader2, X } from 'lucide-react';
 import { adminApi } from '../../services/adminApi';
+import { exportUsersToCsv } from '../../utils/exportCsv';
 
 const UserManagement = ({ globalSearch = '' }) => {
   const [nameFilter, setNameFilter] = useState('');
@@ -17,6 +18,8 @@ const UserManagement = ({ globalSearch = '' }) => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const itemsPerPage = 10;
   const totalPages = pagination.total_pages || 0;
@@ -100,7 +103,7 @@ const UserManagement = ({ globalSearch = '' }) => {
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Active': return 'text-[#10B981]';
       case 'Expiring Soon': return 'text-[#F59E0B]';
       case 'Expired': return 'text-[#EF4444]';
@@ -115,10 +118,10 @@ const UserManagement = ({ globalSearch = '' }) => {
     const date =
       typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
         ? new Date(
-            Number(value.slice(0, 4)),
-            Number(value.slice(5, 7)) - 1,
-            Number(value.slice(8, 10)),
-          )
+          Number(value.slice(0, 4)),
+          Number(value.slice(5, 7)) - 1,
+          Number(value.slice(8, 10)),
+        )
         : new Date(value);
 
     if (Number.isNaN(date.getTime())) return 'Not provided';
@@ -133,6 +136,30 @@ const UserManagement = ({ globalSearch = '' }) => {
   const truncate = (value, max = 30) => {
     const text = value || 'Not provided';
     return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    setExportError('');
+    try {
+      const allUsers = await adminApi.getAllUsers({
+        search: nameFilter.trim(),
+        global_search: globalSearch.trim(),
+        start_date: startDate,
+        end_date: endDate,
+        status: statusFilter,
+      });
+
+      if (!allUsers || allUsers.length === 0) {
+        throw new Error('No users found matching current filters to export.');
+      }
+
+      exportUsersToCsv(allUsers);
+    } catch (err) {
+      setExportError(err.message || 'Failed to export users to spreadsheet.');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -162,7 +189,7 @@ const UserManagement = ({ globalSearch = '' }) => {
           <div className="flex items-center gap-4">
             <span className="text-[10px] font-bold text-[#94A3B8] uppercase tracking-widest">Join Date</span>
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div className="relative flex items-center">
                 <input 
                   type="date" 
                   value={startDate}
@@ -170,12 +197,26 @@ const UserManagement = ({ globalSearch = '' }) => {
                     setStartDate(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] placeholder-[#94A3B8] rounded-xl pl-4 pr-10 py-2 w-[120px] focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] [color-scheme:dark] placeholder-[#94A3B8] rounded-xl px-3 py-2 w-[145px] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
                 />
-                <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                {startDate && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setStartDate('');
+                      setCurrentPage(1);
+                    }}
+                    title="Clear start date"
+                    className="absolute right-8 text-[#94A3B8] hover:text-white p-0.5 rounded-full hover:bg-[#1E293B] transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
               <span className="text-[#94A3B8] text-[12px]">to</span>
-              <div className="relative">
+              <div className="relative flex items-center">
                 <input 
                   type="date" 
                   value={endDate}
@@ -183,9 +224,23 @@ const UserManagement = ({ globalSearch = '' }) => {
                     setEndDate(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] placeholder-[#94A3B8] rounded-xl pl-4 pr-10 py-2 w-[120px] focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
+                  onClick={(e) => e.target.showPicker?.()}
+                  className="bg-[#0A0D14] border border-[#1E293B] text-sm text-[#94A3B8] [color-scheme:dark] placeholder-[#94A3B8] rounded-xl px-3 py-2 w-[145px] cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#22D3EE]/30" 
                 />
-                <Calendar size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                {endDate && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEndDate('');
+                      setCurrentPage(1);
+                    }}
+                    title="Clear end date"
+                    className="absolute right-8 text-[#94A3B8] hover:text-white p-0.5 rounded-full hover:bg-[#1E293B] transition-colors"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -212,12 +267,45 @@ const UserManagement = ({ globalSearch = '' }) => {
           </div>
         </div>
 
-        <div className="text-[12px] text-[#94A3B8] font-medium tracking-wide">
-          {loading
-            ? 'Loading users...'
-            : `Showing ${showingStart}-${showingEnd} of ${pagination.total}`}
+        <div className="flex items-center gap-4 w-full xl:w-auto justify-between xl:justify-end">
+          <div className="text-[12px] text-[#94A3B8] font-medium tracking-wide">
+            {loading
+              ? 'Loading users...'
+              : `Showing ${showingStart}-${showingEnd} of ${pagination.total}`}
+          </div>
+
+          <button
+            onClick={handleExport}
+            disabled={isExporting || loading || pagination.total === 0}
+            title="Export all filtered users to CSV spreadsheet"
+            className="flex items-center gap-2 px-4 py-2 bg-[#22D3EE]/10 hover:bg-[#22D3EE]/20 border border-[#22D3EE]/30 hover:border-[#22D3EE]/60 text-[#22D3EE] rounded-xl text-xs font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm hover:shadow-[0_0_15px_rgba(34,211,238,0.15)] active:scale-[0.98]"
+          >
+            {isExporting ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                <span>Exporting...</span>
+              </>
+            ) : (
+              <>
+                <Download size={14} />
+                <span>Export Sheet</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
+
+      {exportError && (
+        <div className="rounded-2xl border border-[#7F1D1D] bg-[#2A0F18] px-5 py-4 text-sm font-semibold text-[#FCA5A5] flex items-center justify-between">
+          <span>{exportError}</span>
+          <button
+            onClick={() => setExportError('')}
+            className="text-[#FCA5A5] hover:text-white text-xs underline ml-4 cursor-pointer"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-[#7F1D1D] bg-[#2A0F18] px-5 py-4 text-sm font-semibold text-[#FCA5A5]">
@@ -323,11 +411,10 @@ const UserManagement = ({ globalSearch = '' }) => {
                 key={page}
                 onClick={() => handlePageChange(page)}
                 disabled={loading}
-                className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all ${
-                  currentPage === page
+                className={`w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all ${currentPage === page
                     ? 'bg-[#22D3EE] text-[#0A0D14]'
                     : 'text-[#94A3B8] hover:text-white hover:bg-[#1E293B]'
-                }`}
+                  }`}
               >
                 {page}
               </button>

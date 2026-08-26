@@ -81,6 +81,31 @@ export const adminApi = {
     const suffix = query.toString() ? `?${query.toString()}` : "";
     return request(`/admin/users${suffix}`, {}, true);
   },
+  getAllUsers: async (params = {}) => {
+    const pageSize = 100;
+    let page = 1;
+    let allItems = [];
+    let total = 0;
+
+    do {
+      const response = await adminApi.getUsers({
+        ...params,
+        page,
+        page_size: pageSize,
+      });
+
+      const items = response?.items || [];
+      allItems = allItems.concat(items);
+      total = response?.total || 0;
+      page += 1;
+
+      if (items.length === 0 || allItems.length >= total) {
+        break;
+      }
+    } while (allItems.length < total);
+
+    return allItems;
+  },
   getContent: (slug) => request(`/admin/content/${slug}`, {}, true),
   updateContent: (slug, payload) =>
     request(
