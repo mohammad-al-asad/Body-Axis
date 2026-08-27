@@ -55,15 +55,6 @@ export default function IntakeScreen() {
       setActiveIndex(nextIndex);
     } else {
       try {
-        await saveIntake({
-          pain_points: selectedPainPoints,
-          primary_goal: primaryGoal,
-          schedule_days: scheduleDays,
-          schedule_weeks: scheduleWeeks,
-          session_duration: sessionDuration,
-          session_name: sessionName,
-        }).unwrap();
-
         const session = await createSession({
           target_areas: selectedPainPoints,
           user_case: primaryGoal,
@@ -72,14 +63,51 @@ export default function IntakeScreen() {
           schedule_weeks: scheduleWeeks,
           session_duration: sessionDuration,
         }).unwrap();
-router.dismissAll();
+
+        if (!session || !session.plans || session.plans.length === 0) {
+          Alert.alert(
+            "No Plans Found",
+            "No movement plans are available for this configuration. Please adjust your target areas, goal, or session duration."
+          );
+          return;
+        }
+
+        try {
+          await saveIntake({
+            pain_points: selectedPainPoints,
+            primary_goal: primaryGoal,
+            schedule_days: scheduleDays,
+            schedule_weeks: scheduleWeeks,
+            session_duration: sessionDuration,
+            session_name: sessionName,
+          }).unwrap();
+        } catch (intakeErr) {
+          console.warn("Failed to update user intake record:", intakeErr);
+        }
+
+        router.dismissAll();
         router.navigate({
           pathname: "/sessions/session-details",
           params: { sessionId: session.id },
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to create movement session", error);
-        Alert.alert("Error", "Failed to create your movement session. Please try again.");
+        const errorDetail =
+          error?.data?.detail ||
+          error?.error ||
+          error?.message;
+        const isNoPlans =
+          error?.status === 404 ||
+          (typeof errorDetail === "string" &&
+            (errorDetail.toLowerCase().includes("no plans") ||
+              errorDetail.toLowerCase().includes("no movement plans")));
+
+        Alert.alert(
+          isNoPlans ? "No Plans Found" : "Error",
+          typeof errorDetail === "string" && errorDetail
+            ? errorDetail
+            : "Failed to create your movement session. Please try again."
+        );
       }
     }
   };
