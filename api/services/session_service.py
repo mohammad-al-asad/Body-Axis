@@ -575,6 +575,12 @@ async def create_user_session(
         DESCENDING,
     ).to_list(length=None)
 
+    if not matching_plans:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No movement plans found for the selected configuration. Please choose a different target area, goal, or duration.",
+        )
+
     now = datetime.now(timezone.utc)
     document = {
         "user_id": str(current_user["_id"]),

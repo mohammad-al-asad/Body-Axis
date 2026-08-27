@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import React from 'react';
 import {
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,7 +46,7 @@ export function HomeOnboarding() {
         <View style={styles.heroTextContainer}>
           <Text style={styles.heroTitle}>Welcome to Body Axis™.</Text>
           <Text style={styles.heroSubtitle}>
-            Let's build your personalized movement plan so you can move better, feel better, live better.
+            Let&apos;s build your personalized movement plan so you can move better, feel better, live better.
           </Text>
         </View>
       </View>
@@ -92,7 +91,7 @@ export function HomeOnboarding() {
           </View>
           <Text style={styles.stepTitle}>How It Feels</Text>
           <Text style={styles.stepDescription}>
-            Tell us how it feels and what you're experiencing.
+            Tell us how it feels and what you&apos;re experiencing.
           </Text>
         </View>
 

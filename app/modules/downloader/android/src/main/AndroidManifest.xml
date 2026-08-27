@@ -6,7 +6,7 @@
 
   <application>
     <service
-      android:name=".DownloaderService"
+      android:name="com.jointhebodyinstitute.bodyaxis.DownloaderService"
       android:exported="false"
       android:foregroundServiceType="dataSync" />
   </application>

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Modal, TextInput } from "react-native";
-import Svg, { Circle } from "react-native-svg";
 import { Feather } from "@expo/vector-icons";
 import { useTheme, useThemeState } from "@/hooks/use-theme";
 import { CustomButton } from "@/components/ui/CustomButton";
@@ -57,9 +56,6 @@ export function ScheduleStep({
   const handleCancelName = () => {
     setShowNameModal(false);
   };
-
-  // Efficiency calculation
-  const efficiency = Math.round(((scheduleDays * sessionDuration) / 180) * 98);
 
   // Determine weeks display label
   const displayWeeksText =
