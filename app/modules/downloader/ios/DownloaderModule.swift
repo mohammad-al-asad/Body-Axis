@@ -243,8 +243,30 @@ private final class OfflineDownloadDatabase {
 
   func upsertDownload(_ download: OfflineDownloadRecord) {
     let existing = getDownload(download.id)
-    let completedFileExists = existing?.status == DownloadStatus.completed && FileManager.default.fileExists(atPath: existing?.filePath ?? "")
-    let status = completedFileExists ? DownloadStatus.completed : download.status
+    // Only preserve completed status when the source URL and file path match exactly
+    // AND the completed file actually exists on disk. This prevents stale "completed"
+    // records from blocking fresh download requests.
+    let completedFileExists = existing?.status == DownloadStatus.completed
+      && existing?.sourceUrl == download.sourceUrl
+      && existing?.filePath == download.filePath
+      && FileManager.default.fileExists(atPath: existing?.filePath ?? "")
+    let status: String
+    let bytesDownloaded: Int64
+    let totalBytes: Int64
+    let progress: Double
+
+    if completedFileExists {
+      status = DownloadStatus.completed
+      bytesDownloaded = existing?.bytesDownloaded ?? download.bytesDownloaded
+      totalBytes = existing?.totalBytes ?? download.totalBytes
+      progress = existing?.progress ?? download.progress
+    } else {
+      status = download.status
+      bytesDownloaded = download.bytesDownloaded
+      totalBytes = download.totalBytes
+      progress = download.progress
+    }
+
     run(
       """
       INSERT OR REPLACE INTO offline_downloads
@@ -266,9 +288,9 @@ private final class OfflineDownloadDatabase {
         download.mimeType,
         download.headersJson,
         download.metadataJson,
-        existing?.bytesDownloaded ?? download.bytesDownloaded,
-        existing?.totalBytes ?? download.totalBytes,
-        existing?.progress ?? download.progress,
+        bytesDownloaded,
+        totalBytes,
+        progress,
         status,
         status == DownloadStatus.completed ? nil : existing?.error,
         existing?.createdAt ?? download.createdAt,
@@ -524,7 +546,17 @@ private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URL
     downloads.forEach { database.upsertDownload($0) }
 
     let queued = downloads.compactMap { database.getDownload($0.id) }.filter { $0.status != DownloadStatus.completed }
-    queued.forEach { start($0) }
+
+    // Wait for all download tasks to be created before returning results.
+    // start() uses session.getAllTasks which is async; without waiting, the
+    // returned records would still have "queued" status.
+    let group = DispatchGroup()
+    queued.forEach { record in
+      group.enter()
+      startAndNotify(record, group: group)
+    }
+    _ = group.wait(timeout: .now() + 5)
+
     return database.getDownloads(sessionId: sessionRecord.id).map { $0.toMap() }
   }
 
@@ -619,7 +651,16 @@ private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URL
   }
 
   private func start(_ record: OfflineDownloadRecord) {
+    startImpl(record, group: nil)
+  }
+
+  private func startAndNotify(_ record: OfflineDownloadRecord, group: DispatchGroup) {
+    startImpl(record, group: group)
+  }
+
+  private func startImpl(_ record: OfflineDownloadRecord, group: DispatchGroup?) {
     task(for: record.id) { [weak self] existingTask in
+      defer { group?.leave() }
       guard let self, existingTask == nil else { return }
       guard let url = URL(string: record.sourceUrl) else {
         self.database.updateStatus(downloadId: record.id, status: DownloadStatus.failed, error: "Invalid URL")
