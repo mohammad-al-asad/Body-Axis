@@ -1,9 +1,9 @@
 import type { VideoSource } from 'expo-video';
 
 export const FAST_START_BUFFER_OPTIONS = {
-  preferredForwardBufferDuration: 3,
-  waitsToMinimizeStalling: false,
-  minBufferForPlayback: 0.25,
+  preferredForwardBufferDuration: 10,
+  waitsToMinimizeStalling: true,
+  minBufferForPlayback: 1.5,
   prioritizeTimeOverSizeThreshold: true,
 } as const;
 
