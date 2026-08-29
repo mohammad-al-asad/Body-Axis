@@ -95,6 +95,8 @@ export default function PlanDetailsScreen() {
   const loadedDemoVideoUrlRef = useRef<string | null>(null);
   const demoVideoPlayer = useVideoPlayer(null, (player) => {
     player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+    player.staysActiveInBackground = true;
+    player.allowsExternalPlayback = true;
   });
 
   const expandedVideoUrl = useMemo(() => {
