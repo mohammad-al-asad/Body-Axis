@@ -49,6 +49,8 @@ export default function IntroductionScreen() {
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+    player.staysActiveInBackground = true;
+    player.allowsExternalPlayback = true;
   });
 
   useEffect(() => {

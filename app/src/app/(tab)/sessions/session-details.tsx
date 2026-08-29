@@ -60,7 +60,7 @@ export const sessionPlanToResetPlan = (
   const completedExercises = plan.completed_exercise_count ?? completedFromExercises;
 
   return {
-    id: plan.plan_id,
+    id: plan.plan_id || plan.id,
     title: plan.plan_name,
     duration: plan.duration,
     isActive: index === 0,

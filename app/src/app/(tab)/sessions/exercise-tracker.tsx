@@ -139,6 +139,8 @@ export default function ExerciseTrackerScreen() {
   const loadedVideoUrlRef = useRef<string | null>(null);
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.bufferOptions = FAST_START_BUFFER_OPTIONS;
+    player.staysActiveInBackground = true;
+    player.allowsExternalPlayback = true;
   });
 
   const resolvePlayableVideoUrl = useCallback(async (url: string) => {
@@ -453,21 +455,6 @@ export default function ExerciseTrackerScreen() {
 
   const hasNextExerciseInPlan = currentIdx < phaseList.length - 1;
 
-  const currentPlanIdx = useMemo(() => {
-    if (!session || !sessionPlan) return -1;
-    return session.plans.findIndex(
-      (p) => p.plan_id === sessionPlan.plan_id || p.id === sessionPlan.id
-    );
-  }, [session, sessionPlan]);
-
-  const nextPlan = useMemo(() => {
-    if (currentPlanIdx === -1 || !session) return null;
-    if (currentPlanIdx < session.plans.length - 1) {
-      return session.plans[currentPlanIdx + 1];
-    }
-    return null;
-  }, [session, currentPlanIdx]);
-
   const nextButtonText = useMemo(() => {
     if (!hasExerciseContent) {
       return 'Session unavailable';
@@ -479,12 +466,10 @@ export default function ExerciseTrackerScreen() {
         return 'Next Phase';
       }
       return 'Next Exercise';
-    } else if (nextPlan) {
-      return `Next ${nextPlan.plan_name}`;
     } else {
-      return "Finish Today's Session";
+      return 'Finish plan & save';
     }
-  }, [hasExerciseContent, hasNextExerciseInPlan, currentPhase, upcomingPhase, nextPlan]);
+  }, [hasExerciseContent, hasNextExerciseInPlan, currentPhase, upcomingPhase]);
 
   const handleNextExercise = () => {
     videoPlayer.pause();
@@ -495,19 +480,19 @@ export default function ExerciseTrackerScreen() {
       return;
     }
 
-    if (nextPlan) {
+    saveCompletedExerciseProgress();
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
       router.replace({
-        pathname: '/sessions/exercise-tracker',
+        pathname: '/sessions/plan-details',
         params: {
-          id: nextPlan.plan_id || nextPlan.id,
-          sessionId: session?.id,
-          initialPhaseIndex: '0',
+          id: sessionPlan?.plan_id || sessionPlan?.id || id,
+          ...(session?.id ? { sessionId: session.id } : {}),
         },
       });
-      return;
     }
-
-    router.replace('/');
   };
 
   const handleWatchFullVideo = () => {

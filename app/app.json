@@ -2,7 +2,7 @@
   "expo": {
     "name": "Body Axis: Move Better",
     "slug": "body-axis",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/app/logo.png",
     "scheme": "bodyaxis",
@@ -15,6 +15,9 @@
       "icon": "./assets/images/app/logo.png",
       "bundleIdentifier": "com.jointhebodyinstitute.bodyaxis",
       "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserNotificationsUsageDescription": "Body Axis needs notification permission to send you workout reminders, progress updates, and activity alerts.",
         "NSCameraUsageDescription": "Body Axis requires access to your camera to take a photo for your profile picture.",

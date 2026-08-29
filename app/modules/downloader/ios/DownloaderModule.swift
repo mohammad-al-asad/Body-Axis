@@ -20,15 +20,16 @@ private struct OfflineSessionRecord {
   let createdAt: Int64
   let updatedAt: Int64
 
-  func toMap() -> [String: Any?] {
-    [
+  func toMap() -> [String: Any] {
+    var map: [String: Any] = [
       "id": id,
-      "title": title,
       "metadataJson": metadataJson,
       "status": status,
       "createdAt": createdAt,
       "updatedAt": updatedAt
     ]
+    if let title { map["title"] = title }
+    return map
   }
 }
 
@@ -53,29 +54,30 @@ private struct OfflineDownloadRecord {
   let createdAt: Int64
   let updatedAt: Int64
 
-  func toMap() -> [String: Any?] {
+  func toMap() -> [String: Any] {
     let hasPlayableFile = status == DownloadStatus.completed && FileManager.default.fileExists(atPath: filePath)
-    return [
+    var map: [String: Any] = [
       "id": id,
       "downloadId": id,
       "sessionId": sessionId,
-      "planId": planId,
-      "exerciseId": exerciseId,
-      "videoId": videoId,
-      "title": title,
       "url": sourceUrl,
       "filePath": filePath,
-      "localUri": hasPlayableFile ? URL(fileURLWithPath: filePath).absoluteString : nil,
-      "mimeType": mimeType,
       "bytesDownloaded": bytesDownloaded,
       "totalBytes": totalBytes,
       "progress": progress,
       "percentage": progress,
       "status": status,
-      "error": error,
       "createdAt": createdAt,
       "updatedAt": updatedAt
     ]
+    if let planId { map["planId"] = planId }
+    if let exerciseId { map["exerciseId"] = exerciseId }
+    if let videoId { map["videoId"] = videoId }
+    if let title { map["title"] = title }
+    if let mimeType { map["mimeType"] = mimeType }
+    if let error { map["error"] = error }
+    if hasPlayableFile { map["localUri"] = URL(fileURLWithPath: filePath).absoluteString }
+    return map
   }
 }
 
@@ -148,9 +150,17 @@ private final class DownloadPayloadParser {
       updatedAt: now
     )
 
-    let rawAssets = payload["assets"] as? [Any] ?? []
+    let rawAssets: [Any]
+    if let list = payload["assets"] as? [Any] {
+      rawAssets = list
+    } else if let nsArray = payload["assets"] as? NSArray {
+      rawAssets = nsArray as [Any]
+    } else {
+      rawAssets = []
+    }
+
     let downloads: [OfflineDownloadRecord] = rawAssets.compactMap { item in
-      guard let asset = item as? [String: Any], let url = string(asset["url"]) else {
+      guard let asset = dictionary(from: item), let url = string(asset["url"]) else {
         return nil
       }
       let downloadId = string(asset["id"]) ?? string(asset["downloadId"]) ?? "\(sessionId)_\(stableHash(url))"
@@ -183,10 +193,53 @@ private final class DownloadPayloadParser {
     return (session, downloads)
   }
 
+  private static func dictionary(from value: Any?) -> [String: Any]? {
+    guard let value, !(value is NSNull) else { return nil }
+    if let dict = value as? [String: Any] {
+      return dict
+    }
+    if let dict = value as? [AnyHashable: Any] {
+      var result: [String: Any] = [:]
+      for (k, v) in dict {
+        result["\(k)"] = v
+      }
+      return result
+    }
+    return nil
+  }
+
   private static func string(_ value: Any?) -> String? {
     guard let value, !(value is NSNull) else { return nil }
     if let stringValue = value as? String {
       return stringValue.isEmpty ? nil : stringValue
+    }
+    return "\(value)"
+  }
+
+  private static func sanitizeForJSON(_ value: Any) -> Any? {
+    if value is NSNull {
+      return NSNull()
+    }
+    if let dict = value as? [AnyHashable: Any] {
+      var sanitizedDict: [String: Any] = [:]
+      for (k, v) in dict {
+        if let sanitizedVal = sanitizeForJSON(v) {
+          sanitizedDict["\(k)"] = sanitizedVal
+        }
+      }
+      return sanitizedDict
+    }
+    if let array = value as? [Any] {
+      return array.compactMap { sanitizeForJSON($0) }
+    }
+    if let num = value as? NSNumber {
+      return num
+    }
+    if let str = value as? String {
+      return str
+    }
+    if let bool = value as? Bool {
+      return bool
     }
     return "\(value)"
   }
@@ -196,8 +249,9 @@ private final class DownloadPayloadParser {
     if let stringValue = value as? String {
       return stringValue
     }
-    guard JSONSerialization.isValidJSONObject(value),
-          let data = try? JSONSerialization.data(withJSONObject: value),
+    guard let sanitized = sanitizeForJSON(value),
+          JSONSerialization.isValidJSONObject(sanitized),
+          let data = try? JSONSerialization.data(withJSONObject: sanitized),
           let string = String(data: data, encoding: .utf8) else {
       return nil
     }
@@ -540,39 +594,30 @@ private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URL
     self.module = module
   }
 
-  func saveSession(_ payload: [String: Any]) throws -> [[String: Any?]] {
+  func saveSession(_ payload: [String: Any]) throws -> [[String: Any]] {
     let (sessionRecord, downloads) = try DownloadPayloadParser.parse(payload)
     database.upsertSession(sessionRecord)
     downloads.forEach { database.upsertDownload($0) }
 
     let queued = downloads.compactMap { database.getDownload($0.id) }.filter { $0.status != DownloadStatus.completed }
-
-    // Wait for all download tasks to be created before returning results.
-    // start() uses session.getAllTasks which is async; without waiting, the
-    // returned records would still have "queued" status.
-    let group = DispatchGroup()
-    queued.forEach { record in
-      group.enter()
-      startAndNotify(record, group: group)
-    }
-    _ = group.wait(timeout: .now() + 5)
+    queued.forEach { start($0) }
 
     return database.getDownloads(sessionId: sessionRecord.id).map { $0.toMap() }
   }
 
-  func getDownloads(sessionId: String?) -> [[String: Any?]] {
+  func getDownloads(sessionId: String?) -> [[String: Any]] {
     database.getDownloads(sessionId: sessionId?.isEmpty == false ? sessionId : nil).map { $0.toMap() }
   }
 
-  func getSessions() -> [[String: Any?]] {
+  func getSessions() -> [[String: Any]] {
     database.getSessions().map { $0.toMap() }
   }
 
-  func getSession(sessionId: String) -> [String: Any?]? {
+  func getSession(sessionId: String) -> [String: Any]? {
     database.getSession(sessionId: sessionId)?.toMap()
   }
 
-  func getDownload(downloadId: String) -> [String: Any?]? {
+  func getDownload(downloadId: String) -> [String: Any]? {
     database.getDownload(downloadId)?.toMap()
   }
 
@@ -651,41 +696,29 @@ private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URL
   }
 
   private func start(_ record: OfflineDownloadRecord) {
-    startImpl(record, group: nil)
-  }
-
-  private func startAndNotify(_ record: OfflineDownloadRecord, group: DispatchGroup) {
-    startImpl(record, group: group)
-  }
-
-  private func startImpl(_ record: OfflineDownloadRecord, group: DispatchGroup?) {
-    task(for: record.id) { [weak self] existingTask in
-      defer { group?.leave() }
-      guard let self, existingTask == nil else { return }
-      guard let url = URL(string: record.sourceUrl) else {
-        self.database.updateStatus(downloadId: record.id, status: DownloadStatus.failed, error: "Invalid URL")
-        self.emit("downloadFailed", downloadId: record.id)
-        return
-      }
-
-      let resumeURL = URL(fileURLWithPath: record.partialPath)
-      let task: URLSessionDownloadTask
-      if let resumeData = try? Data(contentsOf: resumeURL), !resumeData.isEmpty {
-        task = self.session.downloadTask(withResumeData: resumeData)
-      } else {
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        if let headers = Self.headers(from: record.headersJson) {
-          headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
-        }
-        task = self.session.downloadTask(with: request)
-      }
-
-      task.taskDescription = record.id
-      self.database.updateStatus(downloadId: record.id, status: DownloadStatus.downloading)
-      self.emit("downloadProgress", downloadId: record.id)
-      task.resume()
+    guard let url = URL(string: record.sourceUrl) else {
+      database.updateStatus(downloadId: record.id, status: DownloadStatus.failed, error: "Invalid URL")
+      emit("downloadFailed", downloadId: record.id)
+      return
     }
+
+    let resumeURL = URL(fileURLWithPath: record.partialPath)
+    let task: URLSessionDownloadTask
+    if let resumeData = try? Data(contentsOf: resumeURL), !resumeData.isEmpty {
+      task = session.downloadTask(withResumeData: resumeData)
+    } else {
+      var request = URLRequest(url: url)
+      request.httpMethod = "GET"
+      if let headers = Self.headers(from: record.headersJson) {
+        headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+      }
+      task = session.downloadTask(with: request)
+    }
+
+    task.taskDescription = record.id
+    database.updateStatus(downloadId: record.id, status: DownloadStatus.downloading)
+    emit("downloadProgress", downloadId: record.id)
+    task.resume()
   }
 
   private func task(for downloadId: String, completion: @escaping (URLSessionTask?) -> Void) {
@@ -807,23 +840,23 @@ public class DownloaderModule: Module {
       DownloaderManager.shared.attach(self)
     }
 
-    AsyncFunction("saveSessionAsync") { (payload: [String: Any]) throws -> [[String: Any?]] in
+    AsyncFunction("saveSessionAsync") { (payload: [String: Any]) throws -> [[String: Any]] in
       try DownloaderManager.shared.saveSession(payload)
     }
 
-    AsyncFunction("getDownloadsAsync") { (sessionId: String?) -> [[String: Any?]] in
+    AsyncFunction("getDownloadsAsync") { (sessionId: String?) -> [[String: Any]] in
       DownloaderManager.shared.getDownloads(sessionId: sessionId)
     }
 
-    AsyncFunction("getSessionsAsync") { () -> [[String: Any?]] in
+    AsyncFunction("getSessionsAsync") { () -> [[String: Any]] in
       DownloaderManager.shared.getSessions()
     }
 
-    AsyncFunction("getSessionAsync") { (sessionId: String) -> [String: Any?]? in
+    AsyncFunction("getSessionAsync") { (sessionId: String) -> [String: Any]? in
       DownloaderManager.shared.getSession(sessionId: sessionId)
     }
 
-    AsyncFunction("getDownloadAsync") { (downloadId: String) -> [String: Any?]? in
+    AsyncFunction("getDownloadAsync") { (downloadId: String) -> [String: Any]? in
       DownloaderManager.shared.getDownload(downloadId: downloadId)
     }
 
