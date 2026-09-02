@@ -14,7 +14,7 @@ interface ScheduleStepProps {
   setScheduleWeeks: (val: number) => void;
   sessionDuration: number;
   setSessionDuration: (val: number) => void;
-  onNext: (sessionName?: string) => void;
+  onNext: () => void;
   onGoToHome: () => void;
   isSaving?: boolean;
 }
@@ -41,25 +41,11 @@ export function ScheduleStep({
   const styles = createStyles(theme, themeState);
 
   const [showWeeksSheet, setShowWeeksSheet] = useState(false);
-  const [showNameModal, setShowNameModal] = useState(false);
-  const [sessionName, setSessionName] = useState("");
-
-  const handleConfirmPress = () => {
-    setShowNameModal(true);
-  };
-
-  const handleSaveName = () => {
-    setShowNameModal(false);
-    onNext(sessionName);
-  };
-
-  const handleCancelName = () => {
-    setShowNameModal(false);
-  };
 
   // Determine weeks display label
   const displayWeeksText =
     scheduleWeeks === 3 ? "3-4 Weeks" : `${scheduleWeeks} Weeks`;
+
 
   return (
     <View style={styles.slide}>
@@ -179,8 +165,8 @@ export function ScheduleStep({
         {/* Footer actions */}
         <View style={styles.footer}>
           <CustomButton
-            title="Confirm My Movement Session"
-            onPress={handleConfirmPress}
+            title="Continue"
+            onPress={onNext}
             style={styles.actionBtn}
             isLoading={isSaving}
             disabled={isSaving}
@@ -200,47 +186,6 @@ export function ScheduleStep({
         selectedValue={scheduleWeeks}
         onSelect={(val) => setScheduleWeeks(val)}
       />
-
-      {/* Set Session Name Modal */}
-      <Modal
-        visible={showNameModal}
-        transparent
-        animationType="fade"
-        onRequestClose={handleCancelName}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Set Session Name</Text>
-            
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. Shoulder workout"
-              placeholderTextColor={themeState === 'dark' ? '#5C6E84' : '#9CA3AF'}
-              value={sessionName}
-              onChangeText={setSessionName}
-              autoFocus
-            />
-
-            <View style={styles.modalButtonsRow}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                activeOpacity={0.7}
-                onPress={handleCancelName}
-              >
-                <Text style={styles.modalCancelText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.modalSaveBtn}
-                activeOpacity={0.8}
-                onPress={handleSaveName}
-              >
-                <Text style={styles.modalSaveText}>Save</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

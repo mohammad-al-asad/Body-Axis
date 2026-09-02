@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from database import client, db
-from routers import admin, auth, content, exercises, plans, revenuecat, sessions, subscription, users, videos, notifications
+from routers import admin, auth, content, exercises, plans, revenuecat, sessions, sessions_v2, subscription, users, videos, notifications
 from services.admin_service import ensure_admin_indexes
 from services.auth_service import ensure_auth_indexes
 from services.content_service import ensure_content_indexes
@@ -92,6 +92,28 @@ async def api_health_check():
 
 app.include_router(api_router)
 
+api_v2_router = APIRouter(prefix="/api/v2")
+api_v2_router.include_router(auth.router)
+api_v2_router.include_router(admin.router)
+api_v2_router.include_router(content.router)
+api_v2_router.include_router(subscription.router)
+api_v2_router.include_router(revenuecat.router)
+api_v2_router.include_router(users.router)
+api_v2_router.include_router(sessions_v2.router)
+api_v2_router.include_router(videos.router)
+api_v2_router.include_router(exercises.router)
+api_v2_router.include_router(plans.router)
+api_v2_router.include_router(notifications.router)
+
+
+@api_v2_router.get("/health")
+async def api_v2_health_check():
+    await db.command("ping")
+    return {"database": "connected", "version": "v2"}
+
+
+app.include_router(api_v2_router)
+
 
 @app.get("/")
 def read_root():
@@ -102,3 +124,4 @@ def read_root():
 async def health_check():
     await db.command("ping")
     return {"database": "connected"}
+
