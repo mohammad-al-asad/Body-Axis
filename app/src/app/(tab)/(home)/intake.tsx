@@ -192,11 +192,18 @@ export default function IntakeScreen() {
     }
   };
 
-  const togglePlanSelection = (planId: string) => {
-    if (selectedPlanIds.includes(planId)) {
-      setSelectedPlanIds((prev) => prev.filter((id) => id !== planId));
+  const togglePlanSelection = (plan: SessionPlan) => {
+    const planIdentifier = plan.id || plan.plan_id;
+    const isCurrentlySelected =
+      (!!plan.id && selectedPlanIds.includes(plan.id)) ||
+      (!!plan.plan_id && selectedPlanIds.includes(plan.plan_id));
+
+    if (isCurrentlySelected) {
+      setSelectedPlanIds((prev) =>
+        prev.filter((id) => id !== plan.id && id !== plan.plan_id)
+      );
     } else {
-      setSelectedPlanIds((prev) => [...prev, planId]);
+      setSelectedPlanIds((prev) => [...prev, planIdentifier]);
     }
   };
 
@@ -263,6 +270,18 @@ export default function IntakeScreen() {
           pagingEnabled
           scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
+          extraData={{
+            selectedPlanIds,
+            matchingPlans,
+            selectedPainPoints,
+            primaryGoal,
+            scheduleDays,
+            scheduleWeeks,
+            sessionDuration,
+            activeIndex,
+            isLoadingPlans,
+            avatarView,
+          }}
           getItemLayout={(_, index) => ({
             length: SCREEN_WIDTH,
             offset: SCREEN_WIDTH * index,
