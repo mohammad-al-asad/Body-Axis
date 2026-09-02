@@ -117,7 +117,6 @@ export default function IntakeScreen() {
   };
 
   const handleConfirmCreateSession = async () => {
-    setShowNameModal(false);
     try {
       const session = await createSession({
         target_areas: selectedPainPoints,
@@ -149,7 +148,7 @@ export default function IntakeScreen() {
       } catch (intakeErr) {
         console.warn("Failed to update user intake record:", intakeErr);
       }
-
+      setShowNameModal(false);
       router.dismissAll();
       router.navigate({
         pathname: "/sessions/session-details",
@@ -192,18 +191,11 @@ export default function IntakeScreen() {
     }
   };
 
-  const togglePlanSelection = (plan: SessionPlan) => {
-    const planIdentifier = plan.id || plan.plan_id;
-    const isCurrentlySelected =
-      (!!plan.id && selectedPlanIds.includes(plan.id)) ||
-      (!!plan.plan_id && selectedPlanIds.includes(plan.plan_id));
-
-    if (isCurrentlySelected) {
-      setSelectedPlanIds((prev) =>
-        prev.filter((id) => id !== plan.id && id !== plan.plan_id)
-      );
+  const togglePlanSelection = (planId: string) => {
+    if (selectedPlanIds.includes(planId)) {
+      setSelectedPlanIds((prev) => prev.filter((id) => id !== planId));
     } else {
-      setSelectedPlanIds((prev) => [...prev, planIdentifier]);
+      setSelectedPlanIds((prev) => [...prev, planId]);
     }
   };
 
@@ -270,18 +262,6 @@ export default function IntakeScreen() {
           pagingEnabled
           scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
-          extraData={{
-            selectedPlanIds,
-            matchingPlans,
-            selectedPainPoints,
-            primaryGoal,
-            scheduleDays,
-            scheduleWeeks,
-            sessionDuration,
-            activeIndex,
-            isLoadingPlans,
-            avatarView,
-          }}
           getItemLayout={(_, index) => ({
             length: SCREEN_WIDTH,
             offset: SCREEN_WIDTH * index,
