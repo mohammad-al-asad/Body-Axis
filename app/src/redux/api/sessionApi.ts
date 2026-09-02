@@ -10,6 +10,21 @@ export interface CreateSessionRequest {
   schedule_days?: number;
   schedule_weeks?: number;
   session_duration?: number;
+  plan_ids?: string[];
+}
+
+export interface MatchingPlansRequest {
+  target_area?: string;
+  target_areas?: string[];
+  pain_points?: string[];
+  user_case?: string;
+  primary_goal?: string;
+  session_duration?: number;
+}
+
+export interface MatchingPlansResponse {
+  items: SessionPlan[];
+  total: number;
 }
 
 export interface SessionVideo {
@@ -126,9 +141,16 @@ export interface ProgressSummary {
 
 export const sessionApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getMatchingPlans: builder.mutation<MatchingPlansResponse, MatchingPlansRequest>({
+      query: (body) => ({
+        url: '/api/v2/sessions/matching-plans',
+        method: 'POST',
+        body,
+      }),
+    }),
     createSession: builder.mutation<MovementSession, CreateSessionRequest>({
       query: (body) => ({
-        url: '/sessions',
+        url: '/api/v2/sessions',
         method: 'POST',
         body,
       }),
@@ -174,6 +196,7 @@ export const sessionApi = baseApi.injectEndpoints({
 });
 
 export const {
+  useGetMatchingPlansMutation,
   useCreateSessionMutation,
   useGetSessionsQuery,
   useGetSessionQuery,
@@ -181,3 +204,4 @@ export const {
   useCompleteExerciseMutation,
   useGetProgressSummaryQuery,
 } = sessionApi;
+
