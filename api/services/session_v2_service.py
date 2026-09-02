@@ -66,21 +66,28 @@ async def create_user_session_v2(
 
     if payload.plan_ids:
         object_ids: list[ObjectId] = []
+        slug_ids: list[str] = []
         for pid in payload.plan_ids:
             try:
                 object_ids.append(ObjectId(pid))
-            except Exception:
-                pass
+            except InvalidId:
+                slug_ids.append(pid)
 
-        query_conditions: list[dict[str, Any]] = [
-            {"plan_id": {"$in": payload.plan_ids}},
-        ]
+        query_conditions: list[dict[str, Any]] = []
         if object_ids:
             query_conditions.append({"_id": {"$in": object_ids}})
+        if slug_ids:
+            query_conditions.append({"plan_id": {"$in": slug_ids}})
+
+        if not query_conditions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid plan identifiers provided.",
+            )
 
         plan_query: dict[str, Any] = {
             "$or": query_conditions,
-            "status": {"$in": ["published", "Published"]},
+            "status": "published",
         }
         selected_plans = await db.plans.find(plan_query).sort(
             "created_at",

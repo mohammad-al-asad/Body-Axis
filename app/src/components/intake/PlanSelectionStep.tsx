@@ -18,7 +18,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 interface PlanSelectionStepProps {
   plans: SessionPlan[];
   selectedPlanIds: string[];
-  onTogglePlan: (plan: SessionPlan) => void;
+  onTogglePlan: (planId: string) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
   isLoading: boolean;
@@ -44,21 +44,17 @@ export function PlanSelectionStep({
 
   const [expandedPlanIds, setExpandedPlanIds] = useState<string[]>([]);
 
-  const toggleExpand = (planKey: string) => {
+  const toggleExpand = (planId: string) => {
     setExpandedPlanIds((prev) =>
-      prev.includes(planKey) ? prev.filter((id) => id !== planKey) : [...prev, planKey]
+      prev.includes(planId) ? prev.filter((id) => id !== planId) : [...prev, planId]
     );
   };
 
-  const isPlanSelected = (plan: SessionPlan): boolean => {
-    return (
-      (!!plan.id && selectedPlanIds.includes(plan.id)) ||
-      (!!plan.plan_id && selectedPlanIds.includes(plan.plan_id))
-    );
-  };
+  const allSelected = plans.length > 0 && selectedPlanIds.length === plans.length;
 
-  const selectedCount = plans.filter((p) => isPlanSelected(p)).length;
-  const allSelected = plans.length > 0 && selectedCount === plans.length;
+  const getPlanIdentifier = (plan: SessionPlan): string => {
+    return plan.id || plan.plan_id;
+  };
 
   const getExerciseCount = (plan: SessionPlan): number => {
     if (plan.total_exercise_count) return plan.total_exercise_count;
@@ -108,7 +104,7 @@ export function PlanSelectionStep({
             <View style={styles.controlsBar}>
               <View style={styles.countBadge}>
                 <Text style={styles.countBadgeText}>
-                  {selectedCount} OF {plans.length} SELECTED
+                  {selectedPlanIds.length} OF {plans.length} SELECTED
                 </Text>
               </View>
 
@@ -128,23 +124,25 @@ export function PlanSelectionStep({
             {/* Plans List */}
             <View style={styles.plansList}>
               {plans.map((plan) => {
-                const isSelected = isPlanSelected(plan);
-                const planKey = plan.id || plan.plan_id;
-                const isExpanded = expandedPlanIds.includes(planKey);
+                const planId = getPlanIdentifier(plan);
+                const isSelected = selectedPlanIds.includes(planId);
+                const isExpanded = expandedPlanIds.includes(planId);
                 const exerciseCount = getExerciseCount(plan);
 
                 return (
-                  <TouchableOpacity
-                    key={planKey}
-                    activeOpacity={0.88}
-                    onPress={() => onTogglePlan(plan)}
+                  <View
+                    key={planId}
                     style={[
                       styles.planCard,
                       isSelected && styles.planCardSelected,
                     ]}
                   >
                     {/* Header Row with Checkbox & Plan Title */}
-                    <View style={styles.cardHeaderRow}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => onTogglePlan(planId)}
+                      style={styles.cardHeaderTouchable}
+                    >
                       {/* Checkbox indicator */}
                       <View
                         style={[
@@ -168,7 +166,7 @@ export function PlanSelectionStep({
                           {plan.plan_name}
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Meta Badges */}
                     <View style={styles.badgesRow}>
@@ -201,10 +199,7 @@ export function PlanSelectionStep({
                     {/* Phase breakdown expansion */}
                     <TouchableOpacity
                       activeOpacity={0.7}
-                      onPress={(e) => {
-                        e.stopPropagation?.();
-                        toggleExpand(planKey);
-                      }}
+                      onPress={() => toggleExpand(planId)}
                       style={styles.expandHeader}
                     >
                       <Text style={styles.expandLabel}>
@@ -241,7 +236,7 @@ export function PlanSelectionStep({
                         })}
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
@@ -250,14 +245,14 @@ export function PlanSelectionStep({
             <View style={styles.footer}>
               <CustomButton
                 title={
-                  selectedCount > 1
-                    ? `Continue with ${selectedCount} Plans`
-                    : selectedCount === 1
+                  selectedPlanIds.length > 1
+                    ? `Continue with ${selectedPlanIds.length} Plans`
+                    : selectedPlanIds.length === 1
                     ? "Continue with 1 Plan"
                     : "Select at least 1 Plan"
                 }
                 onPress={onNext}
-                disabled={selectedCount === 0}
+                disabled={selectedPlanIds.length === 0}
                 style={styles.actionBtn}
               />
               <TouchableOpacity
@@ -398,7 +393,7 @@ const createStyles = (
       borderColor: theme.secondary,
       backgroundColor: themeState === "dark" ? "#0A1828" : "#F2FBFA",
     },
-    cardHeaderRow: {
+    cardHeaderTouchable: {
       flexDirection: "row",
       alignItems: "flex-start",
       marginBottom: 12,
