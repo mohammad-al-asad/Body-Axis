@@ -6,26 +6,36 @@ import {
   Text,
   View,
   Alert,
+  Modal,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import Svg, { Defs, Rect, LinearGradient, Stop } from "react-native-svg";
 
 import { RootState } from "@/redux/store";
-import { useTheme } from "@/hooks/use-theme";
+import { useTheme, useThemeState } from "@/hooks/use-theme";
 import { useSaveIntakeMutation } from "@/redux/api/userApi";
-import { useCreateSessionMutation } from "@/redux/api/sessionApi";
+import {
+  SessionPlan,
+  useCreateSessionMutation,
+  useGetMatchingPlansMutation,
+} from "@/redux/api/sessionApi";
 import { Header } from "@/components/Header";
 import { PainAssessmentStep } from "@/components/intake/PainAssessmentStep";
 import { GoalStep } from "@/components/intake/GoalStep";
 import { ScheduleStep } from "@/components/intake/ScheduleStep";
-import Svg, { Defs, Rect, LinearGradient, Stop } from 'react-native-svg';
+import { PlanSelectionStep } from "@/components/intake/PlanSelectionStep";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 export default function IntakeScreen() {
   const theme = useTheme();
-  const styles = createStyles(theme);
+  const themeState = useThemeState();
+  const styles = createStyles(theme, themeState);
 
   // Connect to Redux to check Gender explicitly
   const userGender =
@@ -44,71 +54,123 @@ export default function IntakeScreen() {
   const [scheduleWeeks, setScheduleWeeks] = useState<number>(3);
   const [sessionDuration, setSessionDuration] = useState<number>(45);
 
+  // Plan Selection Step
+  const [matchingPlans, setMatchingPlans] = useState<SessionPlan[]>([]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
+
+  // Session Name Modal
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [sessionName, setSessionName] = useState("");
+
+  const [getMatchingPlans, { isLoading: isLoadingPlans }] =
+    useGetMatchingPlansMutation();
   const [saveIntake, { isLoading: isSavingIntake }] = useSaveIntakeMutation();
-  const [createSession, { isLoading: isCreatingSession }] = useCreateSessionMutation();
+  const [createSession, { isLoading: isCreatingSession }] =
+    useCreateSessionMutation();
   const isSaving = isSavingIntake || isCreatingSession;
 
-  const handleNext = async (sessionName?: string) => {
-    if (activeIndex < slidesData.length - 1) {
-      const nextIndex = activeIndex + 1;
+  const slidesData = [
+    { id: "pain_assessment" },
+    { id: "goal" },
+    { id: "schedule" },
+    { id: "plans" },
+  ];
+
+  const fetchPlansAndAdvance = async () => {
+    try {
+      const res = await getMatchingPlans({
+        target_areas: selectedPainPoints,
+        user_case: primaryGoal,
+        session_duration: sessionDuration,
+      }).unwrap();
+
+      const items = res.items || [];
+      setMatchingPlans(items);
+      const allIds = items.map((p) => p.id || p.plan_id);
+      setSelectedPlanIds(allIds);
+    } catch (err) {
+      console.error("Failed to load matching plans:", err);
+      setMatchingPlans([]);
+      setSelectedPlanIds([]);
+    }
+
+    const nextIndex = 3;
+    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+    setActiveIndex(nextIndex);
+  };
+
+  const handleNext = async () => {
+    if (activeIndex === 0) {
+      const nextIndex = 1;
       flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
       setActiveIndex(nextIndex);
-    } else {
+    } else if (activeIndex === 1) {
+      const nextIndex = 2;
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      setActiveIndex(nextIndex);
+    } else if (activeIndex === 2) {
+      await fetchPlansAndAdvance();
+    } else if (activeIndex === 3) {
+      // Prompt session name modal
+      setShowNameModal(true);
+    }
+  };
+
+  const handleConfirmCreateSession = async () => {
+    setShowNameModal(false);
+    try {
+      const session = await createSession({
+        target_areas: selectedPainPoints,
+        user_case: primaryGoal,
+        session_name: sessionName.trim() || undefined,
+        schedule_days: scheduleDays,
+        schedule_weeks: scheduleWeeks,
+        session_duration: sessionDuration,
+        plan_ids: selectedPlanIds,
+      }).unwrap();
+
+      if (!session || !session.plans || session.plans.length === 0) {
+        Alert.alert(
+          "No Plans Found",
+          "No movement plans are available for this configuration. Please adjust your target areas, goal, or session duration."
+        );
+        return;
+      }
+
       try {
-        const session = await createSession({
-          target_areas: selectedPainPoints,
-          user_case: primaryGoal,
-          session_name: sessionName,
+        await saveIntake({
+          pain_points: selectedPainPoints,
+          primary_goal: primaryGoal,
           schedule_days: scheduleDays,
           schedule_weeks: scheduleWeeks,
           session_duration: sessionDuration,
+          session_name: sessionName.trim() || undefined,
         }).unwrap();
-
-        if (!session || !session.plans || session.plans.length === 0) {
-          Alert.alert(
-            "No Plans Found",
-            "No movement plans are available for this configuration. Please adjust your target areas, goal, or session duration."
-          );
-          return;
-        }
-
-        try {
-          await saveIntake({
-            pain_points: selectedPainPoints,
-            primary_goal: primaryGoal,
-            schedule_days: scheduleDays,
-            schedule_weeks: scheduleWeeks,
-            session_duration: sessionDuration,
-            session_name: sessionName,
-          }).unwrap();
-        } catch (intakeErr) {
-          console.warn("Failed to update user intake record:", intakeErr);
-        }
-
-        router.dismissAll();
-        router.navigate({
-          pathname: "/sessions/session-details",
-          params: { sessionId: session.id },
-        });
-      } catch (error: any) {
-        console.error("Failed to create movement session", error);
-        const errorDetail =
-          error?.data?.detail ||
-          error?.error ||
-          error?.message;
-        const isNoPlans =
-          error?.status === 404 ||
-          (typeof errorDetail === "string" &&
-            (errorDetail.toLowerCase().includes("no plans") ||
-              errorDetail.toLowerCase().includes("no movement plans")));
-
-        Alert.alert(
-          isNoPlans ? "No Plans Found" : "Error",
-          typeof errorDetail === "string" && errorDetail
-            ? errorDetail
-            : "Failed to create your movement session. Please try again."
-        );
+      } catch (intakeErr) {
+        console.warn("Failed to update user intake record:", intakeErr);
       }
+
+      router.dismissAll();
+      router.navigate({
+        pathname: "/sessions/session-details",
+        params: { sessionId: session.id },
+      });
+    } catch (error: any) {
+      console.error("Failed to create movement session", error);
+      const errorDetail =
+        error?.data?.detail || error?.error || error?.message;
+      const isNoPlans =
+        error?.status === 404 ||
+        (typeof errorDetail === "string" &&
+          (errorDetail.toLowerCase().includes("no plans") ||
+            errorDetail.toLowerCase().includes("no movement plans")));
+
+      Alert.alert(
+        isNoPlans ? "No Plans Found" : "Error",
+        typeof errorDetail === "string" && errorDetail
+          ? errorDetail
+          : "Failed to create your movement session. Please try again."
+      );
     }
   };
 
@@ -117,8 +179,8 @@ export default function IntakeScreen() {
       const prevIndex = activeIndex - 1;
       flatListRef.current?.scrollToIndex({ index: prevIndex, animated: true });
       setActiveIndex(prevIndex);
-    }else{
-      router.replace('/')
+    } else {
+      router.replace("/");
     }
   };
 
@@ -130,16 +192,31 @@ export default function IntakeScreen() {
     }
   };
 
-  const slidesData = [
-    { id: "pain_assessment" },
-    { id: "goal" },
-    { id: "schedule" },
-  ];
+  const togglePlanSelection = (planId: string) => {
+    if (selectedPlanIds.includes(planId)) {
+      setSelectedPlanIds((prev) => prev.filter((id) => id !== planId));
+    } else {
+      setSelectedPlanIds((prev) => [...prev, planId]);
+    }
+  };
+
+  const selectAllPlans = () => {
+    setSelectedPlanIds(matchingPlans.map((p) => p.id || p.plan_id));
+  };
+
+  const deselectAllPlans = () => {
+    setSelectedPlanIds([]);
+  };
+
+  const handleAdjustConfigurations = () => {
+    const targetIndex = 0;
+    flatListRef.current?.scrollToIndex({ index: targetIndex, animated: true });
+    setActiveIndex(targetIndex);
+  };
 
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-
         <View style={styles.headerContainer}>
           <Header
             showNotification={false}
@@ -205,7 +282,13 @@ export default function IntakeScreen() {
                   />
                 );
               case "goal":
-                return <GoalStep primaryGoal={primaryGoal} setPrimaryGoal={setPrimaryGoal} onNext={handleNext} />;
+                return (
+                  <GoalStep
+                    primaryGoal={primaryGoal}
+                    setPrimaryGoal={setPrimaryGoal}
+                    onNext={handleNext}
+                  />
+                );
               case "schedule":
                 return (
                   <ScheduleStep
@@ -217,7 +300,21 @@ export default function IntakeScreen() {
                     setSessionDuration={setSessionDuration}
                     onNext={handleNext}
                     onGoToHome={handleBack}
-                    isSaving={isSaving}
+                    isSaving={isLoadingPlans}
+                  />
+                );
+              case "plans":
+                return (
+                  <PlanSelectionStep
+                    plans={matchingPlans}
+                    selectedPlanIds={selectedPlanIds}
+                    onTogglePlan={togglePlanSelection}
+                    onSelectAll={selectAllPlans}
+                    onDeselectAll={deselectAllPlans}
+                    isLoading={isLoadingPlans}
+                    onNext={handleNext}
+                    onBack={handleBack}
+                    onAdjustConfigurations={handleAdjustConfigurations}
                   />
                 );
               default:
@@ -225,12 +322,65 @@ export default function IntakeScreen() {
             }
           }}
         />
+
+        {/* Set Session Name Modal */}
+        <Modal
+          visible={showNameModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowNameModal(false)}
+        >
+          <View style={styles.modalBackdrop}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Name Your Session</Text>
+              <Text style={styles.modalSubtitle}>
+                Give your movement session a personalized name or save with default.
+              </Text>
+
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Morning Shoulder & Back"
+                placeholderTextColor={themeState === "dark" ? "#5C6E84" : "#9CA3AF"}
+                value={sessionName}
+                onChangeText={setSessionName}
+                autoFocus
+              />
+
+              <View style={styles.modalButtonsRow}>
+                <TouchableOpacity
+                  style={styles.modalCancelBtn}
+                  activeOpacity={0.7}
+                  onPress={() => setShowNameModal(false)}
+                  disabled={isSaving}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, isSaving && styles.modalSaveBtnDisabled]}
+                  activeOpacity={0.8}
+                  onPress={handleConfirmCreateSession}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.modalSaveText}>Create Session</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </View>
   );
 }
 
-const createStyles = (theme: ReturnType<typeof useTheme>) =>
+const createStyles = (
+  theme: ReturnType<typeof useTheme>,
+  themeState: ReturnType<typeof useThemeState>
+) =>
   StyleSheet.create({
     container: {
       flex: 1,
@@ -240,11 +390,11 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       flex: 1,
     },
     headerContainer: {
-      position: 'relative',
+      position: "relative",
       zIndex: 10,
     },
     shadowSvg: {
-      position: 'absolute',
+      position: "absolute",
       bottom: -8,
       left: 0,
       right: 0,
@@ -279,24 +429,84 @@ const createStyles = (theme: ReturnType<typeof useTheme>) =>
       backgroundColor: "#9EFAAF",
       borderRadius: 2,
     },
-    footer: {
+    modalBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0, 0, 0, 0.65)",
+      justifyContent: "center",
+      alignItems: "center",
       paddingHorizontal: 24,
-      paddingTop: 12,
-      paddingBottom: 20,
-      backgroundColor: theme.background,
     },
-    actionBtn: {
+    modalContent: {
+      width: "100%",
+      maxWidth: 340,
+      backgroundColor: themeState === "dark" ? "#1A2634" : theme.cardBackground,
+      borderRadius: 20,
+      padding: 24,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: themeState === "dark" ? "#2B3C50" : theme.inputBorder,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.3,
+      shadowRadius: 16,
+      elevation: 8,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: theme.text,
+      marginBottom: 6,
+      textAlign: "center",
+    },
+    modalSubtitle: {
+      fontSize: 13,
+      color: theme.textSecondary,
+      textAlign: "center",
+      marginBottom: 20,
+      lineHeight: 18,
+    },
+    modalInput: {
+      width: "100%",
+      height: 52,
+      backgroundColor: themeState === "dark" ? "#0F1620" : theme.inputBackground,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      fontSize: 15,
+      color: theme.text,
+      borderWidth: 1,
+      borderColor: themeState === "dark" ? "#2B3C50" : theme.inputBorder,
+      marginBottom: 24,
+    },
+    modalButtonsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       width: "100%",
     },
-    backFooterBtn: {
-      alignItems: "center",
-      justifyContent: "center",
-      paddingVertical: 16,
-      marginTop: 8,
+    modalCancelBtn: {
+      paddingVertical: 12,
+      paddingHorizontal: 18,
     },
-    backFooterText: {
+    modalCancelText: {
       fontSize: 15,
       fontWeight: "600",
       color: theme.textSecondary,
+    },
+    modalSaveBtn: {
+      backgroundColor: theme.primary,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 24,
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: 140,
+    },
+    modalSaveBtnDisabled: {
+      opacity: 0.6,
+    },
+    modalSaveText: {
+      color: "#FFFFFF",
+      fontSize: 15,
+      fontWeight: "700",
     },
   });

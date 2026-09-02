@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, ScrollView, DimensionValue } from "react-native";
 import { useTheme, useThemeState } from "@/hooks/use-theme";
 import { CustomTab } from "@/components/ui/CustomTab";
 import { CustomButton } from "@/components/ui/CustomButton";
@@ -15,9 +15,10 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 interface PainHotspot {
   id: string;
   label: string;
-  top: string;
-  left: string;
+  top: DimensionValue;
+  left: DimensionValue;
 }
+
 
 const frontHotspots: PainHotspot[] = [
   { id: "shoulder_front", label: "SHOULDER", top: "27%", left: "61%" },
@@ -125,7 +126,7 @@ export function PainAssessmentStep({
                   </View>
                 </TouchableOpacity>
 
-                {isSelected && parseInt(spot.left) < 50 && (
+                {isSelected && parseInt(String(spot.left)) < 50 && (
                   <View style={{ position: 'absolute', right: 0, top: -7, flexDirection: 'row', alignItems: 'center' }}>
                     <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginRight: 6, letterSpacing: 0.5 }}>
                       {spot.label.toUpperCase()}
@@ -134,7 +135,7 @@ export function PainAssessmentStep({
                   </View>
                 )}
 
-                {isSelected && parseInt(spot.left) >= 50 && (
+                {isSelected && parseInt(String(spot.left)) >= 50 && (
                   <View style={{ position: 'absolute', left: 0, top: -7, flexDirection: 'row', alignItems: 'center' }}>
                     <View style={{ width: 30, height: 1, backgroundColor: theme.secondary, shadowColor: theme.secondary, shadowOpacity: 0.8, shadowRadius: 4 }} />
                     <Text style={{ color: theme.secondary, fontSize: 9, fontWeight: '800', marginLeft: 6, letterSpacing: 0.5 }}>
