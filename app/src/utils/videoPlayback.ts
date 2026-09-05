@@ -7,14 +7,23 @@ export const FAST_START_BUFFER_OPTIONS = {
   prioritizeTimeOverSizeThreshold: true,
 } as const;
 
-export const createVideoSource = (uri: string): VideoSource => {
+export interface CreateVideoSourceOptions {
+  useCaching?: boolean;
+}
+
+export const createVideoSource = (
+  uri: string,
+  options?: CreateVideoSourceOptions
+): VideoSource => {
   const path = uri.split('?')[0].toLowerCase();
-  const isRemote = uri.startsWith('http://') || uri.startsWith('https://');
   const isHls = path.endsWith('.m3u8');
 
   return {
     uri,
     contentType: isHls ? 'hls' : 'progressive',
-    useCaching: isRemote && !isHls,
+    // Default caching to false: expo-video's iOS caching rewrites URLs to a custom
+    // "expo-video-cache://" scheme with an AVAssetResourceLoaderDelegate, which breaks
+    // AirPlay streaming to external receivers (Mac / Apple TV).
+    useCaching: options?.useCaching ?? false,
   };
 };

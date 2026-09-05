@@ -11,6 +11,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "body-axis-downloader": "file:./modules/downloader",
     "@hookform/resolvers": "^5.2.2",
     "@hugeicons/core-free-icons": "^4.1.4",
     "@hugeicons/react-native": "^1.0.13",

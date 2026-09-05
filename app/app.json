@@ -71,7 +71,12 @@
         }
       ],
       "expo-apple-authentication",
-      "expo-video",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true
+        }
+      ],
       [
         "expo-build-properties",
         {

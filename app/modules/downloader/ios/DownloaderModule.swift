@@ -154,7 +154,7 @@ private final class DownloadPayloadParser {
     if let list = payload["assets"] as? [Any] {
       rawAssets = list
     } else if let nsArray = payload["assets"] as? NSArray {
-      rawAssets = nsArray as [Any]
+      rawAssets = nsArray.compactMap { $0 }
     } else {
       rawAssets = []
     }
@@ -644,10 +644,17 @@ private final class DownloaderManager: NSObject, URLSessionDownloadDelegate, URL
         return
       }
 
-      task.cancel { resumeData in
-        if let resumeData, let record = self.database.getDownload(downloadId) {
-          try? resumeData.write(to: URL(fileURLWithPath: record.partialPath), options: .atomic)
-        }
+      if let downloadTask = task as? URLSessionDownloadTask {
+        downloadTask.cancel(byProducingResumeData: { resumeData in
+          if let resumeData, let record = self.database.getDownload(downloadId) {
+            try? resumeData.write(to: URL(fileURLWithPath: record.partialPath), options: .atomic)
+          }
+          self.database.updateStatus(downloadId: downloadId, status: DownloadStatus.paused)
+          self.emit("downloadPaused", downloadId: downloadId)
+          self.stateLock.withLock { self.pausingIds.remove(downloadId) }
+        })
+      } else {
+        task.cancel()
         self.database.updateStatus(downloadId: downloadId, status: DownloadStatus.paused)
         self.emit("downloadPaused", downloadId: downloadId)
         self.stateLock.withLock { self.pausingIds.remove(downloadId) }
