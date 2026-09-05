@@ -137,6 +137,7 @@ export default function ExerciseTrackerScreen() {
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [activeVideoType, setActiveVideoType] = useState<'short' | 'full'>('short');
   const loadedVideoUrlRef = useRef<string | null>(null);
+  const currentRemoteVideoUrlRef = useRef<string | null>(null);
   const videoPlayer = useVideoPlayer(null, (player) => {
     player.bufferOptions = FAST_START_BUFFER_OPTIONS;
     player.staysActiveInBackground = true;
@@ -144,10 +145,16 @@ export default function ExerciseTrackerScreen() {
   });
 
   const resolvePlayableVideoUrl = useCallback(async (url: string) => {
+    currentRemoteVideoUrlRef.current = url;
+    // External AirPlay receivers cannot access iOS sandboxed file:// paths.
+    // If AirPlay is active, always stream the remote URL directly.
+    if (videoPlayer.isExternalPlaybackActive && (url.startsWith('http://') || url.startsWith('https://'))) {
+      return url;
+    }
     if (!session || !sessionPlan) return url;
     const localUri = await resolveOfflineVideoUri(session.id, sessionPlan, url);
     return localUri ?? url;
-  }, [session, sessionPlan]);
+  }, [session, sessionPlan, videoPlayer]);
 
   const loadPlayableVideo = useCallback(async (url: string) => {
     const playableUrl = await resolvePlayableVideoUrl(url);
@@ -190,6 +197,29 @@ export default function ExerciseTrackerScreen() {
   useEventListener(videoPlayer, 'playingChange', ({ isPlaying }) => {
     if (isPlaying) {
       setIsVideoLoading(false);
+    }
+  });
+
+  useEventListener(videoPlayer, 'isExternalPlaybackActiveChange', async ({ isExternalPlaybackActive }) => {
+    const remoteUrl = currentRemoteVideoUrlRef.current;
+    if (
+      isExternalPlaybackActive &&
+      remoteUrl &&
+      (remoteUrl.startsWith('http://') || remoteUrl.startsWith('https://')) &&
+      loadedVideoUrlRef.current !== remoteUrl
+    ) {
+      const currentPos = videoPlayer.currentTime;
+      const wasPlaying = videoPlayer.playing;
+      try {
+        await videoPlayer.replaceAsync(createVideoSource(remoteUrl));
+        loadedVideoUrlRef.current = remoteUrl;
+        videoPlayer.currentTime = currentPos;
+        if (wasPlaying) {
+          videoPlayer.play();
+        }
+      } catch (error) {
+        console.error('Failed to switch to remote URL for AirPlay playback', error);
+      }
     }
   });
 

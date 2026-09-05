@@ -146,14 +146,34 @@ export async function resolveOfflineVideoUri(
 function collectPlanVideoAssets(sessionId: string, plan: SessionPlan): OfflineDownloadAsset[] {
   const seen = new Set<string>();
   const assets: OfflineDownloadAsset[] = [];
+  const rawPhases = (plan.phases ?? {}) as unknown as Record<string, typeof plan.phases.reset | undefined>;
 
   for (const phase of phaseOrder) {
-    const phaseExercises = plan.phases?.[phase] ?? [];
+    const phaseExercises =
+      plan.phases?.[phase] ??
+      rawPhases[phase.toUpperCase()] ??
+      rawPhases[phase.charAt(0).toUpperCase() + phase.slice(1)] ??
+      [];
     for (const exercise of phaseExercises) {
-      const videos = [
+      const rawExercise = exercise as Record<string, any>;
+      const videos: { kind: string; video?: { id?: string; video_url?: string; thumbnail_url?: string } | null }[] = [
         { kind: 'tutorial', video: exercise.tutorial_video },
         { kind: 'short-clip', video: exercise.short_clip_video },
       ];
+
+      if (rawExercise.video) {
+        videos.push({ kind: 'video', video: rawExercise.video });
+      }
+      if (typeof rawExercise.video_url === 'string' && rawExercise.video_url) {
+        videos.push({
+          kind: 'main',
+          video: {
+            id: rawExercise.video_id || rawExercise.id,
+            video_url: rawExercise.video_url,
+            thumbnail_url: rawExercise.thumbnail_url,
+          },
+        });
+      }
 
       for (const { kind, video } of videos) {
         if (!video?.video_url || seen.has(video.video_url)) continue;
