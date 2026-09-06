@@ -226,11 +226,15 @@ export function PlanSelectionStep({
                                   PHASE: <Text style={styles.phaseTitleHighlight}>{phaseKey.toUpperCase()}</Text>
                                 </Text>
                               </View>
-                              {phaseExercises.map((ex, idx) => (
-                                <Text key={ex.exercise_id || idx} style={styles.exerciseNameText}>
-                                  • {ex.exercise_name} ({ex.sets} {ex.sets === 1 ? "set" : "sets"}, {ex.reps})
-                                </Text>
-                              ))}
+                              {phaseExercises.map((ex, idx) => {
+                                const setsCount = ex.sets ?? 3;
+                                const repsText = ex.reps || "10 reps";
+                                return (
+                                  <Text key={ex.exercise_id || idx} style={styles.exerciseNameText}>
+                                    • {ex.exercise_name} ({setsCount} {setsCount === 1 ? "set" : "sets"}, {repsText})
+                                  </Text>
+                                );
+                              })}
                             </View>
                           );
                         })}

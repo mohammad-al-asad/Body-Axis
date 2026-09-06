@@ -111,13 +111,13 @@ export default function ExerciseTrackerScreen() {
 
   const totalSets = useMemo(() => {
     const dynamicExercise = dynamicExercises[currentIdx];
-    return dynamicExercise?.sets ?? 0;
+    return dynamicExercise?.sets ?? 3;
   }, [dynamicExercises, currentIdx]);
 
   const targetReps = useMemo(() => {
     const dynamicExercise = dynamicExercises[currentIdx];
     const match = dynamicExercise?.reps ? /(\d+)/.exec(dynamicExercise.reps) : null;
-    return match ? Number.parseInt(match[1]) : 0;
+    return match ? Number.parseInt(match[1]) : 10;
   }, [dynamicExercises, currentIdx]);
 
   const [setsData, setSetsData] = useState<{ reps: number; completed: boolean }[]>(() => {
@@ -293,8 +293,8 @@ export default function ExerciseTrackerScreen() {
     benefits: dynamicExercise?.secondary_benefits || dynamicExercise?.primary_intent || null,
     targetRegions: sessionPlan?.target_area ? [sessionPlan.target_area] : [],
     equipment: dynamicExercise?.equipment_needed ?? [],
-    sets: dynamicExercise ? String(dynamicExercise.sets) : 'N/A',
-    repsVal: dynamicExercise?.reps ?? 'N/A',
+    sets: dynamicExercise?.sets ? String(dynamicExercise.sets) : '3',
+    repsVal: dynamicExercise?.reps ?? '10 reps',
     repsLabel: dynamicExercise?.reps?.includes('/') ? 'REPS / EACH SIDE' : 'REPS',
   };
 

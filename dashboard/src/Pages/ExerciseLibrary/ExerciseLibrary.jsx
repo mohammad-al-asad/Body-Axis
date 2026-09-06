@@ -106,7 +106,6 @@ const ExerciseLibrary = () => {
               <thead>
                 <tr className="border-b border-[#1E293B] bg-[#0A0D14]/50 text-[10px] font-bold uppercase tracking-widest text-[#64748B]">
                   <th className="px-7 py-5">Exercise</th>
-                  <th className="px-6 py-5">Sets / Reps</th>
                   <th className="px-6 py-5">Equipment</th>
                   <th className="px-6 py-5">Videos</th>
                   <th className="px-6 py-5">Status</th>
@@ -116,7 +115,7 @@ const ExerciseLibrary = () => {
               <tbody className="divide-y divide-[#1E293B]">
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="py-20 text-center text-[#64748B]">
+                    <td colSpan="5" className="py-20 text-center text-[#64748B]">
                       Loading exercises…
                     </td>
                   </tr>
@@ -128,9 +127,6 @@ const ExerciseLibrary = () => {
                         <div className="mt-1 text-xs text-[#64748B]">
                           {exercise.exercise_id}
                         </div>
-                      </td>
-                      <td className="px-6 py-5 text-sm text-[#94A3B8]">
-                        {exercise.sets} × {exercise.reps}
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex max-w-[300px] flex-wrap gap-1.5">
@@ -189,7 +185,7 @@ const ExerciseLibrary = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="6" className="py-20 text-center text-[#64748B]">
+                    <td colSpan="5" className="py-20 text-center text-[#64748B]">
                       No exercises found.
                     </td>
                   </tr>
