@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import certifi
 from dotenv import load_dotenv
 from pymongo import AsyncMongoClient
 
@@ -23,21 +24,33 @@ async def run_migration(
     apply_changes: bool = False,
     default_sets: int = 3,
     default_reps: str = "10 reps",
+    mongo_uri: str | None = None,
+    db_name: str | None = None,
 ) -> None:
-    mongodb_uri = os.getenv("MONGODB_URI")
-    db_name = os.getenv("MONGODB_DB", "bodyaxis")
+    mongodb_uri = mongo_uri or os.getenv("MONGODB_URI")
+    database_name = db_name or os.getenv("MONGODB_DB", "bodyaxis")
 
     if not mongodb_uri:
-        print("ERROR: MONGODB_URI environment variable not set. Aborting.")
+        print("\n" + "=" * 60)
+        print("ERROR: MONGODB_URI not provided.")
+        print("=" * 60)
+        print("Please provide the MongoDB connection URI via one of the following:")
+        print("  1. Command line argument:")
+        print("     python3 api/scripts/migrate_sets_reps_to_plans.py --mongo-uri '<your_uri>'")
+        print("  2. In api/.env file:")
+        print("     MONGODB_URI=<your_uri>")
+        print("  3. Environment variable:")
+        print("     export MONGODB_URI='<your_uri>'")
+        print("=" * 60 + "\n")
         sys.exit(1)
 
-    client = AsyncMongoClient(mongodb_uri)
-    db = client[db_name]
+    client = AsyncMongoClient(mongodb_uri, tlsCAFile=certifi.where())
+    db = client[database_name]
 
     print("=" * 60)
     print("BodyAxis: Migrate Sets & Reps from Exercises to Plans")
     print(f"Mode: {'APPLY (Live DB writes enabled)' if apply_changes else 'DRY RUN (No changes will be saved)'}")
-    print(f"Database: {db_name}")
+    print(f"Database: {database_name}")
     print(f"Default fallback: {default_sets} sets, {default_reps}")
     print("=" * 60)
 
@@ -184,6 +197,19 @@ def main() -> None:
         help="Default reps if not defined on exercise (default: '10 reps').",
     )
 
+    parser.add_argument(
+        "--mongo-uri",
+        type=str,
+        default=None,
+        help="MongoDB connection URI (overrides MONGODB_URI environment variable).",
+    )
+    parser.add_argument(
+        "--db-name",
+        type=str,
+        default=None,
+        help="MongoDB database name (default: bodyaxis or from MONGODB_DB).",
+    )
+
     args = parser.parse_args()
     apply_mode = args.apply_changes and not args.dry_run
 
@@ -192,6 +218,8 @@ def main() -> None:
             apply_changes=apply_mode,
             default_sets=args.default_sets,
             default_reps=args.default_reps,
+            mongo_uri=args.mongo_uri,
+            db_name=args.db_name,
         )
     )
 
