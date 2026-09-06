@@ -247,8 +247,8 @@ const CreatePlan = () => {
         {
           exercise_id: exercise.exercise_id,
           exercise_name: exercise.exercise_name,
-          sets: exercise.sets,
-          reps: exercise.reps,
+          sets: exercise.sets || 3,
+          reps: exercise.reps || "8 / side",
           equipment_needed: exercise.equipment_needed,
         },
       ],
@@ -298,8 +298,8 @@ const CreatePlan = () => {
           phase,
           phases[phase].map((item) => ({
             exercise_id: item.exercise_id,
-            sets: Number(item.sets),
-            reps: item.reps,
+            sets: Math.max(1, Number(item.sets) || 1),
+            reps: String(item.reps ?? "").trim() || "10 reps",
           })),
         ]),
       ),
@@ -500,6 +500,14 @@ const CreatePlan = () => {
                     </div>
 
                     <div className="space-y-3">
+                      {phases[phase].length > 0 && (
+                        <div className="hidden grid-cols-[1fr_90px_120px_40px] gap-3 px-3 text-[10px] font-bold uppercase tracking-widest text-[#64748B] md:grid">
+                          <span>Exercise</span>
+                          <span className="text-center">Sets</span>
+                          <span className="text-center">Reps</span>
+                          <span></span>
+                        </div>
+                      )}
                       {phases[phase].map((exercise) => (
                         <div
                           key={exercise.exercise_id}
@@ -517,6 +525,7 @@ const CreatePlan = () => {
                             type="number"
                             min="1"
                             value={exercise.sets}
+                            placeholder="Sets"
                             onChange={(event) =>
                               updateExercise(
                                 phase,
@@ -529,6 +538,7 @@ const CreatePlan = () => {
                           />
                           <input
                             value={exercise.reps}
+                            placeholder="Reps"
                             onChange={(event) =>
                               updateExercise(
                                 phase,
