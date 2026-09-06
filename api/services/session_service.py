@@ -257,8 +257,8 @@ async def _hydrate_plan(plan: dict[str, Any]) -> dict[str, Any]:
                     "exercise_name": exercise.get("exercise_name")
                     or item.get("exercise_name")
                     or item["exercise_id"],
-                    "sets": exercise.get("sets") or 1,
-                    "reps": exercise.get("reps") or "1",
+                    "sets": item.get("sets") or exercise.get("sets") or 1,
+                    "reps": item.get("reps") or exercise.get("reps") or "1",
                     "phase": exercise.get("phase") or item.get("phase") or phase_name,
                     "equipment_needed": equipment,
                     "primary_intent": exercise.get("primary_intent"),

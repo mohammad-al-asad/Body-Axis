@@ -302,8 +302,8 @@ export default function PlanDetailsScreen() {
               benefits: dynamicExercise?.secondary_benefits || dynamicExercise?.primary_intent || null,
               targetRegions: sessionPlan?.target_area ? [sessionPlan.target_area] : [],
               equipment: dynamicExercise?.equipment_needed ?? [],
-              sets: dynamicExercise ? String(dynamicExercise.sets) : 'N/A',
-              reps: dynamicExercise?.reps ?? 'N/A',
+              sets: dynamicExercise?.sets ? String(dynamicExercise.sets) : '3',
+              reps: dynamicExercise?.reps || '10 reps',
             };
             const thumbnailUrl =
               dynamicExercise?.tutorial_video?.thumbnail_url ||

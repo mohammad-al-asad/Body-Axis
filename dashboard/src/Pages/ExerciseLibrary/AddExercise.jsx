@@ -18,8 +18,6 @@ import { managementApi } from "../../services/managementApi";
 const emptyForm = {
   exerciseId: "",
   exerciseName: "",
-  sets: "3",
-  reps: "",
   primaryIntent: "",
   secondaryBenefits: "",
   equipmentNeeded: [],
@@ -301,8 +299,6 @@ const AddExercise = () => {
     setForm({
       exerciseId: existing.exercise_id,
       exerciseName: existing.exercise_name,
-      sets: String(existing.sets),
-      reps: existing.reps,
       primaryIntent: existing.primary_intent,
       secondaryBenefits: existing.secondary_benefits,
       equipmentNeeded: existing.equipment_needed,
@@ -395,8 +391,6 @@ const AddExercise = () => {
     const payload = {
       exercise_id: form.exerciseId.trim(),
       exercise_name: form.exerciseName.trim(),
-      sets: Number(form.sets),
-      reps: form.reps.trim(),
       primary_intent: form.primaryIntent.trim(),
       secondary_benefits: form.secondaryBenefits.trim(),
       equipment_needed: form.equipmentNeeded,
@@ -463,8 +457,6 @@ const AddExercise = () => {
             {[
               ["exerciseId", "Exercise ID", "EX-260001"],
               ["exerciseName", "Exercise Name", "Supine Pelvic Clocks"],
-              ["sets", "Sets", "3"],
-              ["reps", "Reps", "8 / side"],
               ["primaryIntent", "Primary Intent", "Restore thoracic rotation"],
               [
                 "secondaryBenefits",
@@ -478,8 +470,7 @@ const AddExercise = () => {
                 </span>
                 <input
                   required
-                  type={field === "sets" ? "number" : "text"}
-                  min={field === "sets" ? "1" : undefined}
+                  type="text"
                   value={form[field]}
                   onChange={(event) => updateField(field, event.target.value)}
                   placeholder={placeholder}

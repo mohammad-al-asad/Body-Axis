@@ -112,8 +112,6 @@ async def serialize_exercise(exercise: dict[str, Any]) -> dict[str, Any]:
         "id": str(exercise["_id"]),
         "exercise_id": exercise["exercise_id"],
         "exercise_name": exercise["exercise_name"],
-        "sets": exercise["sets"],
-        "reps": exercise["reps"],
         "primary_intent": exercise["primary_intent"],
         "secondary_benefits": exercise["secondary_benefits"],
         "equipment_needed": exercise.get("equipment_needed", []),
@@ -154,8 +152,8 @@ async def serialize_plan(plan: dict[str, Any]) -> dict[str, Any]:
                     "exercise_name": exercise.get("exercise_name")
                     or item.get("exercise_name")
                     or item["exercise_id"],
-                    "sets": exercise.get("sets") or 1,
-                    "reps": exercise.get("reps") or "1",
+                    "sets": item.get("sets") or exercise.get("sets") or 1,
+                    "reps": item.get("reps") or exercise.get("reps") or "1",
                     "equipment_needed": equipment,
                 }
             )
@@ -515,6 +513,8 @@ async def _plan_document(
             phase_items.append(
                 {
                     "exercise_id": exercise["exercise_id"],
+                    "sets": selection.get("sets", 3),
+                    "reps": selection.get("reps", "10 reps"),
                 }
             )
         phases[phase_name] = phase_items

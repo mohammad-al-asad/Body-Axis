@@ -101,8 +101,6 @@ class VideoMultipartAbortRequest(BaseModel):
 class ExerciseBase(BaseModel):
     exercise_id: str = Field(min_length=1, max_length=80)
     exercise_name: str = Field(min_length=1, max_length=160)
-    sets: int = Field(ge=1, le=999)
-    reps: str = Field(min_length=1, max_length=80)
     primary_intent: str = Field(min_length=1, max_length=500)
     secondary_benefits: str = Field(min_length=1, max_length=1000)
     equipment_needed: list[Equipment] = Field(default_factory=list)
@@ -154,6 +152,8 @@ class ExerciseListResponse(BaseModel):
 
 class PlanExerciseInput(BaseModel):
     exercise_id: str
+    sets: int = Field(default=3, ge=1, le=999)
+    reps: str = Field(default="10 reps", min_length=1, max_length=80)
 
 
 class PlanPhasesInput(BaseModel):
