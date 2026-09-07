@@ -86,8 +86,7 @@ export default function IntakeScreen() {
 
       const items = res.items || [];
       setMatchingPlans(items);
-      const allIds = items.map((p) => p.id || p.plan_id);
-      setSelectedPlanIds(allIds);
+      setSelectedPlanIds([]);
     } catch (err) {
       console.error("Failed to load matching plans:", err);
       setMatchingPlans([]);
