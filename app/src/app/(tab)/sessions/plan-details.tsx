@@ -22,6 +22,13 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import { MovementSession, SessionExercise, useGetSessionQuery } from '@/redux/api/sessionApi';
 import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
 import { createVideoSource, FAST_START_BUFFER_OPTIONS } from '@/utils/videoPlayback';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  getPlanProgress,
+  PlanProgress,
+  resolvePlanResumeState,
+} from '@/services/planProgress';
+import { ResumePlanAlertModal } from '@/components/sessions/ResumePlanAlertModal';
 
 export default function PlanDetailsScreen() {
   const theme = useTheme();
@@ -87,6 +94,29 @@ export default function PlanDetailsScreen() {
     );
   }, [sessionPlan]);
   const hasPlanContent = Boolean(plan && dynamicExercises.length);
+
+  const [savedProgress, setSavedProgress] = useState<PlanProgress | null>(null);
+  const [isResumeModalVisible, setIsResumeModalVisible] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      const planId = sessionPlan?.plan_id || sessionPlan?.id || id;
+      if (!sessionId || !planId) return;
+      let isMounted = true;
+      void getPlanProgress(sessionId, planId).then((progress) => {
+        if (isMounted) {
+          setSavedProgress(progress);
+        }
+      });
+      return () => {
+        isMounted = false;
+      };
+    }, [sessionId, sessionPlan?.plan_id, sessionPlan?.id, id])
+  );
+
+  const resumeState = useMemo(() => {
+    return resolvePlanResumeState(dynamicExercises, savedProgress, sessionPlan);
+  }, [dynamicExercises, savedProgress, sessionPlan]);
 
   // Track expanded cards (default expand index 0)
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
@@ -224,17 +254,40 @@ export default function PlanDetailsScreen() {
     };
   }, [demoVideoPlayer, expandedVideoUrl, loadDemoVideo]);
 
-  const handleStartProtocol = () => {
+  const navigateToExercise = (exerciseIndex: number) => {
     if (!plan) return;
     demoVideoPlayer.pause();
     setIsDemoVideoLoading(false);
+    setIsResumeModalVisible(false);
     router.push({
       pathname: '/sessions/exercise-tracker',
       params: {
         id: plan.id,
         ...(session?.id ? { sessionId: session.id } : {}),
+        initialPhaseIndex: String(exerciseIndex),
       },
     });
+  };
+
+  const handleStartProtocol = () => {
+    if (!plan) return;
+    demoVideoPlayer.pause();
+    setIsDemoVideoLoading(false);
+
+    // If completed: restart from the beginning directly
+    if (resumeState.isCompleted) {
+      navigateToExercise(0);
+      return;
+    }
+
+    // If first time: start directly from the beginning without asking
+    if (resumeState.isFirstTime) {
+      navigateToExercise(0);
+      return;
+    }
+
+    // Otherwise, show alert modal asking whether to resume or start from beginning
+    setIsResumeModalVisible(true);
   };
 
   const handleBack = () => {
@@ -451,6 +504,17 @@ export default function PlanDetailsScreen() {
             <Text style={styles.startProtocolText}>Start Plan</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Resume Plan Alert Modal */}
+        <ResumePlanAlertModal
+          visible={isResumeModalVisible}
+          onClose={() => setIsResumeModalVisible(false)}
+          onResume={() => navigateToExercise(resumeState.resumeIndex)}
+          onStartBeginning={() => navigateToExercise(0)}
+          resumeIndex={resumeState.resumeIndex}
+          resumeExercise={resumeState.resumeExercise}
+          totalExercises={resumeState.totalExercises}
+        />
       </SafeAreaView>
     </View>
   );

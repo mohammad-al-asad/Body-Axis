@@ -118,8 +118,8 @@ const slidesData: OnboardingSlide[] = [
   {
     id: 1,
     image: require('@/assets/images/onboarding/2.png'),
-    title1: 'Move Better With a Plan',
-    title2: 'Built for you',
+    title1: 'Start with',
+    title2: 'What your body needs',
     description: 'No two bodies are the same. Your movement plan is built around yours.',
     items: [
       { icon: 'crosshair', title: 'Pick a Focus Area', subtitle: 'Choose what matters most to you' },
