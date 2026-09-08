@@ -27,6 +27,7 @@ import {
   useGetSessionQuery,
 } from '@/redux/api/sessionApi';
 import { getSavedOfflineSession, resolveOfflineVideoUri } from '@/services/offlineDownloads';
+import { savePlanProgress } from '@/services/planProgress';
 
 export default function ExerciseTrackerScreen() {
   const theme = useTheme();
@@ -104,6 +105,20 @@ export default function ExerciseTrackerScreen() {
     : Math.min(Math.max(parsedInitialIndex, 0), Math.max(phaseList.length - 1, 0));
 
   const [currentIdx, setCurrentIdx] = useState(safeInitialIndex);
+  const hasAppliedInitialIndexRef = useRef(false);
+
+  // Guarantee that initialPhaseIndex is applied once dynamicExercises are loaded
+  useEffect(() => {
+    if (hasAppliedInitialIndexRef.current) return;
+    if (dynamicExercises.length === 0) return;
+
+    const parsed = Number.parseInt(initialPhaseIndex ?? '0', 10);
+    if (!Number.isNaN(parsed) && parsed >= 0 && parsed < dynamicExercises.length) {
+      setCurrentIdx(parsed);
+    }
+    hasAppliedInitialIndexRef.current = true;
+  }, [initialPhaseIndex, dynamicExercises.length]);
+
   const [currentSet, setCurrentSet] = useState(1);
   const [repsCount, setRepsCount] = useState(10);
   const [completedExerciseKey, setCompletedExerciseKey] = useState<string | null>(null);
@@ -238,6 +253,20 @@ export default function ExerciseTrackerScreen() {
     setCompletedExerciseKey(null);
     completingExerciseKeyRef.current = null;
   }, [currentIdx, totalSets, targetReps]);
+
+  // Persist active exercise position whenever currentIdx or dynamicExercise changes
+  useEffect(() => {
+    if (!sessionId || !sessionPlan || !dynamicExercises[currentIdx]) return;
+    const planId = sessionPlan.plan_id || sessionPlan.id || id;
+    if (!planId) return;
+    void savePlanProgress(sessionId, planId, {
+      lastExerciseIndex: currentIdx,
+      lastExerciseId: dynamicExercises[currentIdx].exercise_id,
+      lastExerciseName: dynamicExercises[currentIdx].exercise_name,
+      hasStarted: true,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [sessionId, sessionPlan, id, currentIdx, dynamicExercises]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -391,6 +420,18 @@ export default function ExerciseTrackerScreen() {
       .unwrap()
       .then(() => {
         setCompletedExerciseKey(currentExerciseKey);
+        if (session?.id && sessionPlan && dynamicExercise) {
+          const planId = sessionPlan.plan_id || sessionPlan.id || id;
+          if (planId) {
+            void savePlanProgress(session.id, planId, {
+              lastExerciseIndex: currentIdx,
+              lastExerciseId: dynamicExercise.exercise_id,
+              lastExerciseName: dynamicExercise.exercise_name,
+              hasStarted: true,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        }
       })
       .catch((error) => {
         if (completingExerciseKeyRef.current === currentExerciseKey) {
@@ -405,6 +446,8 @@ export default function ExerciseTrackerScreen() {
     dynamicExercise,
     session?.id,
     sessionPlan,
+    currentIdx,
+    id,
   ]);
 
   useEffect(() => {
@@ -511,6 +554,17 @@ export default function ExerciseTrackerScreen() {
     }
 
     saveCompletedExerciseProgress();
+    if (session?.id && sessionPlan) {
+      const planId = sessionPlan.plan_id || sessionPlan.id || id;
+      if (planId) {
+        void savePlanProgress(session.id, planId, {
+          lastExerciseIndex: 0,
+          hasStarted: true,
+          isCompleted: true,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
 
     if (router.canGoBack()) {
       router.back();
