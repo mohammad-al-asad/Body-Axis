@@ -378,8 +378,26 @@ export default function SignUpScreen() {
                     {agree && <Feather name="check" size={14} color={theme.text} />}
                   </View>
                   <Text style={styles.checkboxLabel}>
-                    I agree to the <Text style={styles.cyanLink}>Terms of Service</Text> and{' '}
-                    <Text style={styles.cyanLink}>Privacy Policy</Text>
+                    I agree to the{' '}
+                    <Text
+                      style={styles.cyanLink}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push('/terms');
+                      }}
+                    >
+                      Terms of Service
+                    </Text>{' '}
+                    and{' '}
+                    <Text
+                      style={styles.cyanLink}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push('/privacy');
+                      }}
+                    >
+                      Privacy Policy
+                    </Text>
                   </Text>
                 </TouchableOpacity>
                 {errors.agree?.message && (

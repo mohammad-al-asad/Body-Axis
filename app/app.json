@@ -2,7 +2,7 @@
   "expo": {
     "name": "Body Axis: Move Better",
     "slug": "body-axis",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/app/logo.png",
     "scheme": "bodyaxis",
