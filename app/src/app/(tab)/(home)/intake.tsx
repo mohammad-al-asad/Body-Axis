@@ -52,7 +52,7 @@ export default function IntakeScreen() {
   // Schedule Step
   const [scheduleDays, setScheduleDays] = useState<number>(3);
   const [scheduleWeeks, setScheduleWeeks] = useState<number>(3);
-  const [sessionDuration, setSessionDuration] = useState<number>(45);
+  const [sessionDuration, setSessionDuration] = useState<number>(30);
 
   // Plan Selection Step
   const [matchingPlans, setMatchingPlans] = useState<SessionPlan[]>([]);

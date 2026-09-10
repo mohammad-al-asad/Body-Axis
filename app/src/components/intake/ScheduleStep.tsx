@@ -113,20 +113,35 @@ export function ScheduleStep({
           <View style={styles.cardsRow}>
             {[15, 30, 45].map((dur) => {
               const isSelected = sessionDuration === dur;
+              const isDisabled = dur === 45;
               return (
                 <TouchableOpacity
                   key={dur}
                   activeOpacity={0.85}
+                  disabled={isDisabled}
                   onPress={() => setSessionDuration(dur)}
                   style={[
                     styles.cardBtn,
                     isSelected && styles.cardBtnSelected,
+                    isDisabled && styles.cardBtnDisabled,
                   ]}
                 >
-                  <Text style={[styles.cardVal, isSelected && styles.cardTextSelected]}>
+                  <Text
+                    style={[
+                      styles.cardVal,
+                      isSelected && styles.cardTextSelected,
+                      isDisabled && styles.cardTextDisabled,
+                    ]}
+                  >
                     {dur}
                   </Text>
-                  <Text style={[styles.cardLabel, isSelected && styles.cardTextSelected]}>
+                  <Text
+                    style={[
+                      styles.cardLabel,
+                      isSelected && styles.cardTextSelected,
+                      isDisabled && styles.cardTextDisabled,
+                    ]}
+                  >
                     MIN
                   </Text>
                 </TouchableOpacity>
@@ -248,6 +263,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
       shadowRadius: 8,
       elevation: 4,
     },
+    cardBtnDisabled: {
+      opacity: 0.35,
+    },
     cardVal: {
       fontSize: 22,
       fontWeight: "700",
@@ -262,6 +280,9 @@ const createStyles = (theme: ReturnType<typeof useTheme>, themeState: ReturnType
     },
     cardTextSelected: {
       color: "#050B14", // Dark background color
+    },
+    cardTextDisabled: {
+      color: theme.textSecondary,
     },
     weeksCard: {
       backgroundColor: theme.cardBackground,
