@@ -54,6 +54,7 @@ function RootStack() {
       {/* Public routes — accessible to anyone at any stage */}
       <Stack.Screen name="privacy" />
       <Stack.Screen name="terms" />
+      <Stack.Screen name="support" />
     </Stack>
   );
 }

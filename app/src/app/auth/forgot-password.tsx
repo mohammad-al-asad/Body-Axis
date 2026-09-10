@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-          <AuthHeader onBackPress={() => router.back()} onHelpPress={() => {}} />
+          <AuthHeader onBackPress={() => router.back()} onHelpPress={() => router.push('/support')} />
 
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -151,11 +151,11 @@ export default function ForgotPasswordScreen() {
                   PROTECTED BY BODY AXIS ENCRYPTION
                 </Text>
                 <View style={styles.footerLinksRow}>
-                  <TouchableOpacity activeOpacity={0.7}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/privacy')}>
                     <Text style={styles.footerLink}>Privacy Policy</Text>
                   </TouchableOpacity>
                   <Text style={styles.footerBullet}>•</Text>
-                  <TouchableOpacity activeOpacity={0.7}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/support')}>
                     <Text style={styles.footerLink}>Support</Text>
                   </TouchableOpacity>
                 </View>
