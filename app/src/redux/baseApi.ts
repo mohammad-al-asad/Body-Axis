@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { logout } from './slice/auth';
 
 const rawBaseUrl =
   process.env.EXPO_PUBLIC_API_URL ?? 'http://127.0.0.1:8001/api/v1';
@@ -34,7 +35,25 @@ export const baseApi = createApi({
     } else if (adjustedArgs.url.startsWith('/v2')) {
       adjustedArgs.url = `${rootUrl}/api${adjustedArgs.url}`;
     }
-    return rawBaseQuery(adjustedArgs, api, extraOptions);
+
+    const result = await rawBaseQuery(adjustedArgs, api, extraOptions);
+
+    if (result.error && result.error.status === 401) {
+      const state = api.getState() as {
+        auth?: {
+          accessToken?: string | null;
+          isAuthenticated?: boolean;
+        };
+      };
+
+      // If the request was made with an authenticated session, clear credentials and cache
+      if (state.auth?.accessToken || state.auth?.isAuthenticated) {
+        api.dispatch(logout());
+        api.dispatch(baseApi.util.resetApiState());
+      }
+    }
+
+    return result;
   },
   tagTypes: ['Auth', 'Subscription', 'Sessions'],
   endpoints: () => ({}),
