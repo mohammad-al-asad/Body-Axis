@@ -1,4 +1,5 @@
-import { Stack } from "expo-router";
+import { useEffect } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { Provider, useSelector } from "react-redux";
 import { PersistGate } from "redux-persist/integration/react";
@@ -6,10 +7,14 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { store, persistor, RootState } from "@/redux/store";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { RevenueCatBootstrap } from "@/components/RevenueCatBootstrap";
+import { AppUpdateChecker } from "@/components/AppUpdateChecker";
 import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 
 
 function RootStack() {
+  const router = useRouter();
+  const segments = useSegments();
+
   const firstTime = useSelector((state: RootState) => state.settings.firstTime);
   const hasSeenIntroduction = useSelector((state: RootState) => state.settings.hasSeenIntroduction);
   const localIsPremium = useSelector((state: RootState) => state.settings.localIsPremium);
@@ -22,6 +27,30 @@ function RootStack() {
     skip: !isEmailVerified,
   });
 
+  const hasActiveSubscription = isEmailVerified && (!!subscription?.active || localIsPremium);
+  const isFullyReady = hasActiveSubscription && hasSeenIntroduction;
+
+  useEffect(() => {
+    const inAuthGroup = segments[0] === "auth";
+    const inOnboarding = segments[0] === "onboarding";
+    const isPublicRoute =
+      segments[0] === "privacy" ||
+      segments[0] === "terms" ||
+      segments[0] === "support";
+
+    if (isPublicRoute) return;
+
+    if (!isAuthenticated) {
+      if (firstTime && !inOnboarding) {
+        router.replace("/onboarding");
+      } else if (!firstTime && !inAuthGroup) {
+        router.replace("/auth/sign-in");
+      }
+    } else if (isFullyReady && inAuthGroup) {
+      router.replace("/");
+    }
+  }, [isAuthenticated, firstTime, isFullyReady, segments]);
+
   // Show loading while subscription status is being fetched for verified authenticated users
   if (isEmailVerified && isLoading) {
     return (
@@ -30,9 +59,6 @@ function RootStack() {
       </View>
     );
   }
-
-  const hasActiveSubscription = isEmailVerified && (!!subscription?.active || localIsPremium);
-  const isFullyReady = hasActiveSubscription && hasSeenIntroduction;
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
@@ -67,6 +93,7 @@ export default function Layout() {
           <RevenueCatBootstrap />
           <AnimatedSplashOverlay />
           <RootStack />
+          <AppUpdateChecker />
         </PersistGate>
       </Provider>
     </KeyboardProvider>

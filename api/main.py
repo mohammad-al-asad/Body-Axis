@@ -5,13 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from database import client, db
-from routers import admin, auth, content, exercises, plans, revenuecat, sessions, sessions_v2, subscription, users, videos, notifications
+from routers import admin, auth, content, exercises, plans, revenuecat, sessions, sessions_v2, subscription, users, videos, notifications, app_config
 from services.admin_service import ensure_admin_indexes
 from services.auth_service import ensure_auth_indexes
 from services.content_service import ensure_content_indexes
 from services.management_service import ensure_management_indexes
 from services.session_service import ensure_session_indexes
 from services.subscription_service import ensure_subscription_indexes
+from services.app_config_service import ensure_app_config
 
 
 @asynccontextmanager
@@ -23,6 +24,7 @@ async def lifespan(app: FastAPI):
     await ensure_management_indexes()
     await ensure_session_indexes()
     await ensure_content_indexes()
+    await ensure_app_config()
     print("Connected to MongoDB")
 
     # Seed initial notifications if collection is empty
@@ -82,6 +84,7 @@ api_router.include_router(videos.router)
 api_router.include_router(exercises.router)
 api_router.include_router(plans.router)
 api_router.include_router(notifications.router)
+api_router.include_router(app_config.router)
 
 
 @api_router.get("/health")
@@ -104,6 +107,7 @@ api_v2_router.include_router(videos.router)
 api_v2_router.include_router(exercises.router)
 api_v2_router.include_router(plans.router)
 api_v2_router.include_router(notifications.router)
+api_v2_router.include_router(app_config.router)
 
 
 @api_v2_router.get("/health")
