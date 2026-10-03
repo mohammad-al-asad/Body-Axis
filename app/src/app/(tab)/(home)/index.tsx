@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { Header } from '@/components/Header';
 import { HomeOnboarding } from '@/components/home/HomeOnboarding';
 import { HomeDashboard } from '@/components/home/HomeDashboard';
+import { AppUpdateChecker } from '@/components/AppUpdateChecker';
 import { RootState } from '@/redux/store';
 
 export default function HomeScreen() {
@@ -40,6 +41,7 @@ export default function HomeScreen() {
 
         {isIntakeCompleted ? <HomeDashboard /> : <HomeOnboarding />}
       </SafeAreaView>
+      <AppUpdateChecker />
     </View>
   );
 }

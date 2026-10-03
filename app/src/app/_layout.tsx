@@ -7,7 +7,6 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { store, persistor, RootState } from "@/redux/store";
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import { RevenueCatBootstrap } from "@/components/RevenueCatBootstrap";
-import { AppUpdateChecker } from "@/components/AppUpdateChecker";
 import { useGetSubscriptionStatusQuery } from "@/redux/api/subscriptionApi";
 
 
@@ -93,7 +92,6 @@ export default function Layout() {
           <RevenueCatBootstrap />
           <AnimatedSplashOverlay />
           <RootStack />
-          <AppUpdateChecker />
         </PersistGate>
       </Provider>
     </KeyboardProvider>

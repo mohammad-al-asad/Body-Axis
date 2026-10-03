@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Modal,
   View,
   Text,
   TouchableOpacity,
@@ -10,6 +9,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme, useThemeState } from '@/hooks/use-theme';
+import { CustomSheet } from '@/components/ui/CustomSheet';
 
 interface UpdateModalProps {
   visible: boolean;
@@ -42,7 +42,6 @@ export function UpdateModal({
       if (supported) {
         await Linking.openURL(url);
       } else {
-        // Fallback open directly
         await Linking.openURL(url);
       }
     } catch (err) {
@@ -52,65 +51,58 @@ export function UpdateModal({
   };
 
   return (
-    <Modal
+    <CustomSheet
       visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={() => {
-        if (!isForceUpdate) {
-          onDismiss();
-        }
-      }}
+      onClose={onDismiss}
+      canDismiss={!isForceUpdate}
     >
-      <View style={styles.backdrop}>
-        <View style={styles.card}>
-          {/* Icon Badge */}
-          <View style={styles.iconCircle}>
-            <Feather name="arrow-up-circle" size={32} color={theme.secondary} />
-          </View>
-
-          {/* Title */}
-          <Text style={styles.title}>{title}</Text>
-
-          {/* Version Comparison Badge */}
-          <View style={styles.versionBadgeRow}>
-            <View style={styles.versionBadge}>
-              <Text style={styles.versionBadgeLabel}>Current</Text>
-              <Text style={styles.versionBadgeValue}>v{currentVersion}</Text>
-            </View>
-            <Feather name="arrow-right" size={14} color={theme.textSecondary} style={{ marginHorizontal: 8 }} />
-            <View style={[styles.versionBadge, styles.versionBadgeNew]}>
-              <Text style={[styles.versionBadgeLabel, { color: theme.secondary }]}>New</Text>
-              <Text style={[styles.versionBadgeValue, { color: theme.secondary }]}>v{latestVersion}</Text>
-            </View>
-          </View>
-
-          {/* Message */}
-          <Text style={styles.message}>{message}</Text>
-
-          {/* Primary Action Button */}
-          <TouchableOpacity
-            style={styles.updateButton}
-            activeOpacity={0.8}
-            onPress={handleUpdatePress}
-          >
-            <Text style={styles.updateButtonText}>Update Now</Text>
-            <Feather name="external-link" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
-
-          {/* Optional Later Button (Hidden on Force Update) */}
-          {!isForceUpdate && (
-            <TouchableOpacity
-              style={styles.laterButton}
-              activeOpacity={0.7}
-              onPress={onDismiss}
-            >
-              <Text style={styles.laterButtonText}>Maybe Later</Text>
-            </TouchableOpacity>
-          )}
+      <View style={styles.sheetContainer}>
+        {/* Icon Badge */}
+        <View style={styles.iconCircle}>
+          <Feather name="arrow-up-circle" size={32} color={theme.secondary} />
         </View>
+
+        {/* Title */}
+        <Text style={styles.title}>{title}</Text>
+
+        {/* Version Comparison Badge */}
+        <View style={styles.versionBadgeRow}>
+          <View style={styles.versionBadge}>
+            <Text style={styles.versionBadgeLabel}>Current</Text>
+            <Text style={styles.versionBadgeValue}>v{currentVersion}</Text>
+          </View>
+          <Feather name="arrow-right" size={14} color={theme.textSecondary} style={{ marginHorizontal: 8 }} />
+          <View style={[styles.versionBadge, styles.versionBadgeNew]}>
+            <Text style={[styles.versionBadgeLabel, { color: theme.secondary }]}>New</Text>
+            <Text style={[styles.versionBadgeValue, { color: theme.secondary }]}>v{latestVersion}</Text>
+          </View>
+        </View>
+
+        {/* Message */}
+        <Text style={styles.message}>{message}</Text>
+
+        {/* Primary Action Button */}
+        <TouchableOpacity
+          style={styles.updateButton}
+          activeOpacity={0.8}
+          onPress={handleUpdatePress}
+        >
+          <Text style={styles.updateButtonText}>Update Now</Text>
+          <Feather name="external-link" size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
+        </TouchableOpacity>
+
+        {/* Optional Later Button (Hidden on Force Update) */}
+        {!isForceUpdate && (
+          <TouchableOpacity
+            style={styles.laterButton}
+            activeOpacity={0.7}
+            onPress={onDismiss}
+          >
+            <Text style={styles.laterButtonText}>Maybe Later</Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </Modal>
+    </CustomSheet>
   );
 }
 
@@ -119,28 +111,10 @@ const createStyles = (
   themeState: ReturnType<typeof useThemeState>
 ) =>
   StyleSheet.create({
-    backdrop: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.75)',
-      justifyContent: 'center',
+    sheetContainer: {
       alignItems: 'center',
-      paddingHorizontal: 24,
-      zIndex: 9999,
-    },
-    card: {
-      width: '100%',
-      maxWidth: 340,
-      backgroundColor: themeState === 'dark' ? '#141E2B' : theme.cardBackground,
-      borderRadius: 24,
-      padding: 24,
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: themeState === 'dark' ? '#253448' : theme.inputBorder,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.35,
-      shadowRadius: 20,
-      elevation: 10,
+      paddingTop: 8,
+      paddingBottom: 16,
     },
     iconCircle: {
       width: 64,
@@ -220,7 +194,7 @@ const createStyles = (
     laterButton: {
       paddingVertical: 12,
       paddingHorizontal: 20,
-      marginTop: 4,
+      marginTop: 8,
     },
     laterButtonText: {
       color: theme.textSecondary,
