@@ -20,7 +20,8 @@ export function AppUpdateChecker() {
   const currentVersion = getCurrentAppVersion();
   const isOlderThanLatest = isVersionOlder(currentVersion, platformConfig.latest_version);
   const isBelowMinimum = isVersionOlder(currentVersion, platformConfig.minimum_version);
-  const isForceUpdate = Boolean(platformConfig.force_update || isBelowMinimum);
+  // Respect force_update flag: if force_update is false, the user can always cancel/dismiss
+  const isForceUpdate = Boolean(platformConfig.force_update);
   const shouldPrompt = isOlderThanLatest || isBelowMinimum;
 
   // If update is needed and not dismissed (or if it's a mandatory force update)

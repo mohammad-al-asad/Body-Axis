@@ -15,27 +15,37 @@ export interface CustomSheetOption<T> {
   value: T;
 }
 
-interface CustomSheetProps<T> {
+interface CustomSheetProps<T = any> {
   visible: boolean;
   onClose: () => void;
-  title: string;
-  options: CustomSheetOption<T>[];
-  selectedValue: T;
-  onSelect: (value: T) => void;
+  title?: string;
+  options?: CustomSheetOption<T>[];
+  selectedValue?: T;
+  onSelect?: (value: T) => void;
+  children?: React.ReactNode;
+  canDismiss?: boolean;
 }
 
-export function CustomSheet<T>({
+export function CustomSheet<T = any>({
   visible,
   onClose,
   title,
   options,
   selectedValue,
   onSelect,
+  children,
+  canDismiss = true,
 }: CustomSheetProps<T>) {
   const theme = useTheme();
   const slideAnim = useRef(new Animated.Value(300)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const [showModal, setShowModal] = useState(visible);
+
+  const handleClose = () => {
+    if (canDismiss) {
+      onClose();
+    }
+  };
 
   useEffect(() => {
     if (visible) {
@@ -75,7 +85,7 @@ export function CustomSheet<T>({
       visible={showModal}
       transparent={true}
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleClose}
     >
       <Animated.View
         style={[
@@ -88,7 +98,7 @@ export function CustomSheet<T>({
         <TouchableOpacity
           style={StyleSheet.absoluteFill}
           activeOpacity={1}
-          onPress={onClose}
+          onPress={handleClose}
         />
         <Animated.View
           style={[
@@ -103,42 +113,49 @@ export function CustomSheet<T>({
             <View style={[styles.sheetHandle, { backgroundColor: theme.inputBorder }]} />
           </View>
 
-          <Text style={[styles.modalTitle, { color: theme.text }]}>
-            {title}
-          </Text>
-          {options.map((option) => {
-            const isActive = selectedValue === option.value;
-            return (
-              <TouchableOpacity
-                key={String(option.value)}
-                style={[
-                  styles.modalOption,
-                  { borderColor: theme.inputBorder },
-                  isActive && { borderColor: theme.secondary },
-                ]}
-                onPress={() => {
-                  onSelect(option.value);
-                  onClose();
-                }}
-              >
-                <Text
-                  style={[
-                    styles.modalOptionText,
-                    { color: theme.textSecondary },
-                    isActive && [
-                      styles.modalOptionTextActive,
-                      { color: theme.secondary },
-                    ],
-                  ]}
-                >
-                  {option.label}
-                </Text>
-                {isActive && (
-                  <Feather name="check" size={18} color={theme.secondary} />
-                )}
-              </TouchableOpacity>
-            );
-          })}
+          {title ? (
+            <Text style={[styles.modalTitle, { color: theme.text }]}>
+              {title}
+            </Text>
+          ) : null}
+
+          {children}
+
+          {options && onSelect
+            ? options.map((option) => {
+                const isActive = selectedValue === option.value;
+                return (
+                  <TouchableOpacity
+                    key={String(option.value)}
+                    style={[
+                      styles.modalOption,
+                      { borderColor: theme.inputBorder },
+                      isActive && { borderColor: theme.secondary },
+                    ]}
+                    onPress={() => {
+                      onSelect(option.value);
+                      onClose();
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        { color: theme.textSecondary },
+                        isActive && [
+                          styles.modalOptionTextActive,
+                          { color: theme.secondary },
+                        ],
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    {isActive && (
+                      <Feather name="check" size={18} color={theme.secondary} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })
+            : null}
         </Animated.View>
       </Animated.View>
     </Modal>
