@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { router } from 'expo-router';
 import { logout } from './slice/auth';
 
 const rawBaseUrl =
@@ -50,6 +51,11 @@ export const baseApi = createApi({
       if (state.auth?.accessToken || state.auth?.isAuthenticated) {
         api.dispatch(logout());
         api.dispatch(baseApi.util.resetApiState());
+        try {
+          router.replace('/auth/sign-in');
+        } catch {
+          // Ignore if router is not mounted or available yet
+        }
       }
     }
 

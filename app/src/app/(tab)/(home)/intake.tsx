@@ -87,15 +87,21 @@ export default function IntakeScreen() {
       const items = res.items || [];
       setMatchingPlans(items);
       setSelectedPlanIds([]);
-    } catch (err) {
+
+      const nextIndex = 3;
+      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+      setActiveIndex(nextIndex);
+    } catch (err: any) {
       console.error("Failed to load matching plans:", err);
       setMatchingPlans([]);
       setSelectedPlanIds([]);
+      if (err?.status !== 401) {
+        Alert.alert(
+          "Error",
+          "Failed to load matching plans. Please check your connection and try again."
+        );
+      }
     }
-
-    const nextIndex = 3;
-    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
-    setActiveIndex(nextIndex);
   };
 
   const handleNext = async () => {
